@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup>
+    <Filter Include="InGameData">
+      <UniqueIdentifier>{61391DCD-261B-5D02-B3B2-D5CF2FF02FBC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Localization">
+      <UniqueIdentifier>{7FF5EE50-BC19-5796-83F5-62CF4157E24D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{196A0EF8-1904-5AC9-9B94-E8FBCEFA1115}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{75665363-603B-5076-9FAA-7940E7B21D5F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{21DC34C1-FA91-5B5E-98A9-A5E66B3D40EA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI\Common">
+      <UniqueIdentifier>{3D557CF5-7066-5A52-9234-BD3F4B8C34D3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI\InGameData">
+      <UniqueIdentifier>{6D183AC2-B6B7-5A91-88C5-A083C1834543}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI\MainMenu">
+      <UniqueIdentifier>{4DAFCF99-43CE-598D-A3AE-36A223D18C96}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="GameDataPch.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="InGameData\FGameSession.cpp">
+      <Filter>InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\InGameData\FInGameStatusUi.cpp">
+      <Filter>UI\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="InGameData\InGameData.cpp">
+      <Filter>InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="InGameData\FSaveDataStore.cpp">
+      <Filter>InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FUiTextArt.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\MainMenu\FMainMenuUi.cpp">
+      <Filter>UI\MainMenu</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\FDataScene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\FSceneManager.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Localization\Localization.cpp">
+      <Filter>Localization</Filter>
+    </ClCompile>
+    <ClCompile Include="System\GameDataPaths.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\FGameUiBridge.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="InGameData\InGameData.h">
+      <Filter>InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="InGameData\FGameSession.h">
+      <Filter>InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\InGameData\FInGameStatusUi.h">
+      <Filter>UI\InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="InGameData\FSaveDataStore.h">
+      <Filter>InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FUiTextArt.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\MainMenu\FMainMenuUi.h">
+      <Filter>UI\MainMenu</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\IScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\FDataScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\FSceneManager.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Localization\Localization.h">
+      <Filter>Localization</Filter>
+    </ClInclude>
+    <ClInclude Include="System\GameDataPaths.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\FGameUiBridge.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+# TextRPG.GameData 1
+"ItemDefinitionToken":
+  "ItemId": "Token"
+  "NameTextKey": "InGameData.Item.Token.Name"
+  "MaxStack": 99

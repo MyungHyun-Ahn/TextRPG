@@ -1,0 +1,73 @@
+# Build outputs — native projects and .NET tools use Out/.
+/Out/
+**/bin/
+**/obj/
+
+# Visual Studio / local editor state
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.db-shm
+*.VC.db-wal
+*.VC.opendb
+*.opensdf
+*.sdf
+*.ipch
+
+# Native intermediate / diagnostic files
+*.obj
+*.pch
+*.pdb
+*.idb
+*.ilk
+*.iobj
+*.ipdb
+*.exp
+*.tlog
+*.lastbuildstate
+*.binlog
+*.dmp
+
+# Python caches / local virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local secrets and environment settings
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.pem
+*.pfx
+*.p12
+
+# Packed runtime content and local save files
+GameData.dat
+*.sav
+
+# Office locks / temporary editor files
+~$*
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Keep source, Docs, Excel workbooks, text art and generated Class/Data.
+# Keep GameData/Class/.gamedata-output and GameData/Data/.gamedata-output.
+# Do not blanket-ignore *.xlsx, *.txt, *.yaml, *.g.h, *.dll or *.lib.

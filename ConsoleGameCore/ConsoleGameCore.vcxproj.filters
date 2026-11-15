@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup>
+    <Filter Include="Frame">
+      <UniqueIdentifier>{1C1F4FDE-DD7E-5E53-BE1C-F756368BCC0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{5C4303F0-4CE0-56F1-9BC3-D0F978C35D26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects">
+      <UniqueIdentifier>{AB950A8E-BC2F-52AA-BF8C-D10181D4050A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{A94BD58F-4451-5241-816C-DE09A91BA325}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{0DA0A12A-7FBB-5F03-8B62-63EDF9369FB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{B8B6996D-45C4-59FC-AAAC-7C73E6AA739B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI\Common">
+      <UniqueIdentifier>{41581788-B26E-54E1-A5D2-53D045A1709E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Input\FConsoleInput.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\FInputManager.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Rendering\FConsoleRenderer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\FFrameBuffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\FSceneHost.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\FSceneLifetime.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FSceneUiRoot.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FUiButton.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FUiElement.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FUiPanel.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Common\FUiTextArtView.cpp">
+      <Filter>UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\FUIManager.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Frame\FFramePipeline.h">
+      <Filter>Frame</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\FConsoleInput.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\FInputManager.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\IInputSource.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\InputTypes.h">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Objects\IObject.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="ConsoleGameCorePch.h" />
+    <ClInclude Include="Rendering\FConsoleRenderer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\FFrameBuffer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\FSceneHost.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\FSceneLifetime.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\TScene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FSceneUiRoot.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FUiButton.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FUiElement.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FUiPanel.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\FUiTextArtView.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Common\IUI.h">
+      <Filter>UI\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\FUIManager.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\IUiInputTarget.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup />
+</Project>

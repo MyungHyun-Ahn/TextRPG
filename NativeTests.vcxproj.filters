@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup>
+    <Filter Include="ConsoleGameCore">
+      <UniqueIdentifier>{B51D8016-9524-5F3C-80FF-708C286BC133}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameData">
+      <UniqueIdentifier>{67FCECD0-57D5-5C28-B426-830E765F3DBE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameData\Runtime">
+      <UniqueIdentifier>{F3BEA79D-0D55-5C96-9138-968DB88134F3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameData\Runtime\GameData">
+      <UniqueIdentifier>{076455A7-ADCF-5848-9C33-6F97C0B71E8E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{70EEEE53-C38A-5E39-88C6-01D1BEF2A95A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\ConsoleGameCore">
+      <UniqueIdentifier>{B669FD7A-61C0-546C-8595-6A172EC9B967}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\InGameData">
+      <UniqueIdentifier>{A3550A5F-8723-556F-B03D-1AE6316AFFB6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\InputManager">
+      <UniqueIdentifier>{7B6FCE50-E9D0-555B-B9F2-75953D4F864B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\SaveData">
+      <UniqueIdentifier>{AF958401-388A-5FD6-8863-53AD1C401D29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\SceneUiRuntime">
+      <UniqueIdentifier>{F1D62E56-FC49-5E12-88D1-42182F2BFC01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG">
+      <UniqueIdentifier>{0542690E-4C12-57AB-AB11-1C4029159B35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\InGameData">
+      <UniqueIdentifier>{8994D23D-AC63-59CE-ADEC-3043F2B82664}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\Localization">
+      <UniqueIdentifier>{0E7BC071-DB38-5A11-82DB-EBA5B3FC0687}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\Scene">
+      <UniqueIdentifier>{B97D4871-CF18-5AA9-AC17-63090A802D93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\UI">
+      <UniqueIdentifier>{1A0930DC-CF17-545A-BA29-D6DC162AE2BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\UI\Common">
+      <UniqueIdentifier>{84891975-DCA3-583C-ACB1-D53EDFFCC579}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\UI\InGameData">
+      <UniqueIdentifier>{7618B1EA-A692-5CF8-BB05-622439E9D8E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TextRPG\UI\MainMenu">
+      <UniqueIdentifier>{48644657-C506-5B86-80A7-81FBAC5C4E0C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="TextRPG\InGameData\FSaveDataStore.cpp">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SaveData\Main.cpp">
+      <Filter>Tests\SaveData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\pch.cpp">
+      <Filter>TextRPG</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\InputManager\Main.cpp">
+      <Filter>Tests\InputManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\InputManager\AllocationFailure.cpp">
+      <Filter>Tests\InputManager</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SceneUiRuntime\Main.cpp">
+      <Filter>Tests\SceneUiRuntime</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SceneUiRuntime\OptionalCatalog.cpp">
+      <Filter>Tests\SceneUiRuntime</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\UI\Common\FUiTextArt.cpp">
+      <Filter>TextRPG\UI\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\UI\MainMenu\FMainMenuUi.cpp">
+      <Filter>TextRPG\UI\MainMenu</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\UI\InGameData\FInGameStatusUi.cpp">
+      <Filter>TextRPG\UI\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\InGameData\FGameSession.cpp">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData\Runtime\GameData\FGameDataKey.cpp">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\Scene\FDataScene.cpp">
+      <Filter>TextRPG\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\Scene\FSceneManager.cpp">
+      <Filter>TextRPG\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\Localization\Localization.cpp">
+      <Filter>TextRPG\Localization</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\InGameData\Main.cpp">
+      <Filter>Tests\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\InGameData\InGameData.cpp">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SceneUiRuntime\GameDataStore.cpp">
+      <Filter>Tests\SceneUiRuntime</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SceneUiRuntime\GameDataStoreExceptions.cpp">
+      <Filter>Tests\SceneUiRuntime</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData\Runtime\GameData\pch.cpp">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData\Runtime\GameData\FGameDataStore.cpp">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData\Runtime\GameData\FGeneratedYaml.cpp">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData\Runtime\GameData\FGameDataPackage.cpp">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\ConsoleGameCore\Main.cpp">
+      <Filter>Tests\ConsoleGameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="ConsoleGameCore\pch.cpp">
+      <Filter>ConsoleGameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRPG\UI\FGameUiBridge.cpp">
+      <Filter>TextRPG\UI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GameData\Runtime\GameData\pch.h">
+      <Filter>GameData\Runtime\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\InGameData\FSaveDataStore.h">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\InGameData\InGameData.h">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\InGameData\FGameSession.h">
+      <Filter>TextRPG\InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\UI\InGameData\FInGameStatusUi.h">
+      <Filter>TextRPG\UI\InGameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\pch.h">
+      <Filter>TextRPG</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h">
+      <Filter>Tests\SceneUiRuntime</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\UI\FGameUiBridge.h">
+      <Filter>TextRPG\UI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup />
+</Project>

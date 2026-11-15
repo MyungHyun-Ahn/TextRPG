@@ -1,0 +1,331 @@
+using ClosedXML.Excel;
+
+internal static class FSceneContractSelfTest
+{
+    public static void Run(string testRoot)
+    {
+        Check(testRoot, "StaticSceneThreeFieldsWithoutLegacyAssets", _ => { }, null);
+        foreach (string field in new[] { "PlayerArtId", "ContentArtId", "TitleTextKey", "RegionTextKey" })
+            Check(testRoot, "Scene_ForbiddenPresentation_" + field, workbook =>
+            {
+                var sheet = workbook.Worksheet("Scene");
+                sheet.Cell("E5").Value = "Client";
+                sheet.Cell("E6").Value = "string";
+                sheet.Cell("E7").Value = true;
+                sheet.Cell("E13").Value = field;
+                for (int row = 14; row <= 16; row++) sheet.Cell(row, 5).Value = "Unbound";
+            }, "GD2132", expectedCell: "E13");
+        foreach (string scope in new[] { "Shared", "Client", "Ignore" })
+        foreach (string field in new[] { "CurrentMonsterName", "AssetPath" })
+            Check(testRoot, "Scene_Unexpected" + scope + "_" + field, workbook =>
+            {
+                var sheet = workbook.Worksheet("Scene");
+                sheet.Cell("E5").Value = scope;
+                sheet.Cell("E6").Value = "string";
+                sheet.Cell("E7").Value = true;
+                sheet.Cell("E13").Value = field;
+                for (int row = 14; row <= 16; row++) sheet.Cell(row, 5).Value = "Unbound";
+            }, "GD2133", expectedCell: "E13");
+        Check(testRoot, "ValidScene", _ => { }, null);
+        Check(testRoot, "GenericExtraFieldAllowed", workbook =>
+            Add(workbook, "Independent", ["Id", "CurrentMonsterName"], ["uint32", "string"], [[1, "Unbound"]]), null);
+        Check(testRoot, "UI_MissingSceneField", workbook => workbook.Worksheet("Scene").Column(4).Delete(), "GD2101");
+        Check(testRoot, "GEN01_ClientFields", workbook => workbook.Worksheet("Scene").Cell("D5").Value = "Ignore", "GD2101");
+        Check(testRoot, "GEN02_NoOptionConfig", workbook =>
+        {
+            workbook.Worksheet("SceneTypeConfig").Row(16).Delete();
+            workbook.Worksheet("SceneOption").Rows(22, 25).Delete();
+        }, "GD2104");
+        Check(testRoot, "GEN04_NestedWorkbook", _ => { }, null, nested: true);
+        Check(testRoot, "GEN03_DeletedReference", workbook => workbook.Worksheet("SceneOption").Cell("G12").Value = "", "GD2120");
+        Check(testRoot, "GEN03_EmptyStartTarget", workbook =>
+        {
+            var sheet = workbook.Worksheet("SceneOption");
+            sheet.Cell("G7").Value = false;
+            sheet.Cell("G12").Value = "";
+            sheet.Cell("G14").Value = "";
+        }, "GD2121");
+        Check(testRoot, "GEN03_InvalidStartTargetWithoutMetadata", workbook =>
+        {
+            workbook.Worksheet("SceneOption").Cell("G12").Value = "";
+            workbook.Worksheet("SceneOption").Cell("G14").Value = "Missing";
+        }, "GD2121");
+        Check(testRoot, "SceneWithoutTextArt", workbook => workbook.Worksheet("TextArt").Delete(), null);
+        Check(testRoot, "Art_RenamedIndependentIdsAndFiles", workbook =>
+        {
+            var sheet = workbook.Worksheet("TextArt");
+            sheet.Cell("B14").Value = "AlternateBanner";
+            sheet.Cell("C14").Value = "Asset/banner.txt";
+            sheet.Cell("B15").Value = "AlternatePortrait";
+            sheet.Cell("C15").Value = "Asset/portrait.txt";
+        }, null, mutateAssets: root =>
+        {
+            File.Move(Path.Combine(root, "Asset", "logo.txt"), Path.Combine(root, "Asset", "banner.txt"));
+            File.Move(Path.Combine(root, "Asset", "square.txt"), Path.Combine(root, "Asset", "portrait.txt"));
+        });
+        Check(testRoot, "Art_NewIndependentIdAndFile", workbook =>
+        {
+            var sheet = workbook.Worksheet("TextArt");
+            sheet.Cell("B16").Value = "NewEncounter";
+            sheet.Cell("C16").Value = "Asset/encounter.txt";
+            sheet.Cell("D16").Value = 36;
+            sheet.Cell("E16").Value = 36;
+        }, null, mutateAssets: root => File.Copy(Path.Combine(root, "Asset", "square.txt"), Path.Combine(root, "Asset", "encounter.txt")));
+        Check(testRoot, "UI_IgnoredTextArtWidth", workbook => workbook.Worksheet("TextArt").Cell("D5").Value = "Ignore", "GD2101");
+        Check(testRoot, "UI_MalformedLocalization", workbook => workbook.Worksheet("Localization").Cell("C6").Value = "uint32", "GD2101");
+        Check(testRoot, "UI_UnknownTextWithoutReference", workbook =>
+        {
+            workbook.Worksheet("SceneOption").Cell("E12").Value = "";
+            workbook.Worksheet("SceneOption").Cell("E14").Value = "Unknown";
+        }, "GD2122");
+        Check(testRoot, "UI_FourSlotsIncludesDisabled", workbook => workbook.Worksheet("SceneOption").Row(25).Delete(), "GD2105");
+        Check(testRoot, "UI_MaximumFixedFour", workbook => workbook.Worksheet("SceneTypeConfig").Cell("C14").Value = 8, "GD2102");
+        Check(testRoot, "UI_NoScrollOnly", workbook => workbook.Worksheet("SceneTypeConfig").Cell("D14").Value = "Scroll", "GD2109");
+
+        Check(testRoot, "Art_AlternateDataStream", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "Asset/logo.txt:stream", "GD2114");
+        Check(testRoot, "Art_ReparseComponent", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "Asset/link/logo.txt", "GD2115", mutateAssets: root =>
+        {
+            string target = Path.Combine(root, "Actual");
+            Directory.CreateDirectory(target);
+            File.Copy(Path.Combine(root, "Asset", "logo.txt"), Path.Combine(target, "logo.txt"));
+            string link = Path.Combine(root, "Asset", "link");
+            if (OperatingSystem.IsWindows())
+            {
+                var start = new System.Diagnostics.ProcessStartInfo("cmd.exe") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+                foreach (string argument in new[] { "/c", "mklink", "/J", link, target }) start.ArgumentList.Add(argument);
+                using var process = System.Diagnostics.Process.Start(start)!;
+                process.WaitForExit();
+                if (process.ExitCode != 0) throw new InvalidOperationException("Could not create junction fixture: " + process.StandardError.ReadToEnd());
+            }
+            else Directory.CreateSymbolicLink(link, target);
+        });
+        Check(testRoot, "Art_TrailingDotAlias", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "Asset/logo.txt.", "GD2114");
+        Check(testRoot, "Art_UnsupportedDimensionsEvenUnused", workbook =>
+        {
+            var sheet = workbook.Worksheet("TextArt");
+            sheet.Cell("B16").Value = "Unused";
+            sheet.Cell("C16").Value = "Asset/square.txt";
+            sheet.Cell("D16").Value = 1;
+            sheet.Cell("E16").Value = 1;
+        }, "GD2140");
+        Check(testRoot, "Art_StrictUtf8", _ => { }, "GD2141", mutateAssets: root => File.WriteAllBytes(Path.Combine(root, "Asset", "square.txt"), [0xC0, 0xAF]));
+        Check(testRoot, "Art_ExactCellWidth", _ => { }, "GD2142", mutateAssets: root => File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join('\n', Enumerable.Repeat(new string(' ', 35), 36))));
+        Check(testRoot, "Art_BomCrlfTrailingSpaces", _ => { }, null, mutateAssets: root => File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join("\r\n", Enumerable.Repeat(new string(' ', 36), 36)) + "\r\n", new System.Text.UTF8Encoding(true)));
+        foreach (string glyph in new[] { "\t", "한", "\u0301", "😀", "\0", "●", "\uFEFF", "\r" })
+            Check(testRoot, "Art_RejectGlyph_" + char.ConvertToUtf32(glyph, 0).ToString("X"), _ => { }, "GD2143", mutateAssets: root =>
+                File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join('\n', new[] { new string(' ', 1) + glyph + new string(' ', 34) }.Concat(Enumerable.Repeat(new string(' ', 36), 35)))));
+        Check(testRoot, "Art_ExactApprovedGlyphsIncludingClock", _ => { }, null, mutateAssets: root =>
+        {
+            string glyphs = string.Concat(Enumerable.Range(0x20, 0x7F - 0x20).Concat(Enumerable.Range(0x2500, 0xA0)).Concat(Enumerable.Range(0x2190, 4)).Concat(new[] { 0x25B2, 0x25B6, 0x25BC, 0x25C0, 0x25CB }).Select(value => (char)value));
+            string pixels = glyphs.PadRight(36 * 36);
+            File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join('\n', Enumerable.Range(0, 36).Select(row => pixels.Substring(row * 36, 36))));
+        });
+        Check(testRoot, "UI_AllEnumSceneTypes", workbook =>
+        {
+            workbook.Worksheet("Scene").Row(16).Delete();
+            workbook.Worksheet("SceneTypeConfig").Row(16).Delete();
+            workbook.Worksheet("SceneOption").Rows(22, 25).Delete();
+        }, "GD2104");
+        Check(testRoot, "UI_PartialSceneFamilyFailsClosed", workbook =>
+        {
+            workbook.Worksheet("Scene").Delete();
+            workbook.Worksheet("SceneOption").Cell("G12").Value = "";
+        }, "GD2101");
+        Check(testRoot, "Art_ClientFieldScopeExact", workbook => workbook.Worksheet("TextArt").Cell("D5").Value = "Shared", "GD2101");
+        Check(testRoot, "Art_PathWhitespaceNotRepaired", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "Asset/logo.txt ", "GD2114");
+        Check(testRoot, "Art_DefaultWhitespaceNotRepaired", workbook =>
+        {
+            workbook.Worksheet("TextArt").Cell("C10").Value = "Asset/logo.txt ";
+            workbook.Worksheet("TextArt").Cell("C14").Value = "";
+        }, "GD2114");
+        CheckExistingBoundaries(testRoot);
+        CheckCppQualification(testRoot);
+    }
+
+    private static void CheckExistingBoundaries(string testRoot)
+    {
+        foreach ((string table, int fields) in new[] { ("Scene", 3), ("SceneOption", 7), ("SceneTypeConfig", 3), ("TextArt", 4), ("Localization", 3) })
+        {
+            for (int column = 2; column <= fields + 1; column++)
+            {
+                int fieldColumn = column;
+                Check(testRoot, $"Metadata_Client_{table}_{column}", workbook => workbook.Worksheet(table).Cell(5, fieldColumn).Value = "Ignore", "GD2101");
+                Check(testRoot, $"Metadata_Required_{table}_{column}", workbook =>
+                {
+                    var cell = workbook.Worksheet(table).Cell(7, fieldColumn);
+                    cell.Value = cell.GetString() != "true";
+                }, "GD2101");
+            }
+            Check(testRoot, "Metadata_Target_" + table, workbook => workbook.Worksheet(table).Cell("B2").Value = "Server", "GD2101");
+        }
+        Check(testRoot, "Art_MissingFile", _ => { }, "GD2113", mutateAssets: root => File.Delete(Path.Combine(root, "Asset", "square.txt")));
+        Check(testRoot, "Art_ParentTraversal", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "../outside.txt", "GD2111");
+        Check(testRoot, "Art_RootedPath", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "C:/outside.txt", "GD2111");
+        Check(testRoot, "Art_ReservedDevice", workbook => workbook.Worksheet("TextArt").Cell("C14").Value = "Asset/CON.txt", "GD2114");
+        Check(testRoot, "Art_ExactRows", _ => { }, "GD2142", mutateAssets: root => File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join('\n', Enumerable.Repeat(new string(' ', 36), 35))));
+        Check(testRoot, "Art_SecondTerminalNewline", _ => { }, "GD2142", mutateAssets: root => File.AppendAllText(Path.Combine(root, "Asset", "square.txt"), "\n\n"));
+        Check(testRoot, "UI_DeletedOptionTextReference", workbook => workbook.Worksheet("SceneOption").Cell("E12").Value = "", "GD2120");
+        Check(testRoot, "UI_DisabledStartMayHaveBlankTarget", workbook =>
+        {
+            workbook.Worksheet("SceneOption").Cell("H14").Value = false;
+            workbook.Worksheet("SceneOption").Cell("G14").Value = "";
+        }, null);
+        Check(testRoot, "UI_FifthDisabledSlot", workbook =>
+        {
+            var sheet = workbook.Worksheet("SceneOption");
+            object[] values = [999, "BattleField", 5, "UI_START", "None", "", false];
+            for (int column = 0; column < values.Length; column++) sheet.Cell(26, column + 2).Value = XLCellValue.FromObject(values[column]);
+        }, "GD2105");
+        Check(testRoot, "UI_DuplicateOrder", workbook => workbook.Worksheet("SceneOption").Cell("D15").Value = 1, "GD2106");
+        Check(testRoot, "UI_NonContiguousOrder", workbook => workbook.Worksheet("SceneOption").Cell("D17").Value = 5, "GD2107");
+        Check(testRoot, "UI_MissingTranslation", workbook => workbook.Worksheet("Localization").Cell("D14").Value = "", "GD0201");
+        Check(testRoot, "StandaloneTextArt", workbook =>
+        {
+            foreach (string name in new[] { "Scene", "SceneOption", "SceneTypeConfig", "Localization" }) workbook.Worksheet(name).Delete();
+        }, null);
+        Check(testRoot, "StandaloneTextArtStillValidatesFiles", workbook =>
+        {
+            foreach (string name in new[] { "Scene", "SceneOption", "SceneTypeConfig", "Localization" }) workbook.Worksheet(name).Delete();
+        }, "GD2113", mutateAssets: root => File.Delete(Path.Combine(root, "Asset", "square.txt")));
+        foreach (string field in new[] { "PlayerArtId", "RegionTextKey", "TargetSceneId" })
+            Check(testRoot, "GenericOptionalNoDefault_" + field, workbook =>
+            {
+                Add(workbook, "Independent", ["Id", field], ["uint32", "string"], [[1, "Value"]]);
+                workbook.Worksheet("Independent").Cell("C7").Value = false;
+            }, "GD0324");
+    }
+
+    private static void CheckCppQualification(string testRoot)
+    {
+        using var workbook = CreateWorkbook();
+        foreach (string name in new[] { "Scene", "SceneOption", "SceneTypeConfig", "Localization", "TextArt" }) workbook.Worksheet(name).Delete();
+        Add(workbook, "std", ["Id", "Label", "SceneType"], ["uint32", "string", "enum<SceneType>"], [[1, "test", "MainMenu"]]);
+        string input = Path.Combine(testRoot, "StdProbe");
+        Directory.CreateDirectory(input);
+        workbook.SaveAs(Path.Combine(input, "std.xlsx"));
+        var diagnostics = new FDiagnosticBag();
+        var tables = FWorkbookParser.ParseDirectory(input, diagnostics);
+        var enums = FGameDataValidator.Validate(tables, diagnostics);
+        if (diagnostics.HasErrors) throw new InvalidOperationException(string.Join('\n', diagnostics.GetSorted()));
+        IReadOnlyList<SGeneratedFile> files = FGameDataGenerators.Generate(tables, enums);
+        FGameDataGeneratorSelfTest.AssertCppHeaderContract(files);
+        string header = files.Single(file => file.RelativePath.EndsWith("stdData.g.h", StringComparison.Ordinal)).Content;
+        if (System.Text.RegularExpressions.Regex.IsMatch(header, @"(?<!:)\bstd::"))
+            throw new InvalidOperationException("Scene self-test GEN05: generated std table contains shadowable std:: names.");
+        File.WriteAllText(Path.Combine(input, "stdData.g.h"), header);
+        Console.WriteLine("PASS SceneContract/GEN05_StdQualification");
+    }
+
+    private static void Check(string testRoot, string name, Action<XLWorkbook> mutate, string? expectedCode, bool nested = false, Action<string>? mutateAssets = null, string? expectedCell = null)
+    {
+        string root = Path.Combine(testRoot, name);
+        string input = Path.Combine(root, "Excel");
+        Directory.CreateDirectory(input);
+        Directory.CreateDirectory(Path.Combine(root, "Asset"));
+
+        File.WriteAllText(Path.Combine(root, "Asset", "logo.txt"), string.Join('\n', Enumerable.Repeat(new string(' ', 83), 41)));
+        File.WriteAllText(Path.Combine(root, "Asset", "square.txt"), string.Join('\n', Enumerable.Repeat(new string(' ', 36), 36)));
+        mutateAssets?.Invoke(root);
+        string workbookRoot = nested ? Path.Combine(input, "Sub", "Deep") : input;
+        Directory.CreateDirectory(workbookRoot);
+        string path = Path.Combine(workbookRoot, "Scene.xlsx");
+        using (XLWorkbook workbook = CreateWorkbook())
+        {
+            mutate(workbook);
+            workbook.SaveAs(path);
+        }
+        var diagnostics = new FDiagnosticBag();
+        var tables = FWorkbookParser.ParseDirectory(input, diagnostics);
+        _ = FGameDataValidator.Validate(tables, diagnostics);
+        string messages = string.Join('\n', diagnostics.GetSorted());
+        string fixtureLink = Path.Combine(root, "Asset", "link");
+        if (Directory.Exists(fixtureLink)) Directory.Delete(fixtureLink);
+        bool success = expectedCode == null ? !diagnostics.HasErrors : diagnostics.GetSorted().Any(item => item.Code == expectedCode &&
+            (expectedCell == null || (item.Location.FilePath == path && item.Location.SheetName == "Scene" && item.Location.CellAddress == expectedCell)));
+        if (!success) throw new InvalidOperationException($"Scene self-test {name}: expected {expectedCode ?? "valid"}{(expectedCell == null ? "" : " [Scene] " + expectedCell)}; actual:\n{messages}");
+        if (name is "GEN01_ClientFields" or "GEN02_NoOptionConfig" or "UI_UnknownTextWithoutReference" or "Art_MissingFile" or "Art_ExactCellWidth")
+        {
+            string cpp = Path.Combine(root, "PreviousCpp");
+            string yaml = Path.Combine(root, "PreviousYaml");
+            foreach (string output in new[] { cpp, yaml })
+            {
+                Directory.CreateDirectory(output);
+                File.WriteAllText(Path.Combine(output, ".gamedata-output"), "GameDataGenerator owned output v1\n");
+                File.WriteAllText(Path.Combine(output, "sentinel.txt"), "previous output must survive");
+            }
+            if (Program.Main(["--input-root", input, "--output-root", cpp, "--yaml-output-root", yaml]) != 1 ||
+                new[] { cpp, yaml }.Any(output => Directory.GetFiles(output, "*", SearchOption.AllDirectories).Length != 2 ||
+                    File.ReadAllText(Path.Combine(output, "sentinel.txt")) != "previous output must survive" ||
+                    File.ReadAllText(Path.Combine(output, ".gamedata-output")) != "GameDataGenerator owned output v1\n"))
+                throw new InvalidOperationException("Failed Scene CLI changed previous output: " + name);
+            Console.WriteLine($"PASS SceneContract/PreservedOutputs_{name}");
+        }
+        if (diagnostics.GetSorted().Any(item => item.Location.FilePath != path || string.IsNullOrWhiteSpace(item.Location.SheetName) || string.IsNullOrWhiteSpace(item.Location.CellAddress)))
+            throw new InvalidOperationException("Scene diagnostic lost workbook/sheet/cell location: " + name);
+        Console.WriteLine($"PASS SceneContract/{name}");
+    }
+
+    private static XLWorkbook CreateWorkbook()
+    {
+        var workbook = new XLWorkbook();
+        Add(workbook, "Enums", ["EnumName", "Target", "UnderlyingType", "Values"], ["string", "string", "string", "string"],
+            [["SceneType", "Client", "uint8", "MainMenu=1|Town=2|BattleField=3"],
+             ["SceneActionType", "Client", "uint8", "None=0|StartGame=1|Quit=2"],
+             ["OptionOverflowPolicy", "Client", "uint8", "NoScroll=1|Scroll=2"]]);
+        workbook.Worksheet("Enums").Cell("B2").Value = "Shared";
+        for (int column = 2; column <= 5; column++) workbook.Worksheet("Enums").Cell(5, column).Value = "Shared";
+        Add(workbook, "Scene", ["SceneId", "SceneType", "IsStartupScene"],
+            ["string", "enum<SceneType>", "bool"],
+            [["Main", "MainMenu", true],
+             ["Town", "Town", false],
+             ["Battle", "BattleField", false]]);
+        Add(workbook, "TextArt", ["ArtId", "AssetPath", "Width", "Height"], ["string", "string", "uint32", "uint32"],
+            [["Logo", "Asset/logo.txt", 83, 41], ["Square", "Asset/square.txt", 36, 36]]);
+        Add(workbook, "SceneOption", ["OptionId", "SceneType", "OptionOrder", "OptionTextKey", "ActionType", "TargetSceneId", "IsEnabled"],
+            ["uint32", "enum<SceneType>", "uint32", "string", "enum<SceneActionType>", "string", "bool"],
+            [[1, "MainMenu", 1, "UI_START", "StartGame", "Main", true],
+             [2, "MainMenu", 2, "UI_START", "None", "Main", false],
+             [3, "MainMenu", 3, "UI_START", "None", "Main", false],
+             [4, "MainMenu", 4, "UI_START", "Quit", "Main", true]]);
+        for (int type = 1; type <= 2; type++)
+            for (int order = 1; order <= 4; order++)
+            {
+                object[] values = [type * 100 + order, type == 1 ? "Town" : "BattleField", order, "UI_START", "None", "Main", false];
+                for (int column = 0; column < values.Length; column++)
+                    workbook.Worksheet("SceneOption").Cell(13 + type * 4 + order, column + 2).Value = XLCellValue.FromObject(values[column]);
+            }
+        Add(workbook, "SceneTypeConfig", ["SceneType", "MaxVisibleOptions", "OptionOverflowPolicy"],
+            ["enum<SceneType>", "uint32", "enum<OptionOverflowPolicy>"], [["MainMenu", 4, "NoScroll"], ["Town", 4, "NoScroll"], ["BattleField", 4, "NoScroll"]]);
+        Add(workbook, "Localization", ["TextKey", "ko-KR", "en-US"], ["string", "string", "string"], [["UI_START", "시작", "Start"]]);
+        // 실제 프로젝트 현지화 필드명은 식별자여야 하므로 언어 열의 정식 이름을 쓴다.
+        workbook.Worksheet("Localization").Cell("C13").Value = "KoKR";
+        workbook.Worksheet("Localization").Cell("D13").Value = "EnUS";
+        workbook.Worksheet("SceneOption").Cell("E12").Value = "Localization.TextKey";
+        workbook.Worksheet("SceneOption").Cell("G12").Value = "Scene.SceneId";
+        workbook.Worksheet("SceneOption").Cell("G7").Value = false;
+        return workbook;
+    }
+
+    private static void Add(XLWorkbook workbook, string name, string[] fields, string[] types, object[][] rows)
+    {
+        IXLWorksheet sheet = workbook.AddWorksheet(name);
+        sheet.Cell("A1").Value = "#Table";
+        sheet.Cell("B1").Value = name;
+        sheet.Cell("A2").Value = "#Target";
+        sheet.Cell("B2").Value = "Client";
+        string[] labels = ["#Key", "#Scope", "#Type", "#Required", "#Min", "#Max", "#Default", "#Allowed", "#Reference", "#Field"];
+        for (int index = 0; index < labels.Length; index++) sheet.Cell(index + 4, 1).Value = labels[index];
+        for (int index = 0; index < fields.Length; index++)
+        {
+            int column = index + 2;
+            sheet.Cell(4, column).Value = index == 0 ? "Primary" : "";
+            sheet.Cell(5, column).Value = index == 0 ? "Shared" : "Client";
+            sheet.Cell(6, column).Value = types[index];
+            sheet.Cell(7, column).Value = "true";
+            sheet.Cell(13, column).Value = fields[index];
+        }
+        for (int row = 0; row < rows.Length; row++)
+            for (int column = 0; column < rows[row].Length; column++)
+                sheet.Cell(row + 14, column + 2).Value = XLCellValue.FromObject(rows[row][column]);
+    }
+}

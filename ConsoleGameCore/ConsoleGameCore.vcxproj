@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{99FC8F07-316A-425E-8325-FCE918FB7E0F}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ConsoleGameCore</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildThisFileDirectory)..\Out\ConsoleGameCore\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\Out\ConsoleGameCore\obj\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(RunCodeAnalysis)'=='true'">$(IntDir)Analysis\</IntDir>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ConformanceMode>true</ConformanceMode>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)ConsoleGameCore.pch</PrecompiledHeaderOutputFile>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Release'">NDEBUG;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Input\FConsoleInput.cpp" />
+    <ClCompile Include="Input\FInputManager.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Rendering\FConsoleRenderer.cpp" />
+    <ClCompile Include="Rendering\FFrameBuffer.cpp" />
+    <ClCompile Include="Scene\FSceneHost.cpp" />
+    <ClCompile Include="Scene\FSceneLifetime.cpp" />
+    <ClCompile Include="UI\Common\FSceneUiRoot.cpp" />
+    <ClCompile Include="UI\Common\FUiButton.cpp" />
+    <ClCompile Include="UI\Common\FUiElement.cpp" />
+    <ClCompile Include="UI\Common\FUiPanel.cpp" />
+    <ClCompile Include="UI\Common\FUiTextArtView.cpp" />
+    <ClCompile Include="UI\FUIManager.cpp" />
+    <ClInclude Include="Frame\FFramePipeline.h" />
+    <ClInclude Include="Input\FConsoleInput.h" />
+    <ClInclude Include="Input\FInputManager.h" />
+    <ClInclude Include="Input\IInputSource.h" />
+    <ClInclude Include="Input\InputTypes.h" />
+    <ClInclude Include="Objects\IObject.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="ConsoleGameCorePch.h" />
+    <ClInclude Include="Rendering\FConsoleRenderer.h" />
+    <ClInclude Include="Rendering\FFrameBuffer.h" />
+    <ClInclude Include="Scene\FSceneHost.h" />
+    <ClInclude Include="Scene\FSceneLifetime.h" />
+    <ClInclude Include="Scene\TScene.h" />
+    <ClInclude Include="UI\Common\FSceneUiRoot.h" />
+    <ClInclude Include="UI\Common\FUiButton.h" />
+    <ClInclude Include="UI\Common\FUiElement.h" />
+    <ClInclude Include="UI\Common\FUiPanel.h" />
+    <ClInclude Include="UI\Common\FUiTextArtView.h" />
+    <ClInclude Include="UI\Common\IUI.h" />
+    <ClInclude Include="UI\FUIManager.h" />
+    <ClInclude Include="UI\IUiInputTarget.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

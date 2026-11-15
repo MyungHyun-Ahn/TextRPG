@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32"><Configuration>Debug</Configuration><Platform>Win32</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32"><Configuration>Release</Configuration><Platform>Win32</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{299512F5-7288-4349-BEE8-11B37D522F66}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>GameData</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="BuildOutputPaths">
+    <OutDir>$(MSBuildThisFileDirectory)..\Out\GameData\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\Out\GameData\obj\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(RunCodeAnalysis)'=='true'">$(IntDir)Analysis\</IntDir>
+    <TargetName>GameData</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)Runtime;$(MSBuildThisFileDirectory)Class;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
+    <ClCompile><PreprocessorDefinitions>WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Runtime\GameData\pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <ObjectFileName>$(IntDir)GameDataPch.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Runtime\GameData\FGameDataKey.cpp" />
+    <ClCompile Include="Runtime\GameData\FGameDataPackage.cpp" />
+    <ClCompile Include="Runtime\GameData\FGameDataStore.cpp" />
+    <ClCompile Include="Runtime\GameData\FGeneratedYaml.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Runtime\GameData\pch.h" />
+    <ClInclude Include="Runtime\GameData\FGameDataKey.h" />
+    <ClInclude Include="Runtime\GameData\FGameDataPackage.h" />
+    <ClInclude Include="Runtime\GameData\FGameDataStore.h" />
+    <ClInclude Include="Runtime\GameData\FGeneratedYaml.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Asset\Character\Character_Swordswoman.txt" />
+    <None Include="Asset\Logo\Logo_Text_Rpg.txt" />
+    <None Include="Asset\Monster\Monster_Castle_Golem.txt" />
+    <None Include="Asset\Monster\Monster_Dragon.txt" />
+    <None Include="Asset\Monster\Monster_Dragon_Hatching_Eggshell_36x36.txt" />
+    <None Include="Asset\Monster\Monster_Dragon_Hatching_Leaf_Nest.txt" />
+    <None Include="Asset\Monster\Monster_Dragon_Hatchling.txt" />
+    <None Include="Asset\Monster\Monster_Drake.txt" />
+    <None Include="Asset\Monster\Monster_Ghost.txt" />
+    <None Include="Asset\Monster\Monster_King_Golem.txt" />
+    <None Include="Asset\Monster\Monster_Lava_Spirit.txt" />
+    <None Include="Asset\Monster\Monster_Orc_Chieftain.txt" />
+    <None Include="Asset\Monster\Monster_Orc_Shaman.txt" />
+    <None Include="Asset\Monster\Monster_Orc_Unarmed.txt" />
+    <None Include="Asset\Monster\Monster_Orc_Warrior.txt" />
+    <None Include="Asset\Monster\Monster_Skeleton_Archer.txt" />
+    <None Include="Asset\Monster\Monster_Skeleton_Helmet.txt" />
+    <None Include="Asset\Monster\Monster_Skeleton_Mage.txt" />
+    <None Include="Asset\Monster\Monster_Skeleton_Warrior.txt" />
+    <None Include="Asset\Monster\Monster_Skeleton_Warrior_Junior_36x36.txt" />
+    <None Include="Asset\Monster\Monster_Slime.txt" />
+    <None Include="Asset\Monster\Monster_Slime_King.txt" />
+    <None Include="Asset\Monster\Monster_Slime_Mutated.txt" />
+    <None Include="Asset\Monster\Monster_Stone_Golem.txt" />
+    <None Include="Asset\Monster\Monster_Stone_Golem_Dark.txt" />
+    <None Include="Asset\Monster\Monster_Stone_Golem_Hammer.txt" />
+    <None Include="Asset\Monster\Monster_Wyvern.txt" />
+    <None Include="Asset\Town\Town_Windwood.txt" />
+    <None Include="Class\.gamedata-output" />
+    <ClInclude Include="Class\AchievementDefinition\AchievementDefinitionData.g.h" />
+    <ClInclude Include="Class\CharacterDefinition\CharacterDefinitionData.g.h" />
+    <ClInclude Include="Class\Common\GameDataEnums.g.h" />
+    <ClInclude Include="Class\GameDataAll.h" />
+    <ClInclude Include="Class\ItemDefinition\ItemDefinitionData.g.h" />
+    <ClInclude Include="Class\LevelDefinition\LevelDefinitionData.g.h" />
+    <ClInclude Include="Class\Localization\LocalizationData.g.h" />
+    <ClInclude Include="Class\NewGameProfile\NewGameProfileData.g.h" />
+    <ClInclude Include="Class\Scene\SceneData.g.h" />
+    <ClInclude Include="Class\SceneOption\SceneOptionData.g.h" />
+    <ClInclude Include="Class\SceneTypeConfig\SceneTypeConfigData.g.h" />
+    <ClInclude Include="Class\TextArt\TextArtData.g.h" />
+    <None Include="Data\.gamedata-output" />
+    <None Include="Data\Client\AchievementDefinition.yaml" />
+    <None Include="Data\Client\CharacterDefinition.yaml" />
+    <None Include="Data\Client\ItemDefinition.yaml" />
+    <None Include="Data\Client\LevelDefinition.yaml" />
+    <None Include="Data\Client\Localization.yaml" />
+    <None Include="Data\Client\NewGameProfile.yaml" />
+    <None Include="Data\Client\Scene.yaml" />
+    <None Include="Data\Client\SceneOption.yaml" />
+    <None Include="Data\Client\SceneTypeConfig.yaml" />
+    <None Include="Data\Client\TextArt.yaml" />
+    <None Include="Excel\InGameData.xlsx" />
+    <None Include="Excel\Scene.xlsx" />
+    <None Include="Excel\Templates\GameDataTableTemplate.xlsx" />
+    <None Include="README.md" />
+    <ClInclude Include="Runtime\GameData\GameDataPch.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="GenerateGameDataBeforeCompile" BeforeTargets="ClCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <!-- 변경 없는 출력은 검사만 하여 기존 PCH/obj 의존 시간과 생성 트리를 보존한다. -->
+    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Class&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot; --check">
+      <Output TaskParameter="ExitCode" PropertyName="GameDataGenerationCheckExitCode" />
+    </Exec>
+    <!-- 검사 실패는 기존 생성 명령으로 처리하며, 검증/게시 실패는 빌드 실패로 전달한다. -->
+    <Exec Condition="'$(GameDataGenerationCheckExitCode)' != '0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Class&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot;" />
+  </Target>
+</Project>

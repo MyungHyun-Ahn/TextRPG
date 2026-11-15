@@ -1,0 +1,5 @@
+# TextRPG.GameData 1
+"CharacterDefinitionSwordswoman":
+  "CharacterId": "Swordswoman"
+  "NameTextKey": "InGameData.Character.Swordswoman.Name"
+  "ArtId": "PlayerSwordswoman"

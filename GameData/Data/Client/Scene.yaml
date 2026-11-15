@@ -1,0 +1,13 @@
+# TextRPG.GameData 1
+"SceneMainMenu":
+  "SceneId": "MainMenu"
+  "SceneType": "MainMenu"
+  "IsStartupScene": true
+"SceneTown":
+  "SceneId": "Town"
+  "SceneType": "Town"
+  "IsStartupScene": false
+"SceneBattleField":
+  "SceneId": "BattleField"
+  "SceneType": "BattleField"
+  "IsStartupScene": false

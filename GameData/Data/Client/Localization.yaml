@@ -1,0 +1,141 @@
+# TextRPG.GameData 1
+"LocalizationMainMenu.NewGame":
+  "TextKey": "MainMenu.NewGame"
+  "KoKR": "새 게임"
+  "EnUS": "New Game"
+"LocalizationMainMenu.Continue":
+  "TextKey": "MainMenu.Continue"
+  "KoKR": "불러오기"
+  "EnUS": "Load Game"
+"LocalizationMainMenu.Settings":
+  "TextKey": "MainMenu.Settings"
+  "KoKR": "옵션"
+  "EnUS": "Options"
+"LocalizationMainMenu.Credits":
+  "TextKey": "MainMenu.Credits"
+  "KoKR": "제작진"
+  "EnUS": "Credits"
+"LocalizationMainMenu.Exit":
+  "TextKey": "MainMenu.Exit"
+  "KoKR": "나가기"
+  "EnUS": "Exit"
+"LocalizationTown.Move":
+  "TextKey": "Town.Move"
+  "KoKR": "이동"
+  "EnUS": "Move"
+"LocalizationTown.Inventory":
+  "TextKey": "Town.Inventory"
+  "KoKR": "가방"
+  "EnUS": "Inventory"
+"LocalizationTown.Shop":
+  "TextKey": "Town.Shop"
+  "KoKR": "상점"
+  "EnUS": "Shop"
+"LocalizationTown.Rest":
+  "TextKey": "Town.Rest"
+  "KoKR": "휴식"
+  "EnUS": "Rest"
+"LocalizationSystem.ScreenTooSmall":
+  "TextKey": "System.ScreenTooSmall"
+  "KoKR": "화면 크기가 작습니다."
+  "EnUS": "The console window is too small."
+"LocalizationTown.Talk":
+  "TextKey": "Town.Talk"
+  "KoKR": "대화"
+  "EnUS": "Talk"
+"LocalizationTown.Inn":
+  "TextKey": "Town.Inn"
+  "KoKR": "여관"
+  "EnUS": "Inn"
+"LocalizationBattle.Attack":
+  "TextKey": "Battle.Attack"
+  "KoKR": "공격"
+  "EnUS": "Attack"
+"LocalizationBattle.Skill":
+  "TextKey": "Battle.Skill"
+  "KoKR": "스킬"
+  "EnUS": "Skill"
+"LocalizationBattle.Item":
+  "TextKey": "Battle.Item"
+  "KoKR": "아이템"
+  "EnUS": "Item"
+"LocalizationBattle.Defend":
+  "TextKey": "Battle.Defend"
+  "KoKR": "방어"
+  "EnUS": "Defend"
+"LocalizationScene.MainMenu.Title":
+  "TextKey": "Scene.MainMenu.Title"
+  "KoKR": "메인 메뉴"
+  "EnUS": "Main Menu"
+"LocalizationScene.Town.Title":
+  "TextKey": "Scene.Town.Title"
+  "KoKR": "바람숲 마을"
+  "EnUS": "Windwood Village"
+"LocalizationScene.Town.Region":
+  "TextKey": "Scene.Town.Region"
+  "KoKR": "에르덴 숲"
+  "EnUS": "Erden Forest"
+"LocalizationScene.BattleField.Title":
+  "TextKey": "Scene.BattleField.Title"
+  "KoKR": "고대 드래곤"
+  "EnUS": "Ancient Dragon"
+"LocalizationInGameData.Ui.Level":
+  "TextKey": "InGameData.Ui.Level"
+  "KoKR": "레벨"
+  "EnUS": "Level"
+"LocalizationInGameData.Ui.Hp":
+  "TextKey": "InGameData.Ui.Hp"
+  "KoKR": "체력"
+  "EnUS": "HP"
+"LocalizationInGameData.Ui.Attack":
+  "TextKey": "InGameData.Ui.Attack"
+  "KoKR": "공격"
+  "EnUS": "Attack"
+"LocalizationInGameData.Ui.Defense":
+  "TextKey": "InGameData.Ui.Defense"
+  "KoKR": "방어"
+  "EnUS": "Defense"
+"LocalizationInGameData.Ui.Gold":
+  "TextKey": "InGameData.Ui.Gold"
+  "KoKR": "골드"
+  "EnUS": "Gold"
+"LocalizationInGameData.Ui.Inventory":
+  "TextKey": "InGameData.Ui.Inventory"
+  "KoKR": "소지품"
+  "EnUS": "Inventory"
+"LocalizationInGameData.Ui.Achievements":
+  "TextKey": "InGameData.Ui.Achievements"
+  "KoKR": "업적"
+  "EnUS": "Achievements"
+"LocalizationInGameData.Ui.LoadFailed":
+  "TextKey": "InGameData.Ui.LoadFailed"
+  "KoKR": "저장 데이터를 불러오지 못했습니다."
+  "EnUS": "Could not load saved progress."
+"LocalizationInGameData.Ui.SaveFailed":
+  "TextKey": "InGameData.Ui.SaveFailed"
+  "KoKR": "게임 진행을 저장하지 못했습니다."
+  "EnUS": "Could not save game progress."
+"LocalizationInGameData.Ui.InvalidSaveLocation":
+  "TextKey": "InGameData.Ui.InvalidSaveLocation"
+  "KoKR": "저장 경로를 사용할 수 없습니다."
+  "EnUS": "The save location is unavailable."
+"LocalizationInGameData.Character.Swordswoman.Name":
+  "TextKey": "InGameData.Character.Swordswoman.Name"
+  "KoKR": "여검사"
+  "EnUS": "Swordswoman"
+"LocalizationInGameData.Item.Token.Name":
+  "TextKey": "InGameData.Item.Token.Name"
+  "KoKR": "모험의 증표"
+  "EnUS": "Adventure Token"
+"LocalizationInGameData.Achievement.Journey.Name":
+  "TextKey": "InGameData.Achievement.Journey.Name"
+  "KoKR": "모험의 시작"
+  "EnUS": "Journey Begins"
+"LocalizationInGameData.Ui.NewGameFailed":
+  "TextKey": "InGameData.Ui.NewGameFailed"
+  "KoKR": "새 게임을 시작하지 못했습니다."
+  "EnUS": "Could not start a new game."
+"LocalizationInGameData.Ui.NewGameSaveFailed":
+  "TextKey": "InGameData.Ui.NewGameSaveFailed"
+  "KoKR": "새 게임을 시작했지만 저장하지 못했습니다."
+  "EnUS": "New game started, but saving failed."

@@ -1,0 +1,5 @@
+# TextRPG.GameData 1
+"AchievementDefinitionJourney":
+  "AchievementId": "Journey"
+  "NameTextKey": "InGameData.Achievement.Journey.Name"
+  "TargetCount": 1

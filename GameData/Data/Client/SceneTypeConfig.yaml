@@ -1,0 +1,13 @@
+# TextRPG.GameData 1
+"SceneTypeConfigMainMenu":
+  "SceneType": "MainMenu"
+  "MaxVisibleOptions": 4
+  "OptionOverflowPolicy": "NoScroll"
+"SceneTypeConfigTown":
+  "SceneType": "Town"
+  "MaxVisibleOptions": 4
+  "OptionOverflowPolicy": "NoScroll"
+"SceneTypeConfigBattleField":
+  "SceneType": "BattleField"
+  "MaxVisibleOptions": 4
+  "OptionOverflowPolicy": "NoScroll"
