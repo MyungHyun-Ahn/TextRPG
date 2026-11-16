@@ -17,6 +17,7 @@ Windows 콘솔에서 게임 콘텐츠를 구현하고 실험하는 C++20 프로�
 | 데이터 생성 도구 | [GameDataGenerator 사용법](Tools/GameDataGenerator/README.md) |
 | 데이터 패킹 도구 | [GameDataPacker 사용법](Tools/GameDataPacker/README.md) |
 | 공통 게임 코어 | [ConsoleGameCore 설명](ConsoleGameCore/README.md) |
+| Frame 실행 기반 | [상속형 Frame·세 모드](Docs/GameDesign/011_Frame루프및상속형게임실행설계안.md#12-실제-구현과-검증-완료) |
 | 게임 데이터 라이브러리 | [GameData 설명](GameData/README.md) |
 | 테스트 | [검증 도구·실행 방법](Tools/Tests/README.md) |
 | 코딩 규칙 | [공통 컨벤션](Docs/Conventions/common.md) · [C++ 컨벤션](Docs/Conventions/cpp.md) · [커밋 메시지](Docs/Conventions/common.md#커밋-메시지) |
@@ -54,6 +55,16 @@ Windows 콘솔에서 게임 콘텐츠를 구현하고 실험하는 C++20 프로�
 
 빌드 시 Excel 검증·C++ 타입/Enum 및 YAML 생성, 라이브러리 연결, `GameData.dat` 패킹을 수행합니다.
 기본 `Debug / x64` 실행 파일은 `Out/TextRPG/Debug/x64/TextRPG.exe`에 생성되며, 같은 폴더의 `GameData.dat`를 사용합니다.
+
+Frame 방식은 실행 시작 시 선택할 수 있습니다. 인수 없이 실행하면 Basic이며, 한 번 시작한 객체의 옵션은 런타임에 바꾸지 않습니다.
+
+```text
+Out\TextRPG\Debug\x64\TextRPG.exe --frame-mode basic
+Out\TextRPG\Debug\x64\TextRPG.exe --frame-mode fixed-update
+Out\TextRPG\Debug\x64\TextRPG.exe --frame-mode frame-skip
+```
+
+공통 루프는 ConsoleGameCore의 `FFrame.Run()`이 제공하고 TextRPG의 `FTextRpgFrame`이 필요한 수명주기 함수를 구현합니다. 세부 옵션/API는 [코어 사용법](ConsoleGameCore/README.md#상속형-frame-사용)을 참고하세요.
 
 ```text
 Excel 원본

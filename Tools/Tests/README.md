@@ -1,5 +1,18 @@
 # Native runtime test runners
 
+## 상속형 Frame 개선 후의 현재 검사
+
+- 기존 `--core-only`는 실제 lib의 FFrame 상속·선택적 훅·Basic/FixedUpdate/FrameSkip·시간 경계/과부하·실패/정리/재진입을 검사한다. 가짜 시계로 시간을 제어하며 실제 장시간 sleep이나 새 runner를 추가하지 않았다. 네 구성의 일반/분석 소비자에서 각각15 checkpoint group, 실제 분석 경고0을 확인했다.
+- 기존 Scene full은 각 네 구성93 group(UI62/EndFrame25/진행6)이다. 새로운 상속 Scene 프레임 검사는 세 모드의 입력 1회·전환 뒤 이전 Scene 추가 갱신 차단·렌더 생략 EndFrame을 포함한다. 과거90/86 등의 수치는 해당 이력이며 현재 group 수가 아니다. 묶음은 겹치므로 합산하지 않는다.
+- 실제 게임 runner에 **초기화 옵션 전달용** `--frame-mode basic|fixed-update|frame-skip`을 추가했다. reject/일반 콘솔/중첩 Continue·저장 검사 모두 실제 게임 자식에 전달하며 패커·저장 fixture의 다른 CLI에는 전달하지 않는다. 옵션을 생략하면 기존 실행 인수를 그대로 유지한다.
+- 네 구성의 최종 EXE별 기본23 case 및 각 세 모드의 진행5 case를 확인했다. 같은 실행 파일의 모드를 런타임에 바꾸지 않고 매번 새 프로세스를 초기화한다. 최종 source review 범위와 재현되지 않은 검증 실패 이력은 [011 §12](../../Docs/GameDesign/011_Frame루프및상속형게임실행설계안.md#12-실제-구현과-검증-완료)에 구분한다.
+
+```text
+python Tools/Tests/test_game_data_application.py --game <absolute-TextRPG.exe> --packer <absolute-GameDataPacker.exe> --scratch-root <new-owned-root> --only ingamedata --progress-fixture <absolute-existing-SceneUiRuntime.exe> --frame-mode fixed-update
+```
+
+`--only ingamedata`의 fixture 선행 검사·정확한 다섯 case·최종 출력/flush 뒤 성공 게시·실패 정제·소유 콘솔과 파일 감시 수명은 그대로다. Source-only review와 실제 실행은 별도 증거이며, 문서 수정 때문에 제품 검사를 반복하지 않는다.
+
 ## 정적 라이브러리 분리 후의 현재 실행 범위
 
 - 일반 SceneUiRuntime은 ConsoleGameCore.lib와 GameData.lib를 링크한다. optional/custom-generated 및 reader/Win32/crypto 매크로 주입 fixture는 원본 CPP 직접 참조를 유지한다. GameData 소스는 `GameData/Runtime/GameData`, 공통 코어는 `ConsoleGameCore`로 이동했다. 기존 네 진입점과 공유 MSBuild/backend를 확장하며 새 실행 runner는 없다.

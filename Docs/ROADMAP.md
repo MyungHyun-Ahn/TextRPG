@@ -1,5 +1,20 @@
 # TextRPG 작업 로드맵
 
+### 상속형 Frame·세 가지 루프 방식 — 구현·통합·검증 완료
+
+- ConsoleGameCore의 FFrame.Run이 실제 루프·시간 제어를 제공하고, const 사본으로 보관한 초기 Basic/FixedUpdate/FrameSkip 옵션은 런타임에 변경하지 않는다. TextRPG의 FTextRpgFrame이 필요한 훅을 구현하며 Main의 외부 while·프레임 조립 람다와 기존 FFramePipeline을 제거했다.
+- 선택적 훅은 Start/StartFrame/Input/Update/Render/EndFrame/Stop이다. 입력은 외부 프레임당 한 번이며 Fixed catch-up 중 전환 수락 뒤 이전 Scene 추가 갱신을 차단한다. 의도적 Render 생략은 EndFrame을 실행하고 실제 실패 프레임은 게시하지 않는다. 기존 정상 Quit 저장·Continue·late-shutdown 계약은 유지한다.
+- [x] FRM-01: API·세 모드 의미·옵션 기본값·입력 횟수·Skip 안전점·종료/예외 계약.
+- [x] FRM-02: Core FFrame Basic·선택적 훅·작은 독립 상속 소비자 구현/검증.
+- [x] FRM-03: TextRPG 상속 이관·Main 프레임 조립 람다 제거·실제 앱 보존.
+- [x] FRM-04: FixedUpdate/FrameSkip·과부하 상한·전환 뒤 추가 tick 차단·결정적 시간 검증.
+- [x] FRM-05: 기존 소비자/테스트/프로젝트·filters 이관 및 FramePipeline 제거.
+- [x] FRM-06: 네 구성 Build·Core/게임 분석 경고0, 실제 앱·수명/저장 회귀, 독립 소스 검토 및 사용법 마감.
+- 네 구성 각각 독립 Core 일반/분석15 group, Scene full93 group(UI62/EndFrame25/진행6), 최종 EXE 기본23 case와 각 세 모드 진행5 case를 확인했다. Debug 두 아키텍처 Input 각168 checks·optional 각1 group, 독립 Core의 정확한 C1083 거부도 확인했다. 겹치는 group/case는 합산하지 않는다.
+- 독립 Core9 경로(삭제1 포함)/콘텐츠10 경로 source-only 검토 모두 차단0이다. 검토 후 Main EOF 빈 줄만 정리했고 각 구성 Main.obj만 증분 재컴파일했다. 최종 앱 산출물의 관련 검증을 갱신했으며 PCH와 Excel·아트·생성물·보호 시안/주석을 보존했다.
+- **실패 관측 보존:** Debug/x86 재검증 중 게임 자식과 별도 패커의 빈 출력 실패가 있었고 최초 원인은 미확정이다. 좁은 관측과 자식 종료를 기록한 기존 실제 CLI의 최종23 case에서는 재현되지 않았다. 이를 수정 완료한 제품 버그나 확정된 외부 원인으로 보고하지 않는다. 초기 실패를 PASS로 덮지 않았다.
+- 실제 API·검토/실행 범위·비차단 제안·실패 이력은 [011 §12](GameDesign/011_Frame루프및상속형게임실행설계안.md#12-실제-구현과-검증-완료), 사용법은 [코어 README](../ConsoleGameCore/README.md#상속형-frame-사용)를 따른다. 증거 루트는 `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/frame-b0593321`의 current-evidence-index.json / final-acceptance.json이다. 커밋·푸시는 하지 않았다.
+
 ### Runtime·집계 헤더·PCH 공유 정리 — 완료
 
 - `GameData/Source`를 `GameData/Runtime`으로 이동하고 기존 `GameData/...` include spelling을 유지했다. GameData의 Class/Excel/Data/Asset/README·소유 마커까지 프로젝트/필터에 등록했다(자기 프로젝트 파일·캐시·Office 잠금 제외).
