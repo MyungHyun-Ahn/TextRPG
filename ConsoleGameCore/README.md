@@ -5,7 +5,7 @@ Windows/C++20 정적 라이브러리다. 기존 중립 API의 `TextRPG` namespac
 - `Input/`: 기기 프레임 상태와 Win32 입력 정규화.
 - `Rendering/`: 문자 셀 framebuffer와 콘솔 출력.
 - `UI/`: IUI/FUiElement 상속, Panel/Button/TextArtView 조합, 포커스/캡처/기하, 중립 입력 대상에 연결하는 FUIManager.
-- `Scene/`: TScene<TAction> 공개 NVI의 직접/관리 호출 수명 guard, 최초 busy query 보호, FSceneHost의 공통 작업/안전점/재귀 EndFrame guard. 결과 타입은 bool 변환으로 처리 완료만 알리며 게임 명령은 정의하지 않는다.
+- `Scene/`: TSceneManager<TAction>가 현재/후보 Scene 소유·final 공개 실행·EndFrame 전환/지연 파괴를 통제한다. TScene/FSceneLifetime/FSceneHost의 직접/관리 수명·최초 busy query·재귀 guard를 재사용한다. 행동 타입의 bool 변환은 처리 완료만 뜻하며 게임 명령을 해석하지 않는다.
 - `Frame/`: 상속형 `FFrame.Run()`이 전체 게임 루프·시간 제어를 제공한다. 초기화 시 Basic/FixedUpdate/FrameSkip을 선택하고 실행 중 변경하지 않는다. 기존 FFramePipeline은 소비자 이관 후 제거했다.
 
 `ConsoleGameCorePch.h`에 안정 표준/SDK·공통 인터페이스를 모으고 라이브러리의 `pch.h`가 이를 포함한다. TextRPG의 `pch.h`도 라이브러리의 `pch.h` 대신 이 이름 있는 공유 헤더를 포함한다. 생성 `GameDataAll.h`와 개별 생성 타입은 어떤 PCH에도 넣지 않는다.
@@ -14,7 +14,11 @@ Windows/C++20 정적 라이브러리다. 기존 중립 API의 `TextRPG` namespac
 
 FUIManager는 IUiInputTarget을 비소유 연결한다. 입력은 그 대상의 허용 경로로만 전달한다. Scene 소유 Layer 정책을 root 직접 dispatch로 우회하지 않는다. Clear의 취소 예외에서는 기존 연결을 복원하되 callback이 게시한 새 연결은 덮어쓰지 않는다. 대상 소유자가 파괴 전에 Detach해야 한다.
 
-FSceneHost는 소유권을 임의 큐로 이동하지 않는다. TryEndFrame은 현재/후보 Scene 및 그 소유 UI가 모두 idle일 때만 typed 소유자가 제공한 commit을 실행한다. 같은 안전점 범위의 재진입을 거부하고 throw 뒤 guard를 복구한다. 소유자는 old UI/Scene 파괴와 도메인 상태 게시/취소를 자신의 typed handle로 조정한다. TextRPG의 Scene/진행 결합 게시와 저장 정책은 콘텐츠에 남는다.
+TSceneManager는 FSceneHost 기반의 유일한 현재/후보 Scene owner다. 수락 bool과 실제 ESceneTransitionResult를 구분하고, 입력/갱신/렌더 중에는 요청만 수락하며 EndFrame에서 한 snapshot만 처리한다. 수락된 Scene의 준비 수명은 old OnExit/retire/destructor까지 유지된다. 콘텐츠는 protected 검증·retire/bind·typed 상태 교환 hook만 협력하며, 도메인 owner swap 직후 SPublication::Publish를 호출하는 구간에는 할당/콜백/파괴를 넣지 않는다. 바깥 게임에서 FTextRPGSceneManager가 실제 사용하고 진행 단일 원본·저장 정책은 Session/Frame에 남는다.
+
+소비 CPP는 PCH 및 TScene/FSceneHost 전제 뒤 `Scene/TSceneManager.h`와 자신의 파생 헤더를 의존 순서대로 포함한다. 일반 헤더에 include를 넣지 않는다. typed 멤버/입력 policy가 있는 파생 Manager는 자신의 destructor에서 idle `Shutdown()`을 먼저 호출하여 Scene/UI를 정리한다. Manager를 자기 callback 안에서 파괴하는 사용은 지원하지 않는다. `ISceneInputPolicy` 같은 비소유 game 연결은 Scene보다 오래 살아야 한다.
+
+현재 추출의 네 구성 Build/분석과 Core31·Scene98 등 실행 범위, Debug/Win32 일반 앱의 사용자 승인 보류 항목(재발 시 추적)은 [013 §12](../Docs/GameDesign/013_SceneManager공통기능및TextRPG로직분리계획.md#12-실제-로컬-구현과-검증-상태)를 따른다. 기존 라이브러리/Frame 검증 이력을 새 추출의 전체 수용으로 승격하지 않는다.
 
 TextRPG의 FGameUiBridge/SUIOption, 현지화 제목 해석, FUiTextArt typed Store 로드는 콘텐츠 adapter다. FMainMenuUi/FInGameStatusUi는 실제 코어 UI 기반을 상속한다.
 

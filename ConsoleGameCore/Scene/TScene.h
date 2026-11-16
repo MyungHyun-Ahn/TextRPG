@@ -49,9 +49,20 @@ namespace TextRPG
 			}
 			return {};
 		}
-		virtual bool AllowInput(const SInputEvent&, TAction&) { return true; }
+		virtual bool AllowInput(const SInputEvent&, TAction&) { return !m_transitionRequested; }
 		virtual bool AllowInputFrame(const std::vector<SInputEvent>&, std::vector<SInputEvent>&,
-			const std::vector<SInputEvent>*&, TAction&) { return true; }
+			const std::vector<SInputEvent>*&, TAction&) { return !m_transitionRequested; }
+		[[nodiscard]] bool IsTransitionRequested() const noexcept { return m_transitionRequested; }
+		// Manager가 수락한 준비 상태는 실제 게시 또는 물리 폐기까지 유지한다.
+		// 직접 실행/조회는 허용하며, 콘텐츠는 게시 불변식을 깨는 재준비/소유 목록 변경만 거부한다.
+		[[nodiscard]] bool IsPublicationPrepared() const noexcept
+		{
+			return m_isPublicationPrepared;
+		}
 		bool m_isHandlingInputFrame = false;
+	private:
+		template<class> friend class TSceneManager;
+		bool m_transitionRequested = false;
+		bool m_isPublicationPrepared = false;
 	};
 }

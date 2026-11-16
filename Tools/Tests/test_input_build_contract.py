@@ -880,6 +880,23 @@ class InputBuildContract(unittest.TestCase):
                 print('CONTROL dependency ' + json.dumps({'name': name, 'evidenceKind': 'synthetic-diagnostic-format-control',
                                                         'exitCode': code, 'verdict': result['dependencyVerdict']}))
 
+    def test_scene_manager_owns_common_engine_and_game_derives(self):
+        manager = ROOT / 'ConsoleGameCore/Scene/TSceneManager.h'
+        self.assertTrue(manager.is_file(), 'common Manager ownership/transition engine must exist in Core')
+        core = manager.read_text(encoding='utf-8-sig')
+        self.assertIn('class TSceneManager', core)
+        self.assertIn('m_currentScene', core)
+        self.assertIn('m_pendingScene', core)
+        game = (ROOT / 'TextRPG/Scene/FTextRPGSceneManager.h').read_text(encoding='utf-8-sig')
+        self.assertIn('public TSceneManager<SSceneAction>', game)
+        self.assertNotIn('m_currentScene', game)
+        self.assertNotIn('m_pendingScene', game)
+        consumer = (ROOT / 'Tests/ConsoleGameCore/Main.cpp').read_text(encoding='utf-8-sig')
+        self.assertIn('Scene/TSceneManager.h', consumer)
+        self.assertIn('TestSceneManager', consumer)
+        for token in ('GameData', 'FDataScene', 'InGameData', 'ESceneAction', 'Digit4', 'GetLocalizedText', 'dynamic_cast'):
+            self.assertNotIn(token, core)
+
     def test_core_consumer_has_closed_include_and_link_inputs(self):
         project = ET.parse(ROOT / "NativeTests.vcxproj").getroot()
         core_groups = [g for g in project.findall("m:ItemDefinitionGroup", NS)

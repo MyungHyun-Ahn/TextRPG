@@ -3,6 +3,8 @@
 #include "UI/FUIManager.h"
 #include "UI/FGameUiBridge.h"
 #include "Scene/FDataScene.h"
+#include "Scene/TSceneManager.h"
+#include "Scene/FTextRPGSceneManager.h"
 #include "Rendering/FFrameBuffer.h"
 #include <cassert>
 #include "GameData/FGameDataPackage.h"
@@ -21,6 +23,13 @@ int main(int argc, char** argv)
 	scene.OnEnter();
 	TextRPG::FFrameBuffer frame(132, 43);
 	scene.Render(frame);
+	assert(frame.GetCells()[86] == L'┌');
+	TextRPG::FGameUiBridge managedBridge;
+	TextRPG::FTextRPGSceneManager manager(store);
+	assert(manager.LoadStartupScene(managedBridge, error));
+	assert(!managedBridge.GetBoundScene() && manager.HasPendingTransition());
+	assert(manager.EndFrame(error) && managedBridge.GetBoundScene());
+	manager.Render(frame);
 	assert(frame.GetCells()[86] == L'┌');
 	std::cout << "PASS optional TextArt catalog absent builds and loads real Scene\n";
 }

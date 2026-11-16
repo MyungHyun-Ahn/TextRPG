@@ -176,7 +176,7 @@
     <ClCompile Include="UI\Common\FUiTextArt.cpp" />
     <ClCompile Include="UI\MainMenu\FMainMenuUi.cpp" />
     <ClCompile Include="Scene\FDataScene.cpp" />
-    <ClCompile Include="Scene\FSceneManager.cpp" />
+    <ClCompile Include="Scene\FTextRPGSceneManager.cpp" />
     <ClCompile Include="Localization\Localization.cpp" />
     <ClCompile Include="System\GameDataPaths.cpp" />
   </ItemGroup>
@@ -192,7 +192,7 @@
     <ClInclude Include="UI\MainMenu\FMainMenuUi.h" />
     <ClInclude Include="Scene\IScene.h" />
     <ClInclude Include="Scene\FDataScene.h" />
-    <ClInclude Include="Scene\FSceneManager.h" />
+    <ClInclude Include="Scene\FTextRPGSceneManager.h" />
     <ClInclude Include="Localization\Localization.h" />
     <ClInclude Include="System\GameDataPaths.h" />
   </ItemGroup>

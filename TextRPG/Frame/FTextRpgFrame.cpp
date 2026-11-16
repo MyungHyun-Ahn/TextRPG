@@ -6,7 +6,8 @@
 #include "Frame/FTextRpgFrame.h"
 #include "Rendering/FFrameBuffer.h"
 #include "Rendering/FConsoleRenderer.h"
-#include "Scene/FSceneManager.h"
+#include "Scene/TSceneManager.h"
+#include "Scene/FTextRPGSceneManager.h"
 #include "System/GameDataPaths.h"
 #include "UI/FUIManager.h"
 #include "UI/FGameUiBridge.h"
@@ -37,7 +38,7 @@ namespace TextRPG
 		// 역순 파괴: Scene/UI 비소유 뷰가 먼저, 진행 루트와 Store는 마지막이다.
 		FGameSession Session;
 		FGameUiBridge UiManager;
-		FSceneManager SceneManager;
+		FTextRPGSceneManager SceneManager;
 		FConsoleInput ConsoleInput;
 		FInputManager InputManager;
 		FConsoleRenderer Renderer;

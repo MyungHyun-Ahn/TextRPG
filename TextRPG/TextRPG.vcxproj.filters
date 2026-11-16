@@ -57,7 +57,7 @@
     <ClCompile Include="Scene\FDataScene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\FSceneManager.cpp">
+    <ClCompile Include="Scene\FTextRPGSceneManager.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Localization\Localization.cpp">
@@ -100,7 +100,7 @@
     <ClInclude Include="Scene\FDataScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\FSceneManager.h">
+    <ClInclude Include="Scene\FTextRPGSceneManager.h">
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Localization\Localization.h">

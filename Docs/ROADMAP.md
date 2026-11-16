@@ -1,5 +1,31 @@
 # TextRPG 작업 로드맵
 
+### SceneManager 공통 기능·TextRPG 로직 분리 — 로컬 마감, 빈 출력 이슈는 사용자 보류
+
+- [013 §12 실제 구현/검증](GameDesign/013_SceneManager공통기능및TextRPG로직분리계획.md#12-실제-로컬-구현과-검증-상태)에 사용자 승인으로 구현한 **TSceneManager<TAction> → FTextRPGSceneManager 상속**과 사용자 승인 보류 항목을 기록했다. 로컬 작업 마감과 전체 검사 PASS를 구분한다.
+- Core는 현재/후보 Scene 소유·실행·전환 요청·EndFrame 게시·수명 보호를 실제 담당한다. TextRPG는 GameData/FDataScene 생성, 행동·ESC/확인키, typed 진행 결합 게시, Continue·저장·현지화/화면 정책을 담당한다. 두 Manager에 같은 소유 큐/전환 엔진을 복제하지 않는다.
+- 활성 InGameData는 Session 소유, Layer/UITopLayer는 Scene/UI 소유다. Scene과 진행의 결합 게시, old UI/Scene→진행 정리 순서, 요청/완료 구분·취소/예외·destructor Quit 및 상속 파괴 순서를 보존한다. 기존 라이브러리 경계/완료 이력과 UI-08/09 등 다른 작업 ID는 변경하지 않는다.
+
+| ID | 작업 | 선행 및 완료 기준 |
+|---|---|---|
+| SCM-D01 | 역할·상속·소유권·실패/검증 계획 문서화 | **문서 완료.** 013과 010의 후속 우선순위 및 이 로드맵 동기화. 코드 구현 완료가 아님 |
+| SCM-01 | 최소 Core API·콘텐츠 hook·결합 게시/파괴 계약 | SCM-D01. 실제 호출/소유권·직접 API·최초 콜백·실패/종료 경계와 작은 회귀 확정 |
+| SCM-02 | Core TSceneManager 구현·독립 소비자 | SCM-01. GameData 없는 별도 행동/Scene의 실제 전환·수명 동작 및 금지 의존 음성 |
+| SCM-03 | FTextRPGSceneManager 상속·진행 결합 게시 | SCM-02. NewGame/Continue의 작은 실제 연결부터 단일 루트·안전점·완료/저장 보존 확인 |
+| SCM-04 | 게임 입력·UI 표시·Scene owner 결합 정리 | SCM-03. Core의 구체 게임 타입/확인키/현지화/화면 특례 제거와 실제 동작 보존 |
+| SCM-05 | 소비자·프로젝트/filters·기존 runner 이관 마감 | SCM-03/04. 구형 경로·중복 상태 제거, optional/fault 소비자·fingerprint 일치. 필요한 초기 호출부는 SCM-03부터 함께 갱신 |
+| SCM-06 | 최종 후보 일괄 검증·독립 source 검토·문서 마감 | SCM-05. 네 구성 Build/분석 경고0·Core 독립성·실제 앱/진행·수명/입력 회귀·원본/산출물 정체성 확인 |
+
+- [x] SCM-D01 계획 문서 작성.
+- [x] SCM-01 최소 API/수명·게시 계약 및 작은 회귀.
+- [x] SCM-02 공통 Manager 구현/독립 사용.
+- [x] SCM-03 게임 파생 Manager/진행 연결.
+- [x] SCM-04 게임 입력·UI·owner 정책 분리.
+- [x] SCM-05 모든 소비자·프로젝트·runner 마감.
+- [x] SCM-06 로컬 검증·검토·문서 마감 — Debug/Win32 빈 출력 이슈는 사용자 승인으로 별도 보류. 전체 검사 PASS가 아님.
+
+네 구성 Build/제품 분석은 경고0이며 각각 Core31·Scene98·model137·Save28 groups, Input168 checks를 확인했다. 실제 진행/저장/Continue는 네 구성 각각5 case, 일반 앱은 Debug/x64·Release/x64·Release/Win32 각각23 case 통과다. Debug/Win32 일반 앱은 `broken-reference` 자식 출력0 bytes로 실패했으며 같은 EXE/dat/cwd의 단건 진단은 정상이나 전체 성공/원인 해결로 승격하지 않는다. 사용자 지시로 `APP-D32-EMPTY-OUTPUT`은 이번 작업의 차단에서 제외하고 재발 시 추적한다. 추가 진단·재현·수정은 현재 중지하며 최초 FAIL과 원인 미확정 기록은 보존한다. Core 음성·optional·구조/include 경계와 독립 소스 검토는 완료했다. 상세 범위와 최초 FAIL은 013 §12와 `scenemanager-impl-bb83fdfd/execution-index.json`에 남겼다. 기존 원본/PCH/증분 캐시·보호 입력·이전 이력은 유지하며 커밋·푸시는 별도 사용자 승인으로 진행한다.
+
 ### 지정 불필요 코드 제거·TextRPG 단일 PCH — 로컬 완료, 2026-11-16
 
 - TextRPG의 `GameDataPch.cpp`와 파일별 보조 PCH 설정을 제거했다. 진행·Custom·저장 CPP는 기본 `pch.h`를 사용한다. `GameDataPch.h` 공유와 GameData 라이브러리·native 생성 fixture의 타깃별 PCH는 유지한다.

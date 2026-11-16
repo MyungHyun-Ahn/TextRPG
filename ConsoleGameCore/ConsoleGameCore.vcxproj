@@ -94,6 +94,7 @@
     <ClInclude Include="Scene\FSceneHost.h" />
     <ClInclude Include="Scene\FSceneLifetime.h" />
     <ClInclude Include="Scene\TScene.h" />
+    <ClInclude Include="Scene\TSceneManager.h" />
     <ClInclude Include="UI\Common\FSceneUiRoot.h" />
     <ClInclude Include="UI\Common\FUiButton.h" />
     <ClInclude Include="UI\Common\FUiElement.h" />

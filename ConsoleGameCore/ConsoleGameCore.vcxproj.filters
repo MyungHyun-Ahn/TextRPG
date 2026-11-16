@@ -110,6 +110,9 @@
     <ClInclude Include="Scene\TScene.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\TSceneManager.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="UI\Common\FSceneUiRoot.h">
       <Filter>UI\Common</Filter>
     </ClInclude>

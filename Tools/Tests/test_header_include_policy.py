@@ -10,7 +10,7 @@ class HeaderIncludePolicyTests(unittest.TestCase):
     def test_scene_api_has_no_loose_data_root_parameter(self):
         # 소스 계약만 검사한다. native 컴파일/런타임 검증은 별도 gate다.
         for relative in ('Scene/FDataScene.h', 'Scene/FDataScene.cpp',
-                         'Scene/FSceneManager.h', 'Scene/FSceneManager.cpp'):
+                         'Scene/FTextRPGSceneManager.h', 'Scene/FTextRPGSceneManager.cpp'):
             with self.subTest(source=relative):
                 text = (ROOT / 'TextRPG' / relative).read_text(encoding='utf-8-sig')
                 self.assertNotIn('std::filesystem::path', text)

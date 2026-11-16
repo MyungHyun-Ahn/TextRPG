@@ -5,7 +5,7 @@ namespace GameData { class FGameDataStore; }
 namespace TextRPG
 {
 	class InGameData;
-	class FSceneManager;
+	class FTextRPGSceneManager;
 	class FGameUiBridge;
 
 	enum class EGameStartResult
@@ -24,12 +24,12 @@ namespace TextRPG
 		explicit FGameSession(const GameData::FGameDataStore& store);
 		~FGameSession();
 		[[nodiscard]] const InGameData* GetProgress() const noexcept;
-		[[nodiscard]] bool CanContinue(FSceneManager& scenes, FGameUiBridge& ui, std::string& error) const;
-		[[nodiscard]] EGameStartResult NewGame(const std::wstring& sceneId, FSceneManager& scenes, FGameUiBridge& ui,
+		[[nodiscard]] bool CanContinue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error) const;
+		[[nodiscard]] EGameStartResult NewGame(const std::wstring& sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
 			std::string& error);
-		[[nodiscard]] bool Continue(FSceneManager& scenes, FGameUiBridge& ui, std::string& error);
+		[[nodiscard]] bool Continue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error);
 		// NewGame/Continue는 요청만 수락한다. EndFrame 후 실제 게시/저장 결과를 한 번 받는다.
-		[[nodiscard]] EGameStartResult TakeStartResult(FSceneManager& scenes, std::string& error);
+		[[nodiscard]] EGameStartResult TakeStartResult(FTextRPGSceneManager& scenes, std::string& error);
 		[[nodiscard]] bool Save(std::string& error) const;
 
 	private:

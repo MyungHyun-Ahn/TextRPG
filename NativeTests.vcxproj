@@ -119,7 +119,7 @@
       <ExcludedFromBuild Condition="'$(NativeUseGameDataLibrary)'=='true'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TextRPG\Scene\FDataScene.cpp" />
-    <ClCompile Include="TextRPG\Scene\FSceneManager.cpp" />
+    <ClCompile Include="TextRPG\Scene\FTextRPGSceneManager.cpp" />
     <ClCompile Include="TextRPG\Localization\Localization.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SceneUiRuntime'">
@@ -181,6 +181,8 @@
     <ClInclude Include="TextRPG\InGameData\FGameSession.h" />
     <ClInclude Include="TextRPG\UI\InGameData\FInGameStatusUi.h" />
     <ClInclude Include="TextRPG\pch.h" />
+    <ClInclude Include="TextRPG\Scene\FTextRPGSceneManager.h" />
+    <ClInclude Include="ConsoleGameCore\Scene\TSceneManager.h" />
     <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h" />
     <None Include="Tests\InGameData\Schema\SharedGraph.yaml" />
     <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml" />

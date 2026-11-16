@@ -62,7 +62,7 @@ namespace TextRPG
 {
 	class FFrameBuffer;
 	class InGameData;
-	class FSceneManager;
+	class FTextRPGSceneManager;
 	class FSceneUiRoot;
 	class FGameUiBridge;
 	struct SUIOption final
@@ -115,7 +115,7 @@ namespace TextRPG
 		[[nodiscard]] SSceneAction HandleInputImpl(const SInputEvent& inputEvent) override;
 		[[nodiscard]] SSceneAction HandleInputFrameImpl(const std::vector<SInputEvent>& events) override;
 		void RenderImpl(FFrameBuffer& frameBuffer) const override;
-		friend class FSceneManager;
+		friend class FTextRPGSceneManager;
 		// 안전점에서만 호출한다. 가상 UI destructor는 재진입할 수 있으며 root보다 먼저 반환한다.
 		void RetireForReplacement() noexcept;
 		void InvalidateUiInputForShutdown() noexcept;

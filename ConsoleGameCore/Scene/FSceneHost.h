@@ -1,7 +1,7 @@
 #pragma once
 namespace TextRPG
 {
-	// 소유권은 콘텐츠의 typed handle에 둔다. 이 기반은 모든 Scene/root 작업의 공통 안전점을 판정한다.
+	// Scene owner가 재사용하는 기반이다. 모든 Scene/root 작업의 공통 안전점을 판정한다.
 	class FSceneHost
 	{
 	public:

@@ -1,5 +1,12 @@
 # Native 런타임 테스트 runner
 
+## SceneManager 추출의 현재 검사 — 로컬 마감, 빈 출력 이슈는 사용자 보류
+
+- 기존 runner/NativeTests/native_build와 원본 소스·PCH/증분 캐시를 유지한다. 네 구성 각각 제품 Build/실제 native 분석 경고0, Core31·Scene98·model137·Save28 checkpoint groups 및 Input168 checks를 확인했다. Input 분석 모드의 변경 없는 캐시 사용을 새 analyzer 실행으로 세지 않는다.
+- Debug x64/x86 optional TextArt 헤더 부재 각1 group, Debug/x64 Core 양성 후 정확 C1083 음성, build 계약49·header 정책8 및 PCH-off 실제14 TU include 경계를 확인했다. 최초 긴 PATH의 SDK 검색 실패는 보존하고 자식 전용 짧은 PATH로 해당 검사만 통과시켰다. 일반 검증의 PCH는 끄지 않았다.
+- 실제 EXE 명시 진행은 네 구성 각각5 case이며 Debug/x64 fixed-update·frame-skip 진행 각5 case를 추가 확인했다. 일반 앱23 case 전체는 Debug/x64·Release/x64·Release/Win32에서 통과했다. Debug/Win32는 `broken-reference` 자식 출력0 bytes의 실패가 남아 전체 PASS가 아니다. 같은 EXE/dat/cwd 단건은 exit1/정상 진단이나 원인 해결/전체 검사 PASS로 해석하지 않는다. 사용자 승인으로 `APP-D32-EMPTY-OUTPUT`은 작업 차단에서 제외하고 별도 보류한다. 현재 추가 진단·재현·수정은 중지하며 재발 시 종료 코드·출력·실행 조건을 보존해 추적한다.
+- source 검토는 최초 runtime15/build8, 변경7 집중 검토, 마지막 로그2행/1파일 검토의 정체성 조합이다. 현재 소스 차단 결함은 없으며 최초 canonical FAIL은 유지한다. 이번 로컬 마감은 이 보류 예외를 명시한 처리이며 [013 §12](../../Docs/GameDesign/013_SceneManager공통기능및TextRPG로직분리계획.md#12-실제-로컬-구현과-검증-상태)와 근거 루트 `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/scenemanager-impl-bb83fdfd/`의 `execution-index.json`·`review/composition.json`을 따른다. 기존 이력·실제 group/case 단위를 보존하고 합산하지 않는다. 커밋·푸시는 별도 사용자 승인으로 진행한다.
+
 ## 지정 불필요 코드 제거 후 현재 검사 — 2026-11-16
 
 - TextRPG의 진행·Custom·저장 CPP는 기본 `pch.h`를 사용한다. NativeTests의 Scene/InGameData/SaveData suite는 같은 원본을 위한 루트 PCH를 타깃별로 생성한다. GameData 구현·생성 fixture의 별도 `GameData.pch`는 유지하며, SaveData fault 매크로와 원본 직접 포함은 PCH 뒤에 둔다.

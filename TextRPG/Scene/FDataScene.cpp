@@ -90,6 +90,11 @@ namespace TextRPG
 	{
 		const bool wasOperating = IsOperating();
 		const SOperation operation(*this);
+		if (IsPublicationPrepared())
+		{
+			errorMessage = L"Accepted Scene preparation is fixed until publication or disposal.";
+			return false;
+		}
 		if (wasOperating || m_isRetired || m_isDispatching || m_isCommitting || m_isRendering || IsUiBusy())
 		{
 			errorMessage = L"Scene preparation is not allowed during UI dispatch, commit or rendering.";
@@ -254,13 +259,24 @@ namespace TextRPG
 	}
 	void FDataScene::OnExitImpl()
 	{
-		if (m_uiManager.GetBoundScene() == this)
+		const bool wasBound = m_uiManager.GetBoundTarget() == this;
+		try
 		{
-			m_uiManager.Clear();
+			if (wasBound)
+			{
+				m_uiManager.Clear();
+			}
+			CancelUiInput();
+			auto commands = std::move(m_uiLayerCommands);
+			m_uiLayerCommands.clear();
 		}
-		CancelUiInput();
-		auto commands = std::move(m_uiLayerCommands);
-		m_uiLayerCommands.clear();
+		catch (...)
+		{
+			// Clear 이후 재캡처된 root의 두 번째 취소도 같은 퇴장 복구 경계다.
+			// callback이 게시한 새 연결은 보존하고, 최종 파괴에서는 Retire가 반드시 Detach한다.
+			if (wasBound && !m_uiManager.GetBoundTarget()) m_uiManager.Bind(*this);
+			throw;
+		}
 	}
 
 	void FDataScene::UpdateImpl(float deltaSeconds)
@@ -454,7 +470,7 @@ namespace TextRPG
 	void FDataScene::CloseUiLayer(std::uint64_t layerId)
 	{
 		const SOperation operation(*this);
-		if (layerId && !m_isRetired && !m_isRendering)
+		if (layerId && !IsPublicationPrepared() && !m_isRetired && !m_isRendering)
 		{
 			m_uiLayerCommands.push_back({{}, layerId, false, true});
 			if (m_isDispatching && layerId == m_uiTopLayer)
@@ -593,7 +609,7 @@ namespace TextRPG
 	void FDataScene::FlushUiLayerCommands()
 	{
 		const SOperation operation(*this);
-		if (m_isRetired || m_isDispatching || m_isCommitting || m_isRendering || IsUiBusy())
+		if (IsPublicationPrepared() || m_isRetired || m_isDispatching || m_isCommitting || m_isRendering || IsUiBusy())
 		{
 			return;
 		}

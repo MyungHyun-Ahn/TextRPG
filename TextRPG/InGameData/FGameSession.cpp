@@ -5,7 +5,8 @@
 #include "FSaveDataStore.h"
 #include "FGameSession.h"
 #include "Scene/FDataScene.h"
-#include "Scene/FSceneManager.h"
+#include "Scene/TSceneManager.h"
+#include "Scene/FTextRPGSceneManager.h"
 
 namespace TextRPG
 {
@@ -92,7 +93,7 @@ namespace TextRPG
 			InGameData::Deserialize(plain.Bytes, m_store, candidate, error);
 	}
 
-	bool FGameSession::CanContinue(FSceneManager& scenes, FGameUiBridge& ui, std::string& error) const
+	bool FGameSession::CanContinue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error) const
 	{
 		try
 		{
@@ -115,7 +116,7 @@ namespace TextRPG
 		}
 	}
 
-	EGameStartResult FGameSession::NewGame(const std::wstring& sceneId, FSceneManager& scenes, FGameUiBridge& ui,
+	EGameStartResult FGameSession::NewGame(const std::wstring& sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
 		std::string& error)
 	{
 		if (m_hasPendingStart)
@@ -147,7 +148,7 @@ namespace TextRPG
 		}
 	}
 
-	bool FGameSession::Continue(FSceneManager& scenes, FGameUiBridge& ui, std::string& error)
+	bool FGameSession::Continue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error)
 	{
 		if (m_hasPendingStart)
 		{
@@ -178,7 +179,7 @@ namespace TextRPG
 		}
 	}
 
-	EGameStartResult FGameSession::TakeStartResult(FSceneManager& scenes, std::string& error)
+	EGameStartResult FGameSession::TakeStartResult(FTextRPGSceneManager& scenes, std::string& error)
 	{
 		if (!m_hasPendingStart) return EGameStartResult::None;
 		bool published = false;

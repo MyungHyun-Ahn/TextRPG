@@ -41,7 +41,7 @@
 - [Main.cpp](../../TextRPG/Main.cpp):17–61에서 데이터/세션/Scene/입력/렌더러를 준비한다.
 - 같은 파일:62–173에서 isRunning, startingNewGame, 이전 시간, 루프와 네 람다를 조립한다. 업데이트 delta는 steady_clock으로 측정하고 작업 뒤 고정 sleep_for를 호출한다.
 - 당시 `ConsoleGameCore/Frame/FFramePipeline.h`:8–22는 한 프레임의 Input → Update → Present → EndFrame만 실행했고 전체 루프·FPS·실행 모드는 제공하지 않았다. 해당 헤더는 이관 후 삭제했으며 현재 구현은 [FFrame.cpp](../../ConsoleGameCore/Frame/FFrame.cpp)다.
-- [FSceneManager.cpp](../../TextRPG/Scene/FSceneManager.cpp):411–414의 Update는 현재 Scene으로 전달한다. Fixed 모드에서 단순히 여러 번 호출하면 같은 Scene이 반복 갱신되므로 전환 수락 뒤 추가 갱신을 별도로 차단해야 한다.
+- [FSceneManager.cpp](https://github.com/MyungHyun-Ahn/TextRPG/blob/2782feb656713fde315926eb8a85d3ea11c10bf8/TextRPG/Scene/FSceneManager.cpp):411–414의 Update는 현재 Scene으로 전달한다. Fixed 모드에서 단순히 여러 번 호출하면 같은 Scene이 반복 갱신되므로 전환 수락 뒤 추가 갱신을 별도로 차단해야 한다.
 - [코어 소비자 테스트](../../Tests/ConsoleGameCore/Main.cpp)는 FramePipeline의 순서·중단·재진입/예외 복구 경계를 사용한다. 실제 이관 시 기존 소비자를 함께 검색한다.
 
 ### 사용자 제공 참고 코드 — 읽기 전용

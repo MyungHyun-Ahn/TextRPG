@@ -4,6 +4,7 @@
     <Filter Include="ConsoleGameCore">
       <UniqueIdentifier>{B51D8016-9524-5F3C-80FF-708C286BC133}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ConsoleGameCore\Scene" />
     <Filter Include="Tests\InGameData\Schema" />
     <Filter Include="GameData\Generated" />
     <Filter Include="GameData\Generated\InGameData" />
@@ -102,7 +103,7 @@
     <ClCompile Include="TextRPG\Scene\FDataScene.cpp">
       <Filter>TextRPG\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="TextRPG\Scene\FSceneManager.cpp">
+    <ClCompile Include="TextRPG\Scene\FTextRPGSceneManager.cpp">
       <Filter>TextRPG\Scene</Filter>
     </ClCompile>
     <ClCompile Include="TextRPG\Localization\Localization.cpp">
@@ -161,6 +162,12 @@
     <ClInclude Include="TextRPG\CustomInGameData\FCharacterInGameData.h"><Filter>TextRPG\CustomInGameData</Filter></ClInclude>
     <ClInclude Include="TextRPG\pch.h">
       <Filter>TextRPG</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRPG\Scene\FTextRPGSceneManager.h">
+      <Filter>TextRPG\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="ConsoleGameCore\Scene\TSceneManager.h">
+      <Filter>ConsoleGameCore\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h">
       <Filter>Tests\SceneUiRuntime</Filter>

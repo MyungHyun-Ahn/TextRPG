@@ -11,7 +11,8 @@
 #include "UI/FUIManager.h"
 #include "UI/FGameUiBridge.h"
 #include "Scene/FDataScene.h"
-#include "Scene/FSceneManager.h"
+#include "Scene/TSceneManager.h"
+#include "Scene/FTextRPGSceneManager.h"
 #include "Input/FConsoleInput.h"
 #include "Input/FInputManager.h"
 #include "UI/Common/FUiTextArtView.h"
@@ -1022,7 +1023,7 @@ static void TestEndFrameCallbackLifetime(GameData::FGameDataStore& store)
 		int destroyed = 0;
 		int hits = 0;
 		FGameUiBridge ui;
-		FSceneManager scenes(store);
+		FTextRPGSceneManager scenes(store);
 		std::wstring error;
 		assert(scenes.LoadStartupScene(ui, error));
 		PublishTestFrame(scenes);
@@ -1110,7 +1111,7 @@ public:
 class FSceneLoopProbe final : public FFrame
 {
 public:
-	FSceneLoopProbe(const SFrameOptions& options, FSceneFrameClock& clock, FSceneManager& scenes)
+	FSceneLoopProbe(const SFrameOptions& options, FSceneFrameClock& clock, FTextRPGSceneManager& scenes)
 		: FFrame(options, clock)
 		, Clock(clock)
 		, Scenes(scenes)
@@ -1145,7 +1146,7 @@ private:
 		if (++Ends == 4) RequestExit();
 	}
 	FSceneFrameClock& Clock;
-	FSceneManager& Scenes;
+	FTextRPGSceneManager& Scenes;
 	FFrameBuffer Buffer{132, 43};
 	bool Stalled = false;
 	std::uint64_t SeenSkips = 0;
@@ -1157,7 +1158,7 @@ static void TestInheritedSceneFrameModes()
 	{
 		SEndFrameProbeState old, next;
 		GameData::FGameDataStore store;
-		FSceneManager scenes(store);
+		FTextRPGSceneManager scenes(store);
 		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
 		PublishTestFrame(scenes);
 		SFrameOptions options;
@@ -1193,12 +1194,36 @@ static void TestInheritedSceneFrameModes()
 
 static void TestEndFrameGenericStages()
 {
+	// 거부된 인수의 destructor도 공개 Manager 작업의 일부다.
+	{
+		SEndFrameProbeState old, next, rejected;
+		GameData::FGameDataStore store;
+		FTextRPGSceneManager scenes(store);
+		std::wstring error;
+		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
+		PublishTestFrame(scenes);
+		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(next)));
+		int cleanupHits = 0;
+		rejected.Destroy = [&]
+		{
+			++cleanupHits;
+			const bool nested = scenes.EndFrame(error);
+			std::cout << "TRACE SCM incoming-cleanup hits=" << cleanupHits << " nested=" << nested
+				<< " old-destroyed=" << old.Lifetime.Destroyed << " next-entered=" << next.Lifetime.Entered << '\n';
+			assert(!nested && old.Lifetime.Destroyed == 0 && next.Lifetime.Entered == 0);
+		};
+		assert(!scenes.SetScene(std::make_unique<FEndFrameProbe>(rejected)));
+		assert(cleanupHits == 1 && rejected.Lifetime.Destroyed == 1);
+		PublishTestFrame(scenes);
+		assert(old.Lifetime.Destroyed == 1 && next.Lifetime.Entered == 1);
+		std::cout << "PASS APP01 rejected Scene argument cleanup stays inside Manager lifetime protection\n";
+	}
 	TestInheritedSceneFrameModes();
 	for (int stage = 0; stage != 3; ++stage)
 	{
 		SEndFrameProbeState old, next, follow, final, rejected;
 		GameData::FGameDataStore store;
-		FSceneManager scenes(store);
+		FTextRPGSceneManager scenes(store);
 		std::wstring error;
 		assert(!scenes.HasPendingTransition());
 		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
@@ -1281,7 +1306,7 @@ static void TestGenericActivationFailure()
 	{
 		SEndFrameProbeState old, failed, follow;
 		GameData::FGameDataStore store;
-		FSceneManager scenes(store);
+		FTextRPGSceneManager scenes(store);
 		std::wstring error;
 		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
 		PublishTestFrame(scenes);
@@ -1313,7 +1338,7 @@ static void TestGenericDirectLifetime()
 		{
 			SEndFrameProbeState old, next;
 			GameData::FGameDataStore store;
-			FSceneManager scenes(store);
+			FTextRPGSceneManager scenes(store);
 			std::wstring error;
 			auto owned = std::make_unique<FEndFrameProbe>(old);
 			IScene* borrowed = owned.get(); // 소유권 이동 전에 확보한 공개 직접 경로.
@@ -1366,7 +1391,7 @@ static void TestGenericLifecycleAndCandidate()
 		{
 			SEndFrameProbeState old, next;
 			GameData::FGameDataStore store;
-			FSceneManager scenes(store);
+			FTextRPGSceneManager scenes(store);
 			std::wstring error;
 			auto owned = std::make_unique<FEndFrameProbe>(old);
 			IScene* borrowed = owned.get();
@@ -1419,7 +1444,7 @@ static void TestGenericFrameInvalidation()
 		{
 			SEndFrameProbeState old, next;
 			GameData::FGameDataStore store;
-			FSceneManager scenes(store);
+			FTextRPGSceneManager scenes(store);
 			auto owned = std::make_unique<FEndFrameProbe>(old);
 			IScene* borrowed = owned.get();
 			assert(scenes.SetScene(std::move(owned)));
@@ -1473,7 +1498,7 @@ static void TestGenericFrameInvalidation()
 static void TestSceneFrameRoute()
 {
 	GameData::FGameDataStore store;
-	FSceneManager manager(store);
+	FTextRPGSceneManager manager(store);
 	auto scene = std::make_unique<FFrameDispatchProbe>();
 	auto* probe = scene.get();
 	assert(manager.SetScene(std::move(scene)));
@@ -1735,7 +1760,7 @@ static void TestProgressSession(GameData::FGameDataStore& store, const std::file
 	SSaveRootScope environment(saveRoot);
 	FGameSession session(store);
 	FGameUiBridge ui;
-	FSceneManager scenes(store);
+	FTextRPGSceneManager scenes(store);
 	std::string error;
 	std::wstring sceneError;
 	assert(session.Save(error));
@@ -1836,7 +1861,7 @@ static void TestNewerProgressSlotProtection(GameData::FGameDataStore& gameData, 
 	SSaveRootScope environment(root);
 	FGameSession session(gameData);
 	FGameUiBridge ui;
-	FSceneManager scenes(gameData);
+	FTextRPGSceneManager scenes(gameData);
 	std::string error;
 	const auto target = FindNewGameScene(gameData);
 	assert(session.NewGame(target, scenes, ui, error) == EGameStartResult::Queued);
@@ -1919,7 +1944,7 @@ static void TestProgressPublicationFailure(GameData::FGameDataStore& store, cons
 	SEndFrameProbeState old;
 	FGameSession session(store);
 	FGameUiBridge ui;
-	FSceneManager scenes(store);
+	FTextRPGSceneManager scenes(store);
 	std::string error;
 	std::wstring sceneError;
 	const auto target = FindNewGameScene(store);
@@ -1986,7 +2011,7 @@ private:
 	SDestructorProbeState& State;
 };
 
-static void InvokeCancelAction(FSceneManager& scenes, bool escape)
+static void InvokeCancelAction(FTextRPGSceneManager& scenes, bool escape)
 {
 	if (escape)
 	{
@@ -2020,7 +2045,7 @@ static void TestBusySceneBoundary()
 			{
 				SEndFrameProbeState active, pending;
 				GameData::FGameDataStore store;
-				FSceneManager scenes(store);
+				FTextRPGSceneManager scenes(store);
 				auto old = std::make_unique<FEndFrameProbe>(active);
 				auto* oldView = old.get();
 				assert(scenes.SetScene(std::move(old)));
@@ -2236,7 +2261,7 @@ static void TestSceneOperationBoundary(GameData::FGameDataStore& store)
 		SRootEntryState sentinel, incoming;
 		SSceneLifetime next;
 		FGameUiBridge bridge;
-		FSceneManager scenes(store);
+		FTextRPGSceneManager scenes(store);
 		std::wstring error;
 		assert(scenes.LoadStartupScene(bridge, error));
 		PublishTestFrame(scenes);
@@ -2319,7 +2344,7 @@ static void TestRootEntryBoundary(GameData::FGameDataStore& store, const std::fi
 				SBoundaryUiState nestedState;
 				FGameUiBridge ui;
 				std::unique_ptr<InGameData> active, candidate;
-				FSceneManager scenes(store);
+				FTextRPGSceneManager scenes(store);
 				std::unique_ptr<FDataScene> prepared;
 				std::string error;
 				std::wstring diagnostic;
@@ -2582,7 +2607,7 @@ static void TestBusyDataBoundary(GameData::FGameDataStore& store, bool sceneNvi)
 					std::unique_ptr<InGameData> active, candidate;
 					SBoundaryUiState state;
 					FGameUiBridge ui;
-					FSceneManager scenes(store);
+					FTextRPGSceneManager scenes(store);
 					std::string error;
 					std::wstring diagnostic;
 					assert(scenes.LoadStartupScene(ui, diagnostic));
@@ -2690,8 +2715,10 @@ struct SBoundaryCancelState final
 	int DragBegins = 0;
 	int DragCancels = 0;
 	int ThrowHits = 0;
+	int ThrowOnCancel = 1;
 	int Destroyed = 0;
 	int Activations = 0;
+	std::function<void()> PointerCanceled;
 	FSceneUiRoot* Root = nullptr;
 	FDataScene* Scene = nullptr;
 	std::string Stage;
@@ -2718,7 +2745,9 @@ public:
 	{
 		FUiButton::OnPointerCancel();
 		++State.PointerCancels;
-		if (!State.Drag) Fault("OnPointerCancel");
+		const auto callback = State.PointerCanceled;
+		if (callback) callback();
+		if (!State.Drag && State.PointerCancels == State.ThrowOnCancel) Fault("OnPointerCancel");
 	}
 private:
 	void Fault(const char* stage)
@@ -2744,7 +2773,7 @@ static void TestUiCancelFailureRecovery(GameData::FGameDataStore& store, const s
 			SBoundaryCancelState state;
 			FGameSession session(store);
 			FGameUiBridge ui;
-			FSceneManager scenes(store);
+			FTextRPGSceneManager scenes(store);
 			std::string error;
 			std::wstring diagnostic;
 			const auto target = FindNewGameScene(store);
@@ -2829,6 +2858,281 @@ static void TestUiCancelFailureRecovery(GameData::FGameDataStore& store, const s
 		}
 	}
 	std::cout << "PASS IGD BOUNDARY-03 actual capture drag cancellation typed throw old bridge busy unwind input render retry root cipher key preservation\n";
+}
+
+static void TestPreparedPublicationBoundary(GameData::FGameDataStore& store, const std::filesystem::path& work)
+{
+	bool allPreserved = true;
+	for (int stage = 0; stage != 8; ++stage)
+	{
+		std::unique_ptr<InGameData> active, candidate;
+		SBoundaryCancelState cancel;
+		SRootEntryState retired;
+		SEndFrameProbeState destroyed;
+		FGameUiBridge bridge;
+		FTextRPGSceneManager scenes(store);
+		std::unique_ptr<FDataScene> prepared;
+		std::string error;
+		std::wstring diagnostic;
+		const auto target = FindNewGameScene(store);
+		assert(target != L"MainMenu" && store.FindScene(L"MainMenu"));
+		assert(InGameData::CreateNew(store, target, candidate, error) && candidate->SetGold(7654, error));
+		assert(scenes.PrepareSceneById(target, bridge, candidate.get(), prepared, diagnostic));
+		assert(scenes.CommitProgress(prepared, active, candidate, diagnostic));
+		PublishTestFrame(scenes);
+		bool published = false;
+		assert(scenes.TakeProgressResult(active, published, diagnostic) && published);
+		const auto* identity = active.get();
+		std::vector<std::uint8_t> before;
+		assert(identity->Serialize(before, error));
+		const auto saveRoot = work / ("prepared-publication-" + std::to_string(stage));
+		assert(FSaveDataStore(saveRoot).Save(before, error));
+		const auto cipher = ReadSaveBytes(saveRoot / "InGameData.sav");
+		const auto key = ReadSaveBytes(saveRoot / "SaveData.key");
+		assert(!cipher.empty() && !key.empty());
+		const bool genericOld = stage == 2 || stage == 7;
+		if (genericOld)
+		{
+			assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(destroyed)));
+			PublishTestFrame(scenes);
+		}
+		auto* old = bridge.GetBoundScene();
+		if (!genericOld)
+		{
+			cancel.Scene = old;
+			const auto layer = old->OpenUiLayer(std::make_unique<FBoundaryCancelButton>(cancel));
+			old->FlushUiLayerCommands();
+			cancel.Root = old->GetUiLayer(layer);
+			const auto sentinel = old->OpenUiLayer(std::make_unique<FRootEntryUi>(retired));
+			old->FlushUiLayerCommands();
+			assert(sentinel && retired.Destroyed == 0);
+			// OnExit는 모든 실제 root를 취소한다. 하위 root의 직접 capture도 유효한 진입이다.
+			SInputEvent pointer;
+			pointer.ScreenWidth = 132; pointer.ScreenHeight = 43;
+			pointer.MouseButton = EMouseButton::Left; pointer.MouseX = 2; pointer.MouseY = 1;
+			pointer.Type = EInputEventType::PointerDown;
+			cancel.Root->ResumeInput();
+			cancel.Root->Dispatch(pointer);
+			assert(cancel.Root->GetCaptureId());
+		}
+		FFrameBuffer oldFrame(132, 43);
+		scenes.Render(oldFrame);
+		assert(InGameData::CreateNew(store, target, candidate, error) && candidate->SetGold(4321, error));
+		auto* nextProgress = candidate.get();
+		assert(scenes.PrepareSceneById(target, bridge, nextProgress, prepared, diagnostic));
+		auto* next = prepared.get();
+		auto* base = next->GetUiBaseRoot();
+		const auto layer = next->GetUiTopLayer();
+		assert(base && next->GetUiLayerCount() == 1);
+		FFrameBuffer expected(132, 43);
+		next->Render(expected);
+		int attempts = 0;
+		bool reloaded = false;
+		std::wstring reloadError;
+		const auto mutate = [&]()
+		{
+			++attempts;
+			if (stage == 3) reloaded = next->LoadFromGameData(L"MainMenu", reloadError);
+			else if (stage >= 4) assert(nextProgress->SetSceneId(store, L"MainMenu", error));
+			else
+			{
+				next->CloseUiLayer(next->GetUiTopLayer());
+				next->FlushUiLayerCommands();
+			}
+			std::cout << "TRACE R1 mutation stage=" << stage << " attempt=" << attempts
+				<< " layers=" << next->GetUiLayerCount() << " reload=" << reloaded
+				<< " old-ui-destroyed=" << retired.Destroyed << " old-scene-destroyed=" << destroyed.Lifetime.Destroyed << '\n';
+		};
+		if (stage == 0 || stage == 5) cancel.PointerCanceled = mutate;
+		if (stage == 1 || stage == 6) retired.Destroy = mutate;
+		if (genericOld) destroyed.Destroy = mutate;
+		assert(scenes.CommitProgress(prepared, active, candidate, diagnostic));
+		if (stage == 3 || stage == 4) mutate();
+		const bool ended = scenes.EndFrame(diagnostic);
+		const auto publicationError = diagnostic;
+		assert(scenes.TakeProgressResult(active, published, diagnostic));
+		assert(!scenes.TakeProgressResult(active, published, diagnostic));
+		assert(attempts == 1 && !scenes.HasPendingTransition() && !scenes.IsExecutingTransition());
+		const bool invalidProgress = stage >= 4;
+		bool preserved = ended == !invalidProgress && published == !invalidProgress;
+		if (!invalidProgress)
+		{
+			preserved = preserved && active.get() == nextProgress && bridge.GetBoundScene() == next &&
+				next->GetProgress() == active.get() && active->GetSceneId() == target &&
+				next->GetUiLayerCount() == 1 && next->GetUiBaseRoot() == base && next->GetUiTopLayer() == layer;
+			FFrameBuffer actual(132, 43);
+			scenes.Render(actual);
+			preserved = preserved && actual.GetCells() == expected.GetCells();
+			if (stage == 3) preserved = preserved && !reloaded && !reloadError.empty();
+			if (stage == 0) assert(cancel.PointerCancels == 1);
+			if (stage == 1) assert(retired.Destroyed == 1);
+			if (stage == 2) assert(destroyed.Lifetime.Destroyed == 1);
+			if (preserved)
+			{
+				// 게시 뒤에만 준비 보호가 풀려 정상적인 직접 Layer 편집이 다시 동작한다.
+				next->CloseUiLayer(layer);
+				next->FlushUiLayerCommands();
+				assert(next->GetUiLayerCount() == 0);
+			}
+		}
+		else
+		{
+			std::vector<std::uint8_t> after;
+			preserved = preserved && !publicationError.empty() && active.get() == identity &&
+				identity->Serialize(after, error) && after == before;
+			if (stage <= 5)
+			{
+				preserved = preserved && bridge.GetBoundScene() == old && retired.Destroyed == 0;
+				if (bridge.GetBoundScene() == old)
+				{
+					assert(!old->IsBusy() && old->GetUiBaseRoot() == bridge.GetBoundRoot());
+					FFrameBuffer actual(132, 43);
+					scenes.Render(actual);
+					preserved = preserved && actual.GetCells() == oldFrame.GetCells();
+				}
+			}
+			else
+			{
+				// 이미 실행된 destructor는 복구했다고 주장하지 않는다. root/파일만 보존한다.
+				preserved = preserved && bridge.GetBoundScene() == nullptr &&
+					(genericOld ? destroyed.Lifetime.Destroyed == 1 : retired.Destroyed == 1);
+			}
+		}
+		assert(ReadSaveBytes(saveRoot / "InGameData.sav") == cipher && ReadSaveBytes(saveRoot / "SaveData.key") == key);
+		std::cout << "TRACE R1 outcome stage=" << stage << " ended=" << ended << " published=" << published
+			<< " active-old=" << (active.get() == identity) << " bridge-old=" << (bridge.GetBoundScene() == old)
+			<< " invariant=" << preserved << '\n';
+		allPreserved = allPreserved && preserved;
+		cancel.PointerCanceled = {};
+		retired.Destroy = {};
+		destroyed.Destroy = {};
+	}
+	assert(allPreserved && "R1 accepted candidate publication invariant failed");
+	std::cout << "PASS IGD R1 accepted candidate close reload freeze OnExit retire destructor "
+		"visible typed SceneId final validation old recovery cipher key\n";
+}
+
+static void TestSecondPassExitRecovery(GameData::FGameDataStore& store, const std::filesystem::path& work)
+{
+	for (const bool newerBinding : {false, true})
+	{
+		for (const bool newGame : {true, false})
+		{
+			const auto saveRoot = std::filesystem::absolute(work / ("second-pass-" +
+				std::to_string(newerBinding) + std::to_string(newGame)));
+			SSaveRootScope environment(saveRoot);
+			SBoundaryCancelState first, second;
+			FNeutralBridgeTarget newer;
+			FGameSession session(store);
+			FGameUiBridge bridge;
+			FTextRPGSceneManager scenes(store);
+			std::string error;
+			std::wstring diagnostic;
+			const auto target = FindNewGameScene(store);
+			assert(session.NewGame(target, scenes, bridge, error) == EGameStartResult::Queued);
+			PublishTestFrame(scenes);
+			assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+			const auto* identity = session.GetProgress();
+			auto* old = bridge.GetBoundScene();
+			std::vector<std::uint8_t> before;
+			assert(identity && identity->Serialize(before, error));
+			const auto cipher = ReadSaveBytes(saveRoot / "InGameData.sav");
+			const auto key = ReadSaveBytes(saveRoot / "SaveData.key");
+			assert(!cipher.empty() && !key.empty());
+			const auto a = old->OpenUiLayer(std::make_unique<FBoundaryCancelButton>(first));
+			const auto b = old->OpenUiLayer(std::make_unique<FBoundaryCancelButton>(second));
+			old->FlushUiLayerCommands();
+			first.Scene = second.Scene = old;
+			first.Root = old->GetUiLayer(a);
+			second.Root = old->GetUiLayer(b);
+			first.ThrowOnCancel = 2;
+			FFrameBuffer frame(132, 43);
+			scenes.Render(frame);
+			const auto cells = frame.GetCells();
+			SInputEvent pointer;
+			pointer.ScreenWidth = 132; pointer.ScreenHeight = 43;
+			pointer.MouseButton = EMouseButton::Left; pointer.MouseX = 2; pointer.MouseY = 1;
+			pointer.Type = EInputEventType::PointerDown;
+			first.Root->ResumeInput();
+			first.Root->Dispatch(pointer);
+			second.Root->Dispatch(pointer);
+			assert(first.Root->GetCaptureId() && second.Root->GetCaptureId());
+			int recaptures = 0;
+			second.PointerCanceled = [&]()
+			{
+				assert(first.PointerCancels == 1 && first.ThrowHits == 0 && first.Root->GetCaptureId() == 0);
+				first.Root->ResumeInput();
+				first.Root->Dispatch(pointer);
+				assert(first.Root->GetCaptureId() == first.Root->GetFocusId());
+				++recaptures;
+				if (newerBinding) static_cast<FUIManager&>(bridge).Bind(newer);
+			};
+			first.Armed = true;
+			if (newGame) assert(session.NewGame(target, scenes, bridge, error) == EGameStartResult::Queued);
+			else assert(session.Continue(scenes, bridge, error));
+			assert(!scenes.EndFrame(diagnostic) && diagnostic == L"owned pointer cancel boundary fault");
+			assert(session.TakeStartResult(scenes, error) == EGameStartResult::Failed && error == "owned pointer cancel boundary fault");
+			assert(session.TakeStartResult(scenes, error) == EGameStartResult::None);
+			std::cout << "TRACE R2 second-pass new-game=" << newGame << " newer-binding=" << newerBinding
+				<< " A-cancels=" << first.PointerCancels << " B-cancels=" << second.PointerCancels
+				<< " recaptures=" << recaptures << " throw-hit=" << first.ThrowHits
+				<< " bridge-old=" << (bridge.GetBoundScene() == old) << " A-busy=" << first.Root->IsBusy()
+				<< " scene-operating=" << old->IsOperating() << '\n';
+			assert(first.PointerCancels == 2 && second.PointerCancels == 1 && recaptures == 1);
+			assert(first.ThrowHits == 1 && first.Stage == "OnPointerCancel" && second.ThrowHits == 0);
+			assert(session.GetProgress() == identity && first.Destroyed == 0 && second.Destroyed == 0);
+			assert(!old->IsBusy() && !first.Root->IsBusy() && !second.Root->IsBusy());
+			assert(first.Root->GetCaptureId() == 0 && second.Root->GetCaptureId() == 0);
+			assert(!scenes.HasPendingTransition() && !scenes.IsExecutingTransition() && !scenes.IsQuitting());
+			if (newerBinding)
+			{
+				assert(bridge.GetBoundTarget() == &newer && bridge.GetBoundRoot() == &newer.Root);
+				bridge.Bind(*old); // 새 연결 보존을 관찰한 뒤에만 명시적으로 정상 입력을 복구한다.
+			}
+			else assert(bridge.GetBoundScene() == old && bridge.GetBoundRoot() == old->GetUiBaseRoot());
+			std::vector<std::uint8_t> after;
+			assert(identity->Serialize(after, error) && after == before);
+			assert(ReadSaveBytes(saveRoot / "InGameData.sav") == cipher && ReadSaveBytes(saveRoot / "SaveData.key") == key);
+			second.PointerCanceled = {};
+			// 직접 root, 직접 Scene, bridge, Manager의 정상 입력을 모두 실제 버튼으로 재검사한다.
+			first.Root->Dispatch(pointer);
+			pointer.Type = EInputEventType::PointerUp;
+			first.Root->Dispatch(pointer);
+			assert(first.Activations == 1);
+			pointer.Type = EInputEventType::PointerDown;
+			(void)old->HandleInput(pointer);
+			pointer.Type = EInputEventType::PointerUp;
+			(void)old->HandleInput(pointer);
+			assert(second.Activations == 1);
+			pointer.Type = EInputEventType::PointerDown;
+			bridge.HandleInput(pointer);
+			pointer.Type = EInputEventType::PointerUp;
+			bridge.HandleInput(pointer);
+			assert(second.Activations == 2);
+			SInputEvent enter;
+			enter.ScreenWidth = 132; enter.ScreenHeight = 43; enter.Key = EInputKey::Enter;
+			enter.Type = EInputEventType::KeyUp;
+			(void)scenes.HandleInputFrame({enter});
+			enter.Type = EInputEventType::KeyDown;
+			(void)scenes.HandleInput(enter);
+			assert(second.Activations == 3 && old->FindUi(second.Root->GetFocusId()));
+			scenes.Update(0);
+			scenes.Render(frame);
+			assert(frame.GetCells() == cells && !old->IsBusy());
+			assert(ReadSaveBytes(saveRoot / "InGameData.sav") == cipher && ReadSaveBytes(saveRoot / "SaveData.key") == key);
+			assert(scenes.EndFrame(diagnostic));
+			if (newGame) assert(session.NewGame(target, scenes, bridge, error) == EGameStartResult::Queued);
+			else assert(session.Continue(scenes, bridge, error));
+			PublishTestFrame(scenes);
+			assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+			assert(first.Destroyed == 1 && second.Destroyed == 1 && session.GetProgress() != identity);
+			assert(bridge.GetBoundScene() && bridge.GetBoundScene()->GetProgress() == session.GetProgress());
+			assert(ReadSaveBytes(saveRoot / "SaveData.key") == key);
+			if (!newGame) assert(ReadSaveBytes(saveRoot / "InGameData.sav") == cipher);
+		}
+	}
+	std::cout << "PASS IGD R2 second-pass exact A recapture fault old bridge flags "
+		"direct managed input render retry cipher key newer binding\n";
 }
 
 static void TestDirectReloadFailureBoundary(GameData::FGameDataStore& store)
@@ -2952,7 +3256,7 @@ static void TestUiCancelShutdown(GameData::FGameDataStore& store)
 	{
 		SBoundaryCancelState state;
 		FGameUiBridge ui;
-		auto scenes = std::make_unique<FSceneManager>(store);
+		auto scenes = std::make_unique<FTextRPGSceneManager>(store);
 		std::unique_ptr<FDataScene> standalone;
 		std::wstring error;
 		if (managerOwned)
@@ -2986,7 +3290,7 @@ static void TestUiCancelShutdown(GameData::FGameDataStore& store)
 	std::cout << "PASS APP01 BOUNDARY-03 shutdown callback exception reported forced teardown unbinds old bridge once\n";
 }
 
-static void GuardCancelReentry(FSceneManager& scenes, bool escape)
+static void GuardCancelReentry(FTextRPGSceneManager& scenes, bool escape)
 {
 	__try { InvokeCancelAction(scenes, escape); }
 	__except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
@@ -3005,7 +3309,7 @@ static void TestCandidateCancelReentry(GameData::FGameDataStore& store)
 			std::unique_ptr<InGameData> active, candidate;
 			SDestructorProbeState state;
 			FGameUiBridge ui;
-			FSceneManager scenes(store);
+			FTextRPGSceneManager scenes(store);
 			std::string error;
 			std::wstring sceneError;
 			assert(scenes.LoadStartupScene(ui, sceneError));
@@ -3040,7 +3344,52 @@ static void TestCandidateCancelReentry(GameData::FGameDataStore& store)
 			assert(state.Hits == 1 && state.Completed == 1);
 		}
 	}
+	// 파생 typed 멤버보다 base 소유 현재/후보 Scene을 먼저 drain하는 실제 게임 경로다.
+	{
+		std::unique_ptr<InGameData> active, candidate;
+		SDestructorProbeState currentUi, pendingUi;
+		FGameUiBridge ui;
+		std::string error;
+		std::wstring sceneError;
+		const auto target = FindNewGameScene(store);
+		const InGameData* retained = nullptr;
+		bool published = false;
+		{
+			FTextRPGSceneManager scenes(store);
+			std::unique_ptr<FDataScene> prepared;
+			assert(InGameData::CreateNew(store, target, candidate, error));
+			assert(candidate->SetGold(2468, error));
+			assert(scenes.PrepareSceneById(target, ui, candidate.get(), prepared, sceneError));
+			assert(scenes.CommitProgress(prepared, active, candidate, sceneError));
+			PublishTestFrame(scenes);
+			assert(scenes.TakeProgressResult(active, published, sceneError) && published);
+			retained = active.get();
+			currentUi.Callback = [&]
+			{
+				assert(retained->GetGold() == 2468 && scenes.IsQuitting() && pendingUi.Completed == 1);
+				assert(!scenes.EndFrame(sceneError));
+			};
+			(void)ui.GetBoundScene()->OpenUiLayer(std::make_unique<FDestructorProbeButton>(currentUi));
+			ui.GetBoundScene()->FlushUiLayerCommands();
+			assert(InGameData::CreateNew(store, target, candidate, error));
+			assert(candidate->SetGold(8642, error));
+			const auto* view = candidate.get();
+			assert(scenes.PrepareSceneById(target, ui, view, prepared, sceneError));
+			pendingUi.Callback = [&, view]
+			{
+				assert(view->GetGold() == 8642 && retained->GetGold() == 2468 && scenes.IsQuitting());
+				assert(!scenes.TakeProgressResult(active, published, sceneError));
+				scenes.CancelPendingTransitions();
+			};
+			(void)prepared->OpenUiLayer(std::make_unique<FDestructorProbeButton>(pendingUi));
+			prepared->FlushUiLayerCommands();
+			assert(scenes.CommitProgress(prepared, active, candidate, sceneError));
+		}
+		assert(currentUi.Hits == 1 && currentUi.Completed == 1 && pendingUi.Hits == 1 && pendingUi.Completed == 1);
+		assert(active.get() == retained && active->GetGold() == 2468 && !ui.GetBoundScene());
+	}
 	std::cout << "PASS IGD CANCEL-01 candidate UI cancel Escape reentry exact teardown root alive result once after destructor\n";
+	std::cout << "PASS IGD SCM-04 derived Manager teardown drains candidate UI before typed root and current UI before active root\n";
 }
 
 template <typename TManager>
@@ -3066,7 +3415,7 @@ static void TestDestructorQuit(GameData::FGameDataStore& store, const std::files
 				SDestructorProbeState uiState;
 				FGameSession session(store);
 				FGameUiBridge ui;
-				FSceneManager scenes(store);
+				FTextRPGSceneManager scenes(store);
 				std::string error;
 				std::wstring sceneError;
 				const auto target = FindNewGameScene(store);
@@ -3131,7 +3480,7 @@ static void TestProgressCommitBoundary(GameData::FGameDataStore& store)
 	std::unique_ptr<InGameData> active;
 	int oldViewDestroyed = 0;
 	FGameUiBridge ui;
-	FSceneManager scenes(store);
+	FTextRPGSceneManager scenes(store);
 	std::string error;
 	std::wstring sceneError;
 	bool published = false;
@@ -3237,6 +3586,7 @@ try
 			LoadRuntimeFixture(*store, std::filesystem::path(argv[3]), std::filesystem::path(argv[4]));
 			if (std::string(argv[2]) == "02")
 			{
+				TestPreparedPublicationBoundary(*store, std::filesystem::path(argv[4]));
 				TestSceneOperationBoundary(*store);
 				TestGameUiBridgeTarget(*store);
 				TestDirectReloadFailureBoundary(*store);
@@ -3249,6 +3599,7 @@ try
 			else
 			{
 				assert(std::string(argv[2]) == "03");
+				TestSecondPassExitRecovery(*store, std::filesystem::path(argv[4]));
 				TestUiCancelFailureRecovery(*store, std::filesystem::path(argv[4]));
 				TestUiCancelShutdown(*store);
 			}
@@ -3272,6 +3623,8 @@ try
 		TestBusySceneBoundary();
 		TestBusyDataBoundary(store, false);
 		TestBusyDataBoundary(store, true);
+		TestPreparedPublicationBoundary(store, work);
+		TestSecondPassExitRecovery(store, work);
 		TestUiCancelFailureRecovery(store, work);
 		TestUiCancelShutdown(store);
 		TestGenericActivationFailure();
@@ -3332,6 +3685,8 @@ try
 		for (int entry = 0; entry != 5; ++entry) TestRootEntryBoundary(store, std::filesystem::path(argv[2]), entry);
 		TestBusyDataBoundary(store, false);
 		TestBusyDataBoundary(store, true);
+		TestPreparedPublicationBoundary(store, std::filesystem::path(argv[2]));
+		TestSecondPassExitRecovery(store, std::filesystem::path(argv[2]));
 		TestUiCancelFailureRecovery(store, std::filesystem::path(argv[2]));
 		TestProgressSession(store, std::filesystem::path(argv[2]));
 		TestNewerProgressSlotProtection(store, std::filesystem::path(argv[2]));
@@ -3637,7 +3992,7 @@ try
 	const auto retainedFocus = retainedRoot->GetFocusId();
 	assert(!prepared.LoadFromGameData(L"missing-fixture", error));
 	assert(transitionBridge.GetBoundRoot() == retainedRoot && retainedRoot->GetFocusId() == retainedFocus);
-	FSceneManager manager(store);
+	FTextRPGSceneManager manager(store);
 	assert(manager.LoadStartupScene(transitionBridge, error));
 	PublishTestFrame(manager);
 	FSceneUiRoot* oldRoot = transitionBridge.GetBoundRoot();

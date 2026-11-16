@@ -161,7 +161,7 @@ IGD-01~06의 **현재 최소 모델 범위 구현·실행 확인**은 §9와 [�
 ### 9.4 요청 수락과 프레임 끝 완료·예외/재진입 경계
 
 - NewGame의 `Queued`와 Continue의 `true`는 **요청 수락**이다. 완료는 `Input → Update → Render/Present → EndFrame → TakeStartResult` 뒤 `Started`/`StartedSaveFailed`/`Failed`로 한 번 소비한다. 준비 실패는 기존 메뉴/진행/정상 파일을 보존한다. Continue에는 autosave가 없다.
-- [FSceneManager](../../TextRPG/Scene/FSceneManager.cpp)는 typed request와 후보 소유권을 보관한다. first-wins·프레임 snapshot·recursive EndFrame guard로 처리 중 새 요청을 다음 프레임으로 넘기며 무제한 임의 lambda queue를 도입하지 않는다. 이전 비소유 UI/Scene을 먼저 정리하고 새 Scene/진행을 결합 게시하며, 이전 루트는 snapshot 수명 종료 때 늦게 해제한다.
+- [FSceneManager](https://github.com/MyungHyun-Ahn/TextRPG/blob/2782feb656713fde315926eb8a85d3ea11c10bf8/TextRPG/Scene/FSceneManager.cpp)는 typed request와 후보 소유권을 보관한다. first-wins·프레임 snapshot·recursive EndFrame guard로 처리 중 새 요청을 다음 프레임으로 넘기며 무제한 임의 lambda queue를 도입하지 않는다. 이전 비소유 UI/Scene을 먼저 정리하고 새 Scene/진행을 결합 게시하며, 이전 루트는 snapshot 수명 종료 때 늦게 해제한다.
 - 공통 Scene NVI는 직접 공개 작업과 lifecycle을 포함한다. 활성/후보 Scene 및 실제 UI root의 busy를 검사한다. root는 **첫 사용자 virtual GetId/Find 호출 전부터 incoming 인수의 거부·예외 정리 종료까지** busy guard를 유지한다. const/noexcept 조회도 재진입 가능 경계다. CancelInput은 capture/drag를 먼저 비우고 중첩 flag를 복원한다.
 - Quit/취소의 논리 shutdown·입력 무효화는 즉시지만 busy 후보의 물리 파괴/완료는 EndFrame까지 보류한다. callback이 반환해 idle이 된 뒤 재취소해도 이미 이월된 파괴를 앞당기지 않는다. destructor가 모두 반환한 뒤 완료를 한 번만 공개한다.
 - 실제 OnExit→UI bridge→root 취소 callback throw는 RAII로 framework flag/bridge를 복구하고 최종 파괴 때 detach한다. old UI/Scene destructor의 Quit도 보존해 후보 게시·NewGame autosave를 취소하며 Main의 late shutdown에서는 추가 저장/해제된 Scene 재렌더를 하지 않는다. 임의 callback이 바꾼 앱 전역 상태의 rollback, callback 안 Manager 자기 삭제, 기존 모든 Layer flush의 EndFrame 이관은 범위 밖이다.

@@ -12,6 +12,7 @@
 #include "UI/FUIManager.h"
 #include "Scene/TScene.h"
 #include "Scene/FSceneHost.h"
+#include "Scene/TSceneManager.h"
 #include "Frame/FrameTypes.h"
 #include "Frame/IFrameClock.h"
 #include "Frame/FFrame.h"
@@ -1465,6 +1466,194 @@ namespace
 		std::cout << "PASS CORE-03 first second allocation strong rollback old drawable content recovery clamp empty reset controls\n";
 	}
 }
+namespace
+{
+	struct SManagerSceneState final
+	{
+		int Entered = 0, Exited = 0, Destroyed = 0;
+		std::function<void()> Enter, Exit, Update, Destroy, Query;
+	};
+	class FManagerScene final : public TScene<bool>
+	{
+	public:
+		explicit FManagerScene(SManagerSceneState& state)
+			: State(state)
+		{
+		}
+		~FManagerScene() override
+		{
+			++State.Destroyed;
+			if (State.Destroy) State.Destroy();
+		}
+	private:
+		bool IsOwnedUiBusy() const noexcept override
+		{
+			if (State.Query) State.Query();
+			return false;
+		}
+		void OnEnterImpl() override
+		{
+			++State.Entered;
+			if (State.Enter) State.Enter();
+		}
+		void OnExitImpl() override
+		{
+			++State.Exited;
+			if (State.Exit) State.Exit();
+		}
+		void UpdateImpl(float) override
+		{
+			if (State.Update) State.Update();
+		}
+		void RenderImpl(FFrameBuffer&) const override
+		{
+		}
+		bool HandleInputImpl(const SInputEvent&) override
+		{
+			return false;
+		}
+		SManagerSceneState& State;
+	};
+	void TestSceneManager()
+	{
+		SManagerSceneState old, next, rejected, follow;
+		TSceneManager<bool> manager;
+		std::wstring error;
+		assert(manager.SetScene(std::make_unique<FManagerScene>(old)) && old.Entered == 0);
+		assert(manager.EndFrame(error) && old.Entered == 1);
+		assert(manager.SetScene(std::make_unique<FManagerScene>(next)));
+		int hits = 0;
+		rejected.Destroy = [&]
+		{
+			++hits;
+			assert(!manager.EndFrame(error));
+			assert(old.Destroyed == 0 && next.Entered == 0);
+		};
+		assert(!manager.SetScene(std::make_unique<FManagerScene>(rejected)) && hits == 1);
+		old.Query = [&]
+		{
+			++hits;
+			assert(!manager.EndFrame(error) && old.Destroyed == 0);
+		};
+		old.Exit = [&]
+		{
+			assert(manager.SetScene(std::make_unique<FManagerScene>(follow)));
+			std::wstring nestedError;
+			assert(!manager.EndFrame(nestedError));
+		};
+		assert(manager.EndFrame(error) && old.Destroyed == 1 && next.Entered == 1 && follow.Entered == 0);
+		assert(hits == 2 && manager.HasPendingTransition());
+		follow.Enter = []
+		{
+			throw std::runtime_error("manager enter fault");
+		};
+		assert(!manager.EndFrame(error) && error == L"manager enter fault");
+		assert(next.Destroyed == 0 && follow.Destroyed == 1 && !manager.HasPendingTransition());
+		follow.Enter = {};
+		assert(manager.SetScene(std::make_unique<FManagerScene>(follow)));
+		next.Update = [&]
+		{
+			manager.CancelPendingTransitions();
+			assert(follow.Destroyed == 1 && !manager.EndFrame(error));
+		};
+		manager.Update(0);
+		manager.CancelPendingTransitions();
+		assert(manager.IsQuitting() && follow.Destroyed == 1);
+		assert(manager.EndFrame(error) && follow.Destroyed == 2 && next.Destroyed == 0);
+		manager.Shutdown();
+		assert(next.Destroyed == 1);
+		SManagerSceneState automatic;
+		{
+			TSceneManager<bool> owner;
+			assert(owner.SetScene(std::make_unique<FManagerScene>(automatic)) && owner.EndFrame(error));
+		}
+		assert(automatic.Exited == 1 && automatic.Destroyed == 1);
+		std::cout << "PASS SCM-01 independent Manager ownership snapshot first-query incoming cleanup failure deferred cancel shutdown\n";
+	}
+
+	void TestSceneManagerTermination()
+	{
+		for (const bool queryCancel : {false, true})
+		{
+			SManagerSceneState current, pending, rejected;
+			TSceneManager<bool> manager;
+			std::wstring error;
+			assert(manager.SetScene(std::make_unique<FManagerScene>(current)) && manager.EndFrame(error));
+			assert(manager.SetScene(std::make_unique<FManagerScene>(pending)));
+			int hits = 0;
+			if (queryCancel)
+			{
+				current.Query = [&]
+				{
+					if (++hits != 1) return;
+					manager.CancelPendingTransitions();
+					assert(pending.Destroyed == 0 && current.Destroyed == 0);
+				};
+			}
+			else current.Destroy = [&]
+			{
+				++hits;
+				manager.CancelPendingTransitions();
+			};
+			const bool published = manager.EndFrame(error);
+			assert(published == queryCancel && hits == 1 && manager.IsQuitting());
+			assert(pending.Entered == (queryCancel ? 0 : 1) && pending.Destroyed == 1);
+			assert(current.Destroyed == (queryCancel ? 0 : 1));
+			assert(!manager.SetScene(std::make_unique<FManagerScene>(rejected)) && rejected.Destroyed == 1);
+			ESceneTransitionResult result = ESceneTransitionResult::None;
+			assert(manager.TakeTransitionResult(result) && result == ESceneTransitionResult::Canceled);
+			assert(!manager.TakeTransitionResult(result));
+			current.Query = {};
+		}
+		std::cout << "PASS SCM-03 first busy getter cancel and old destructor Quit forbid candidate publication result once\n";
+	}
+
+	struct FDerivedManager final : TSceneManager<bool>
+	{
+		struct SContext final
+		{
+			bool& Alive;
+			explicit SContext(bool& alive)
+				: Alive(alive)
+			{
+				Alive = true;
+			}
+			~SContext()
+			{
+				Alive = false;
+			}
+		} Context;
+		explicit FDerivedManager(bool& alive)
+			: Context(alive)
+		{
+		}
+		~FDerivedManager() override
+		{
+			Shutdown();
+		}
+	};
+	void TestSceneManagerDerivedShutdown()
+	{
+		bool alive = false;
+		SManagerSceneState current, pending;
+		int cleanupHits = 0;
+		std::wstring error;
+		{
+			FDerivedManager manager(alive);
+			assert(manager.SetScene(std::make_unique<FManagerScene>(current)) && manager.EndFrame(error));
+			assert(manager.SetScene(std::make_unique<FManagerScene>(pending)));
+			current.Destroy = pending.Destroy = [&]
+			{
+				assert(alive && manager.IsQuitting());
+				manager.CancelPendingTransitions();
+				assert(!manager.EndFrame(error));
+				++cleanupHits;
+			};
+		}
+		assert(!alive && cleanupHits == 2 && current.Destroyed == 1 && pending.Destroyed == 1);
+		std::cout << "PASS SCM-02 derived shutdown drains base-owned Scenes before typed member destruction\n";
+	}
+}
 int main()
 {
 	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
@@ -1474,6 +1663,9 @@ int main()
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
 	std::cout << std::unitbuf;
+	TestSceneManager();
+	TestSceneManagerDerivedShutdown();
+	TestSceneManagerTermination();
 	TestSerializationScalar();
 	TestSerializationGraph();
 	TestSerializationEnum();
