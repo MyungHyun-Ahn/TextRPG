@@ -10,8 +10,5 @@ namespace TextRPG
 		explicit FUiTextArt(SCellRect rect);
 		[[nodiscard]] bool LoadFromGameData(const GameData::FGameDataStore& store, const std::wstring& artId,
 											std::wstring& errorMessage);
-
-	private:
-		std::wstring m_artId;
 	};
 }

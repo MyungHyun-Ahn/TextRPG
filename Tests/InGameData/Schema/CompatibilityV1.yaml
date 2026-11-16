@@ -1,0 +1,33 @@
+# 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
+schema_version: 1
+types:
+  - name: SStableNode
+    fields:
+      - name: Value
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SRetiredFixture
+    fields:
+      - name: Value
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SFixtureEvolution
+    fields:
+      - name: Value
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: RemovedObject
+        type: 'shared_ptr<SStableNode>'
+        missing: reject
+        since: 1
+      - name: KeptObject
+        type: 'shared_ptr<SStableNode>'
+        missing: reject
+        since: 1
+      - name: RemovedOnly
+        type: 'shared_ptr<SRetiredFixture>'
+        missing: reject
+        since: 1

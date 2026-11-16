@@ -60,7 +60,6 @@ namespace TextRPG
 		int LocalY = -1;
 		int ScreenWidth = 0;
 		int ScreenHeight = 0;
-		bool MouseLeftPressed = false;
 		// 0은 물리 ID를 제공하지 않는 기존 공급자, 1~511은 공급자가 정한 기기 키다.
 		std::uint16_t PhysicalKey = 0;
 		// Manager가 논리 눌림이 실제 바뀌었는지 표시한다. 기존 수동 이벤트는 전이로 취급한다.

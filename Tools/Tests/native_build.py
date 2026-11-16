@@ -13,6 +13,31 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def generated_source_paths(suite, generated_root=None):
+    roots = [generated_root.resolve() if generated_root is not None else ROOT / 'GameData/Generated/GameData',
+             ROOT / 'GameData/Generated/InGameData']
+    if suite == 'InGameData':
+        roots += [ROOT / 'Out/Tests/InGameDataSchema' / name for name in ('SharedGraph', 'CompatibilityV1')]
+    return sorted({path for root in roots for path in root.rglob('*') if path.suffix in ('.h', '.cpp')})
+
+
+def native_contract_sources(suite, generated_root=None):
+    paths = [ROOT / name for name in ('NativeTests.vcxproj', 'NativeTests.vcxproj.filters',
+             'ConsoleGameCore/ConsoleGameCore.vcxproj', 'GameData/GameData.vcxproj', 'Tools/Tests/native_build.py')]
+    paths += list((ROOT / 'ConsoleGameCore').rglob('*.h')) + list((ROOT / 'ConsoleGameCore').rglob('*.cpp'))
+    paths += list((ROOT / 'GameData/Runtime').rglob('*.h')) + list((ROOT / 'GameData/Runtime').rglob('*.cpp'))
+    paths += list((ROOT / 'GameData/InGameDataSchema').glob('*.yaml'))
+    paths += list((ROOT / 'Tools/GameDataGenerator').glob('*.cs')) + list((ROOT / 'Tools/GameDataGenerator').glob('*.csproj'))
+    if suite in ('SceneUiRuntime', 'InGameData', 'SaveData'):
+        paths += [ROOT / 'TextRPG' / name for name in
+                  ('pch.h', 'pch.cpp', 'Scene/IScene.h')]
+    if suite == 'InGameData':
+        paths += list((ROOT / 'Tests/InGameData/Schema').glob('*.yaml'))
+        paths += list((ROOT / 'TextRPG/CustomInGameData').glob('*.cpp'))
+        paths += list((ROOT / 'TextRPG/CustomInGameData').glob('*.h'))
+    return paths + generated_source_paths(suite, generated_root)
+
+
 def run_directory(scratch_root, label):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", label) or label.endswith("."):
         raise ValueError("label must be a single safe directory name")
@@ -172,6 +197,10 @@ def _without_textart(generated, cache):
     # Per-cache fixture: its lock also covers header publication and compiler reads.
     headers = sorted(p for p in generated.rglob("*.h") if "TextArt" not in p.relative_to(generated).parts)
     fixture = cache / "headers-without-textart"
+    expected = {source.relative_to(generated) for source in headers}
+    for retired in fixture.rglob('*.h'):
+        if retired.relative_to(fixture) not in expected:
+            retired.unlink()
     for source in headers:
         target = fixture / source.relative_to(generated)
         data = source.read_bytes()
@@ -192,11 +221,13 @@ def build_native_test(suite, architecture, configuration, work, *, generated_roo
         raise ValueError("unsupported native test target")
     if configuration not in ("Debug", "Release"):
         raise ValueError("unsupported configuration")
-    generated = (generated_root or ROOT / "GameData/Class").resolve()
+    generated = (generated_root or ROOT / "GameData/Generated/GameData").resolve()
     uses_generated = suite not in ("InputManager", "SaveData", "ConsoleGameCore")
-    if uses_generated and not generated.is_dir():
+    if uses_generated and not generated.is_dir() and generated != (ROOT / "GameData/Generated/GameData").resolve():
         raise ValueError("generated headers directory does not exist")
-    source_set = sorted(p.relative_to(generated).as_posix() for p in generated.rglob("*.h")) if uses_generated else []
+    # 기본 출력의 최초 생성/타입 추가는 같은 obj/PCH 캐시에서 MSBuild 의존 추적이 처리한다.
+    source_set = (sorted(p.relative_to(generated).as_posix() for p in generated.rglob("*.h"))
+                  if uses_generated and generated != (ROOT / "GameData/Generated/GameData").resolve() else [])
     signature = json.dumps([str(generated).lower() if uses_generated else None,
                             source_set, without_textart, analyze])
     if core_dependency_negative:
@@ -227,8 +258,10 @@ def build_native_test(suite, architecture, configuration, work, *, generated_roo
                     raise TimeoutError("native build cache is busy")
                 time.sleep(0.1)
         try:
+            optional_source = generated
             if without_textart:
-                generated = _without_textart(generated, cache)
+                # 같은 MSBuild invocation의 생성 target 뒤에서 소유 fixture를 갱신한다.
+                generated = cache / "headers-without-textart"
             environment = os.environ.copy()
             environment.pop("LIB", None)
             # MSBuild Exec uses cmd.exe, whose inherited PATH can exceed its limit.
@@ -249,9 +282,12 @@ def build_native_test(suite, architecture, configuration, work, *, generated_roo
                        "-p:NativeWithoutTextArt=" + str(without_textart).lower(),
                        "-p:NativeAnalyze=" + str(analyze).lower(),
                        "-p:NativeCoreDependencyNegative=" + str(core_dependency_negative).lower(),
-                       "-p:NativeUseGameDataLibrary=" + str(suite == "SceneUiRuntime" and not without_textart and generated == (ROOT / "GameData/Class").resolve()).lower(),
+                       "-p:NativeUseGameDataLibrary=" + str(suite in ("SceneUiRuntime", "InGameData") and not without_textart and generated == (ROOT / "GameData/Generated/GameData").resolve()).lower(),
                        "-p:OutDir=" + _property(str(cache) + "/"),
                        "-p:IntDir=" + _property(str(intermediate) + "/")]
+            if without_textart:
+                command += ["-p:NativeGeneratedSourceRoot=" + _property(optional_source),
+                            "-p:NativePythonExecutable=" + _property(sys.executable)]
             (work / "build-command.json").write_text(json.dumps(command, indent=2), encoding="utf-8")
             before = _state(intermediate, ".obj")
             pch_before = _state(intermediate, ".pch")

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Common/GameDataEnums.g.h"
+#include "InGameDataAll.h"
 #include "InGameData.h"
 #include "FSaveDataStore.h"
 #include "FGameSession.h"
@@ -18,6 +19,30 @@ namespace TextRPG
 				if (!Bytes.empty()) SecureZeroMemory(Bytes.data(), Bytes.size());
 			}
 		};
+
+		bool CanOverwriteProgressVersion(const std::vector<std::uint8_t>& bytes, std::string& error)
+		{
+			if (bytes.size() < 8) return true;
+			const auto number = [&](std::size_t at)
+			{
+				std::uint32_t value = 0;
+				for (std::size_t i = 0; i < 4; ++i) value |= static_cast<std::uint32_t>(bytes[at + i]) << (8 * i);
+				return value;
+			};
+			const bool isFramed = bytes[0] == 'C' && bytes[1] == 'G' && bytes[2] == 'S' && bytes[3] == 'A';
+			const bool isLegacy = bytes[0] == 'I' && bytes[1] == 'G' && bytes[2] == 'D' && bytes[3] == '1';
+			if ((isFramed || isLegacy) && number(4) > 1)
+			{
+				error = "Refusing to overwrite a newer progress format version.";
+				return false;
+			}
+			if (isFramed && bytes.size() >= 12 && number(8) > GameData::InGameData::kSchemaVersion)
+			{
+				error = "Refusing to overwrite a newer progress schema version.";
+				return false;
+			}
+			return true;
+		}
 
 		void CopySceneError(const std::wstring& sceneError, std::string& error)
 		{
@@ -75,7 +100,7 @@ namespace TextRPG
 			if (!ReadCandidate(candidate, error)) return false;
 			std::unique_ptr<FDataScene> scene;
 			std::wstring sceneError;
-			if (!scenes.PrepareSceneById(candidate->GetSceneId(), ui, {}, candidate.get(), scene, sceneError))
+			if (!scenes.PrepareSceneById(candidate->GetSceneId(), ui, candidate.get(), scene, sceneError))
 			{
 				CopySceneError(sceneError, error);
 				return false;
@@ -104,7 +129,7 @@ namespace TextRPG
 			if (!InGameData::CreateNew(m_store, sceneId, candidate, error)) return EGameStartResult::Failed;
 			std::unique_ptr<FDataScene> scene;
 			std::wstring sceneError;
-			if (!scenes.PrepareSceneById(sceneId, ui, {}, candidate.get(), scene, sceneError) ||
+			if (!scenes.PrepareSceneById(sceneId, ui, candidate.get(), scene, sceneError) ||
 				!scenes.CommitProgress(scene, m_progress, candidate, sceneError))
 			{
 				CopySceneError(sceneError, error);
@@ -135,7 +160,7 @@ namespace TextRPG
 			if (!ReadCandidate(candidate, error)) return false;
 			std::unique_ptr<FDataScene> scene;
 			std::wstring sceneError;
-			if (!scenes.PrepareSceneById(candidate->GetSceneId(), ui, {}, candidate.get(), scene, sceneError) ||
+			if (!scenes.PrepareSceneById(candidate->GetSceneId(), ui, candidate.get(), scene, sceneError) ||
 				!scenes.CommitProgress(scene, m_progress, candidate, sceneError))
 			{
 				CopySceneError(sceneError, error);
@@ -182,8 +207,14 @@ namespace TextRPG
 		{
 			std::filesystem::path directory;
 			if (!ResolveSaveDataDirectory(directory, error)) return false;
+			FSaveDataStore store(directory);
+			SPlainBuffer existing;
+			std::string probeError;
+			// 인증된 미래 버전만 선행 거부한다. 누락/손상 슬롯의 명시 저장 정책은 기존 서비스가 유지한다.
+			// 슬롯 쓰기는 게임 스레드에서 직렬화한다. 이 읽기 선행 검사는 다중 프로세스 CAS가 아니다.
+			if (store.Load(existing.Bytes, probeError) && !CanOverwriteProgressVersion(existing.Bytes, error)) return false;
 			SPlainBuffer plain;
-			return m_progress->Serialize(plain.Bytes, error) && FSaveDataStore(directory).Save(plain.Bytes, error);
+			return m_progress->Serialize(plain.Bytes, error) && store.Save(plain.Bytes, error);
 		}
 		catch (const std::exception& exception)
 		{

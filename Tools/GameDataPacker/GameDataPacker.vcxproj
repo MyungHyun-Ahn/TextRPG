@@ -40,7 +40,7 @@
       <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\GameData\Runtime;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\ConsoleGameCore;$(ProjectDir)..\..\GameData\Runtime;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -60,6 +60,11 @@
 
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\ConsoleGameCore\ConsoleGameCore.vcxproj">
+      <GlobalPropertiesToRemove>OutDir;IntDir;TargetName</GlobalPropertiesToRemove>
+      <Project>{99FC8F07-316A-425E-8325-FCE918FB7E0F}</Project>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
     <ProjectReference Include="..\..\GameData\GameData.vcxproj">
       <GlobalPropertiesToRemove>OutDir;IntDir;TargetName</GlobalPropertiesToRemove>
       <Project>{299512F5-7288-4349-BEE8-11B37D522F66}</Project>

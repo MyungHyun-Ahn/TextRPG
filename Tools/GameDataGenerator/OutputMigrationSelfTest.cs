@@ -5,7 +5,7 @@ internal static class FOutputMigrationSelfTest
         string cppRoot = Path.Combine(testRoot, "Migration", "Generated");
         string yamlRoot = Path.Combine(testRoot, "Migration", "Data");
         FGameDataGeneratorOptions defaults = FGameDataGeneratorOptions.Parse([]);
-        Require(defaults.OutputRoot.EndsWith(Path.Combine("GameData", "Class"), StringComparison.Ordinal), "default C++ root is not GameData/Class");
+        Require(defaults.OutputRoot.EndsWith(Path.Combine("GameData", "Generated", "GameData"), StringComparison.Ordinal), "default C++ root is not GameData/Generated/GameData");
         Require(defaults.YamlOutputRoot.EndsWith(Path.Combine("GameData", "Data"), StringComparison.Ordinal), "default YAML root is not GameData/Data");
         string[] args = ["--input-root", inputRoot, "--output-root", cppRoot, "--yaml-output-root", yamlRoot];
         string inputBefore = Snapshot(inputRoot);

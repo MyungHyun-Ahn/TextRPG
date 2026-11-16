@@ -1,10 +1,13 @@
-#include "GameData/pch.h"
+#include "pch.h"
 #include "CharacterDefinition/CharacterDefinitionData.g.h"
 #include "LevelDefinition/LevelDefinitionData.g.h"
 #include "NewGameProfile/NewGameProfileData.g.h"
 #include "ItemDefinition/ItemDefinitionData.g.h"
 #include "AchievementDefinition/AchievementDefinitionData.g.h"
 #include "GameData/FGameDataStore.h"
+#include "Serialization/FSerializationArchive.h"
+#include "InGameDataAll.h"
+#include "CustomInGameData/FCharacterInGameData.h"
 #include "InGameData.h"
 
 
@@ -52,24 +55,6 @@ namespace
 	// 프로토콜 정수는 모두 little-endian이며 wchar_t/객체 메모리를 덤프하지 않는다.
 	constexpr std::uint32_t kMagic = 0x31444749; // IGD1
 	constexpr std::uint32_t kFormatVersion = 1;
-	class FWriter final
-	{
-	public:
-		void Number(std::uint64_t value, std::size_t width)
-		{
-			if (width > kMaxBytes - m_bytes.size()) throw std::runtime_error("Total progress bytes exceed limit");
-			for (std::size_t i = 0; i < width; ++i) m_bytes.push_back(static_cast<std::uint8_t>(value >> (i * 8)));
-		}
-		void Id(const std::wstring& value)
-		{
-			CheckId(value);
-			Number(value.size(), 4);
-			for (const auto unit : value) Number(static_cast<std::uint16_t>(unit), 2);
-		}
-		std::vector<std::uint8_t> Take() { return std::move(m_bytes); }
-	private:
-		std::vector<std::uint8_t> m_bytes;
-	};
 	class FReader final
 	{
 	public:
@@ -111,47 +96,40 @@ namespace
 		const std::vector<std::uint8_t>& m_bytes;
 		std::size_t m_position{};
 	};
-	void WriteStats(FWriter& writer, const TextRPG::SCharacterStats& value)
-	{
-		writer.Number(value.MaxHp, 4);
-		writer.Number(value.Attack, 4);
-		writer.Number(value.Defense, 4);
-	}
 	TextRPG::SCharacterStats ReadStats(FReader& reader)
 	{
-		return {reader.UInt32(), reader.UInt32(), reader.UInt32()};
-	}
-	void WriteCharacter(FWriter& writer, const TextRPG::SCharacterProgress& value)
-	{
-		writer.Id(value.CharacterId);
-		writer.Number(value.Level, 4);
-		writer.Number(value.Experience, 4);
-		writer.Number(value.CurrentHp, 4);
-		WriteStats(writer, value.StatBonuses);
+		TextRPG::SCharacterStats result;
+		result.MaxHp = reader.UInt32();
+		result.Attack = reader.UInt32();
+		result.Defense = reader.UInt32();
+		return result;
 	}
 	TextRPG::SCharacterProgress ReadCharacter(FReader& reader)
 	{
-		return {reader.Id(), reader.UInt32(), reader.UInt32(), reader.UInt32(), ReadStats(reader)};
-	}
-	void WriteItem(FWriter& writer, const TextRPG::SInventoryItemProgress& value)
-	{
-		writer.Number(value.InstanceId, 8);
-		writer.Id(value.ItemId);
-		writer.Number(value.Count, 4);
+		// 순차 wire 읽기를 생성 타입의 생성자 인수 평가 순서에 맡기지 않는다.
+		TextRPG::SCharacterProgress result;
+		result.CharacterId = reader.Id();
+		result.Level = reader.UInt32();
+		result.Experience = reader.UInt32();
+		result.CurrentHp = reader.UInt32();
+		result.StatBonuses = ReadStats(reader);
+		return result;
 	}
 	TextRPG::SInventoryItemProgress ReadItem(FReader& reader)
 	{
-		return {reader.Number(8), reader.Id(), reader.UInt32()};
-	}
-	void WriteAchievement(FWriter& writer, const TextRPG::SAchievementProgress& value)
-	{
-		writer.Id(value.AchievementId);
-		writer.Number(value.Progress, 4);
-		writer.Number(value.IsCompleted ? 1 : 0, 1);
+		TextRPG::SInventoryItemProgress result;
+		result.InstanceId = reader.Number(8);
+		result.ItemId = reader.Id();
+		result.Count = reader.UInt32();
+		return result;
 	}
 	TextRPG::SAchievementProgress ReadAchievement(FReader& reader)
 	{
-		return {reader.Id(), reader.UInt32(), reader.Boolean()};
+		TextRPG::SAchievementProgress result;
+		result.AchievementId = reader.Id();
+		result.Progress = reader.UInt32();
+		result.IsCompleted = reader.Boolean();
+		return result;
 	}
 	void CheckInventory(const GameData::FGameDataStore& store, const std::vector<TextRPG::SInventoryItemProgress>& inventory)
 	{
@@ -182,6 +160,25 @@ namespace
 
 namespace TextRPG
 {
+	InGameData::InGameData()
+	{
+		m_data.m_character = std::make_shared<FCharacterInGameData>();
+	}
+
+	std::string_view InGameData::GetSerializableTypeName() const noexcept
+	{
+		return GameData::InGameData::SRootInGameData::kTypeName;
+	}
+
+	bool InGameData::SerializeFields(FBinaryWriter& writer, std::string& error) const
+	{
+		return ForwardSerializeFields(m_data, writer, error);
+	}
+
+	bool InGameData::DeserializeFields(FBinaryReader& reader, std::string& error)
+	{
+		return ForwardDeserializeFields(m_data, reader, error);
+	}
 	bool InGameData::CreateNew(const GameData::FGameDataStore& store, const std::wstring& sceneId,
 		std::unique_ptr<InGameData>& output, std::string& error)
 	{
@@ -190,14 +187,14 @@ namespace TextRPG
 			const auto* profile = store.GetDefaultNewGameProfile();
 			if (!profile) throw std::runtime_error("New-game catalog is missing");
 			auto candidate = std::unique_ptr<InGameData>(new InGameData());
-			candidate->m_contentVersion = profile->contentVersion;
-			candidate->m_sceneId = sceneId;
-			candidate->m_character = {profile->characterId, profile->initialLevel, profile->initialExperience, 0,
+			candidate->m_data.m_contentVersion = profile->contentVersion;
+			candidate->m_data.m_sceneId = sceneId;
+			*candidate->m_data.m_character = {profile->characterId, profile->initialLevel, profile->initialExperience, 0,
 				{profile->initialMaxHpBonus, profile->initialAttackBonus, profile->initialDefenseBonus}};
-			candidate->m_gold = profile->initialGold;
+			candidate->m_data.m_gold = profile->initialGold;
 			SCharacterStats stats;
 			if (!candidate->GetStats(store, stats, error)) return false;
-			candidate->m_character.CurrentHp = stats.MaxHp;
+			candidate->m_data.m_character->CurrentHp = stats.MaxHp;
 			if (!candidate->Validate(store, error)) return false;
 			output = std::move(candidate);
 			error.clear();
@@ -209,21 +206,27 @@ namespace TextRPG
 			return false;
 		}
 	}
-	const SCharacterProgress& InGameData::GetCharacter() const noexcept { return m_character; }
-	std::uint32_t InGameData::GetGold() const noexcept { return m_gold; }
-	const std::wstring& InGameData::GetSceneId() const noexcept { return m_sceneId; }
-	const std::vector<SInventoryItemProgress>& InGameData::GetInventory() const noexcept { return m_inventory; }
-	const std::vector<SAchievementProgress>& InGameData::GetAchievements() const noexcept { return m_achievements; }
+	const SCharacterProgress& InGameData::GetCharacter() const noexcept
+	{
+		// 게시된 루트에는 필수 캐릭터가 있다. 불변식 위반을 대체 데이터로 숨기지 않는다.
+		if (!m_data.m_character) std::terminate();
+		return *m_data.m_character;
+	}
+	std::uint32_t InGameData::GetGold() const noexcept { return m_data.m_gold; }
+	const std::wstring& InGameData::GetSceneId() const noexcept { return m_data.m_sceneId; }
+	const std::vector<SInventoryItemProgress>& InGameData::GetInventory() const noexcept { return m_data.m_inventory; }
+	const std::vector<SAchievementProgress>& InGameData::GetAchievements() const noexcept { return m_data.m_achievements; }
 	bool InGameData::GetStats(const GameData::FGameDataStore& store, SCharacterStats& output, std::string& error) const
 	{
-		const auto* level = store.FindLevelDefinition(m_character.Level);
-		if (!level || !store.FindCharacterDefinition(m_character.CharacterId))
+		if (!m_data.m_character) { error = "Character progress is missing"; return false; }
+		const auto* level = store.FindLevelDefinition(m_data.m_character->Level);
+		if (!level || !store.FindCharacterDefinition(m_data.m_character->CharacterId))
 		{
 			error = "CharacterId or Level definition is missing";
 			return false;
 		}
 		constexpr auto maximum = (std::numeric_limits<std::uint32_t>::max)();
-		const auto& bonus = m_character.StatBonuses;
+		const auto& bonus = m_data.m_character->StatBonuses;
 		if (bonus.MaxHp > maximum - level->maxHp || bonus.Attack > maximum - level->attack || bonus.Defense > maximum - level->defense)
 		{
 			error = "Derived stats overflow";
@@ -237,22 +240,12 @@ namespace TextRPG
 	{
 		try
 		{
-			CheckBounds(m_sceneId, m_character, m_inventory, m_achievements);
-			FWriter writer;
-			writer.Number(kMagic, 4);
-			writer.Number(kFormatVersion, 4);
-			writer.Number(m_contentVersion, 4);
-			writer.Id(m_sceneId);
-			WriteCharacter(writer, m_character);
-			writer.Number(m_gold, 4);
-			writer.Number(m_inventory.size(), 4);
-			for (const auto& item : m_inventory) WriteItem(writer, item);
-			writer.Number(m_achievements.size(), 4);
-			for (const auto& achievement : m_achievements) WriteAchievement(writer, achievement);
-			auto candidate = writer.Take();
-			output.swap(candidate);
-			error.clear();
-			return true;
+			if (!m_data.m_character) throw std::runtime_error("Character progress is missing");
+			CheckBounds(m_data.m_sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
+			FSerializableTypeRegistry registry;
+			if (!GameData::InGameData::RegisterInGameDataTypes(registry, error) ||
+				!RegisterCharacterInGameData(registry, error)) return false;
+			return FSerializationArchive::Serialize(*this, output, error, GameData::InGameData::kSchemaVersion, &registry);
 		}
 		catch (const std::exception& exception) { error = exception.what(); return false; }
 	}
@@ -262,21 +255,37 @@ namespace TextRPG
 		try
 		{
 			if (bytes.size() > kMaxBytes) throw std::runtime_error("Total progress bytes exceed limit");
-			FReader reader(bytes);
-			if (reader.UInt32() != kMagic) throw std::runtime_error("Invalid progress magic");
-			if (reader.UInt32() != kFormatVersion) throw std::runtime_error("Unsupported progress format version");
-			auto candidate = std::unique_ptr<InGameData>(new InGameData());
-			candidate->m_contentVersion = reader.UInt32();
-			candidate->m_sceneId = reader.Id();
-			candidate->m_character = ReadCharacter(reader);
-			candidate->m_gold = reader.UInt32();
-			const auto inventoryCount = reader.Count(18);
-			candidate->m_inventory.reserve(inventoryCount);
-			for (std::uint32_t i = 0; i < inventoryCount; ++i) candidate->m_inventory.push_back(ReadItem(reader));
-			const auto achievementCount = reader.Count(11);
-			candidate->m_achievements.reserve(achievementCount);
-			for (std::uint32_t i = 0; i < achievementCount; ++i) candidate->m_achievements.push_back(ReadAchievement(reader));
-			if (!reader.IsDone()) throw std::runtime_error("Trailing progress bytes");
+			const bool isFramed = bytes.size() >= 4 && bytes[0] == 'C' && bytes[1] == 'G' && bytes[2] == 'S' && bytes[3] == 'A';
+			std::unique_ptr<InGameData> candidate;
+			if (isFramed)
+			{
+				candidate.reset(new InGameData());
+				FSerializableTypeRegistry registry;
+				if (!GameData::InGameData::RegisterInGameDataTypes(registry, error) ||
+					!RegisterCharacterInGameData(registry, error)) return false;
+				if (!FSerializationArchive::Deserialize(bytes, *candidate, error,
+					GameData::InGameData::kSchemaVersion, &registry)) return false;
+			}
+			else
+			{
+				// IGD1은 새 후보로만 이관한다. Continue는 슬롯을 다시 쓰지 않는다.
+				FReader reader(bytes);
+				if (reader.UInt32() != kMagic) throw std::runtime_error("Invalid progress magic");
+				if (reader.UInt32() != kFormatVersion) throw std::runtime_error("Unsupported progress format version");
+				candidate.reset(new InGameData());
+				candidate->m_data.m_contentVersion = reader.UInt32();
+				candidate->m_data.m_sceneId = reader.Id();
+				*candidate->m_data.m_character = ReadCharacter(reader);
+				candidate->m_data.m_gold = reader.UInt32();
+				const auto inventoryCount = reader.Count(18);
+				candidate->m_data.m_inventory.reserve(inventoryCount);
+				for (std::uint32_t i = 0; i < inventoryCount; ++i) candidate->m_data.m_inventory.push_back(ReadItem(reader));
+				const auto achievementCount = reader.Count(11);
+				candidate->m_data.m_achievements.reserve(achievementCount);
+				for (std::uint32_t i = 0; i < achievementCount; ++i)
+					candidate->m_data.m_achievements.push_back(ReadAchievement(reader));
+				if (!reader.IsDone()) throw std::runtime_error("Trailing progress bytes");
+			}
 			if (!candidate->Validate(store, error)) return false;
 			output = std::move(candidate);
 			error.clear();
@@ -290,13 +299,13 @@ namespace TextRPG
 		SCharacterStats stats;
 		if (!GetStats(store, stats, error)) return false;
 		if (hp > stats.MaxHp) { error = "CurrentHp exceeds derived MaxHp"; return false; }
-		m_character.CurrentHp = hp;
+		m_data.m_character->CurrentHp = hp;
 		error.clear();
 		return true;
 	}
 	bool InGameData::SetGold(std::uint32_t gold, std::string& error)
 	{
-		m_gold = gold;
+		m_data.m_gold = gold;
 		error.clear();
 		return true;
 	}
@@ -305,10 +314,10 @@ namespace TextRPG
 		try
 		{
 			if (!Validate(store, error)) return false;
-			CheckBounds(sceneId, m_character, m_inventory, m_achievements);
+			CheckBounds(sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
 			if (!store.FindScene(sceneId)) throw std::runtime_error("SceneId definition is missing");
 			auto candidate = sceneId;
-			m_sceneId.swap(candidate);
+			m_data.m_sceneId.swap(candidate);
 			error.clear();
 			return true;
 		}
@@ -320,10 +329,10 @@ namespace TextRPG
 		try
 		{
 			if (!Validate(store, error)) return false;
-			CheckBounds(m_sceneId, m_character, inventory, m_achievements);
+			CheckBounds(m_data.m_sceneId, *m_data.m_character, inventory, m_data.m_achievements);
 			CheckInventory(store, inventory);
 			auto candidate = inventory;
-			m_inventory.swap(candidate);
+			m_data.m_inventory.swap(candidate);
 			error.clear();
 			return true;
 		}
@@ -335,10 +344,10 @@ namespace TextRPG
 		try
 		{
 			if (!Validate(store, error)) return false;
-			CheckBounds(m_sceneId, m_character, m_inventory, achievements);
+			CheckBounds(m_data.m_sceneId, *m_data.m_character, m_data.m_inventory, achievements);
 			CheckAchievements(store, achievements);
 			auto candidate = achievements;
-			m_achievements.swap(candidate);
+			m_data.m_achievements.swap(candidate);
 			error.clear();
 			return true;
 		}
@@ -348,33 +357,34 @@ namespace TextRPG
 	{
 		try
 		{
-			CheckBounds(m_sceneId, m_character, m_inventory, m_achievements);
-			CheckInventory(store, m_inventory);
-			CheckAchievements(store, m_achievements);
+			if (!m_data.m_character) throw std::runtime_error("Character progress is missing");
+			CheckBounds(m_data.m_sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
+			CheckInventory(store, m_data.m_inventory);
+			CheckAchievements(store, m_data.m_achievements);
 		}
 		catch (const std::exception& exception) { error = exception.what(); return false; }
 		const auto* profile = store.GetDefaultNewGameProfile();
-		if (!profile || m_contentVersion != profile->contentVersion)
+		if (!profile || m_data.m_contentVersion != profile->contentVersion)
 		{
 			error = "Unsupported content version or missing catalog";
 			return false;
 		}
-		if (!store.FindScene(m_sceneId))
+		if (!store.FindScene(m_data.m_sceneId))
 		{
 			error = "SceneId definition is missing";
 			return false;
 		}
 		SCharacterStats stats;
 		if (!GetStats(store, stats, error)) return false;
-		const auto* level = store.FindLevelDefinition(m_character.Level);
-		if (!level || m_character.Experience < level->requiredExperience ||
+		const auto* level = store.FindLevelDefinition(m_data.m_character->Level);
+		if (!level || m_data.m_character->Experience < level->requiredExperience ||
 			std::any_of(store.GetLevelDefinitions().begin(), store.GetLevelDefinitions().end(), [&](const auto& next)
-			{ return next.level > m_character.Level && m_character.Experience >= next.requiredExperience; }))
+			{ return next.level > m_data.m_character->Level && m_data.m_character->Experience >= next.requiredExperience; }))
 		{
 			error = "Character level/experience mismatch";
 			return false;
 		}
-		if (m_character.CurrentHp > stats.MaxHp)
+		if (m_data.m_character->CurrentHp > stats.MaxHp)
 		{
 			error = "CurrentHp exceeds derived MaxHp";
 			return false;

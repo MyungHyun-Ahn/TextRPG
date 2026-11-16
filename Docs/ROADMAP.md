@@ -1,5 +1,44 @@
 # TextRPG 작업 로드맵
 
+### 지정 불필요 코드 제거·TextRPG 단일 PCH — 로컬 완료, 2026-11-16
+
+- TextRPG의 `GameDataPch.cpp`와 파일별 보조 PCH 설정을 제거했다. 진행·Custom·저장 CPP는 기본 `pch.h`를 사용한다. `GameDataPch.h` 공유와 GameData 라이브러리·native 생성 fixture의 타깃별 PCH는 유지한다.
+- `ResolveGameDataRoot`·전용 경로 probe·의미 없이 전달되던 `gameDataRoot` 인수, 미도달 구형 도메인 검증 군집과 `MovementValidation.cs`, 미사용 `FGameDataText.QuoteYaml`, `FDataScene::m_options`·`FUiTextArt::m_artId`, `MouseLeftPressed`를 제거했다. 호출부·프로젝트/필터·기존 회귀도 함께 맞췄다.
+- `OptionId`, `SourceRelativePath`, 활성 C#/이름 제한·범용 검증, 실제 YAML emitter, 일반 확장점·double buffer는 이번 제거에 포함하지 않았다. 기존 InGameData 구현·Excel/Data/Asset/생성물·사용자 아트 주석과 Preview를 보존했다.
+- 최종 후보의 네 구성 solution `Build` 및 제품 native 분석은 경고0이다. 네 구성 각각 Input168 checks / Save28·model137·Scene94 checkpoint groups, 실제 앱 일반23·명시 진행5 case를 확인했다. Core-only28 group은 Debug/x64만 새 실행했고 optional TextArt-부재1 group은 Debug 두 아키텍처에서 확인했다. 겹치는 수치는 합산하지 않는다.
+- 생성기 Release self-test/원본 출력 `--check`, 기존 build 계약48·헤더 정책8, Debug/x64 실제 PCH-off include 경계를 확인했다. 원본 CPP·기존 obj/PCH 캐시와 증분 `Build`를 사용했고 Clean/Rebuild·중복 runner·커밋·푸시는 하지 않았다.
+- 독립 source 검토는 app/build/input29파일 및 generator3파일에서 코드 차단 결함0이다. app 검토의 부가 diff 해시 오기는 원래 canonical FAIL을 보존하고 조정자의 원본 해시·coverage 대조 및 별도 identity erratum으로 처리했다. 원래 검토를 PASS로 덮거나 제품 빌드/소스 검토를 반복하지 않았다.
+- 근거: `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/textrpg-retire-d33f723a/`의 `execution-index.json`, `verified-review-composition.json`, `review/app-build-input-identity-erratum.json`, 최종 `final-acceptance.json`. 아래 완료·FAIL/BLOCKED·보조 PCH 구성 등은 각 이전 후보의 이력이다.
+
+### InGameData YAML·ISerializable 코드 자동 생성 — 로컬 구현·실행 근거 확인, 2026-11-16
+
+- [012 설계안](GameDesign/012_InGameDataYaml정의및자동생성설계안.md)에 YAML 구조 정의 → ISerializable 기반 타입/Serialize/Deserialize 자동 생성 → CustomInGameData 상속 확장을 정리했다. YAML은 개발용 정의 입력이며 실제 세이브는 byte 인증 저장 경로를 유지한다.
+- 생성 출력은 GameData/Generated/GameData와 GameData/Generated/InGameData, 수작업 코드는 TextRPG/CustomInGameData다. 기존 정적 Class 전체13파일(소유 마커 포함)은 바이트 그대로 전자로 이동했다. **제품 생성 CPP는 GameData.lib만 컴파일·소유**하며 일반 TextRPG/Packer/native 소비자는 링크한다. optional/altered-generated fixture의 별도 원본 variant는 유지한다. 생성 선행·신규 타입 첫 컴파일/삭제를 실제 Build로 확인했다.
+- 개발자가 선언한 멤버 타입을 따르고 전역 단독 소유 규칙/별도 소유권 설정은 두지 않는다. shared_ptr의 null/반복 참조와 vector/map/unordered_map의 재귀 조합을 구현·검증했다. `InGameData`는 private 생성 `SRootInGameData` 하나를 실제 가변 원본으로 직접 쓰며 하위 타입은 생성 alias다. 별도 DTO/수동 진행 사본은 없다. 실제 shared 캐릭터와 Custom hook/factory를 연결하고 UI에는 const·비소유 조회만 제공한다. Excel 정적 필드 모드의 기본형·wstring·enum 지원과 진행 구조 모드를 구분한다.
+- 구조체는 추가/삭제 가능하지만 이름 변경은 금지한다. 멤버도 추가/삭제 가능하지만 기존 이름·타입은 변경하지 않는다. 구조체명·멤버명으로 식별하고 숫자 식별자나 별도 호환 lock 파일은 두지 않는다. 현재 스키마만으로 과거 변경을 자동 감지한다고 하지 않는다.
+- 현재 writer는 이름/signature/길이 기반 **CGSA wire1**이며 **IGD1 v1은 읽기 전용 이관**이다. Continue는 저장하지 않고 이후 정상 Quit 등 저장에서 새 포맷을 쓴다. since 이전 missing default·추가/삭제 교차 버전·삭제 필드의 shared identity 복원을 검증했다. 인증된 미래 CGSA schema/wire/IGD1 format 슬롯은 Save/NewGame 덮어쓰기를 거부하고 키/암호문·실패 Continue 활성 진행을 보존한다. unknown-field 재저장 보존·프로세스 간 CAS·임의 버전 이관은 보장하지 않는다.
+- [x] SDG-D01: 확정 경로·타입 선택·이름 불변·GameData 컴파일·생성/확장·호환/실패 수용 기준을 설계 문서와 기존 계약에 반영. 문서 완료만 뜻한다.
+- [x] SDG-01: YAML 문법·선언 타입·이름 기반 포맷·누락/버전·기존 파일 이관 계약 구체화.
+- [x] SDG-02: YAML 입력/위치·중복 이름·참조·지원 타입/조합 검증과 입력/기존 출력 보존.
+- [x] SDG-03: ISerializable·생성 타입·양방향 코드·선언 포인터·vector/map/unordered_map의 실제 컴파일/회귀.
+- [x] SDG-04: CustomInGameData 상속 확장·구조체명 기반 중첩 팩토리·사용자 코드/후보 실패 보존.
+- [x] SDG-05: Generated 두 출력/집계·GameData의 생성 CPP 컴파일·VS filters/첫 빌드·Core 단방향 관계·Packer 영향·warm 재사용.
+- [x] SDG-06: 이름 기반 추가/삭제 교차 버전·기존 파일 보존/명시 이관·실제 Continue/정상 Quit·필요 구성 증분 Build/분석 경고0·독립 검토.
+- 순서: SDG-01 → SDG-02/공통 인터페이스 계약 → SDG-03 → SDG-04/05 → SDG-06. 위 체크는 아래 실행 근거를 갖춘 로컬 구현 범위이며 문서만 완료했다는 뜻이 아니다. 원본 Excel/아트·실제 사용자 세이브/키를 보존하며 스테이징·커밋·푸시하지 않는다.
+
+| 현재 검증 범위 | 제공된 최종 실행/검토 근거 |
+|---|---|
+| 네 구성 solution Build + native 분석 | Debug/Release × x64/x86(프로젝트 Win32) 각각 성공·경고0 |
+| Core/model/Scene native | 네 구성 각각 **Core28 / model137 / Scene94 checkpoint groups**. model137은 고유64라벨의 반복 raw checkpoint occurrences로 고유 단위 테스트137개가 아님 |
+| 실제 앱 | 네 구성 각각 일반23 / 명시 진행5 case PASS. missing-package 반복을 포함하므로 고유28개로 합산 금지 |
+| 추가 Frame/화면 | Debug/x64 fixed-update·frame-skip 진행 각5 case; screen-oracle21은 게임 미실행 control로 별도 범위 |
+| 최초 생성/증분 | 기본 정적 출력 누락 optional 실제빌드1 group, 별도 schema missing→add→remove 실제 CPP 컴파일/삭제 및 안정 PCH 보존. warm model compiledObjects0/PCH 재생성0·생성물 bytes/mtime/EXE 불변(runtime 승계, 새 분석 아님) |
+| 독립 source coverage | 원본 검토 + core-v2 변경3/불변4, generator-v2 변경2/불변8, integration-v2 변경6/불변23의 집중 재검토 조합. 전체 신규 전수 재검토/원격 승인 아님 |
+
+- Core 한도는 **bytes1 MiB / depth64 / container4096 / shared-table4096 / object8192 / structural-value visits65536**로 분리한다. 객체 예산에 컨테이너 노드를 모두 합산하지 않는다. 모델 ID256 UTF-16 units·byte 저장 서비스16 MiB·YAML/AST 입력 제한도 별개다. 비순환 완전 객체/DAG만 지원하며 weak_ptr·소유 순환·aliasing/서브객체는 미지원이고 숨은 aliasing 완전 검출을 주장하지 않는다.
+- 증거 루트: `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/ingamedata-41751db1/`. `current-evidence-index.json`, `build/current-final-grid.json`, `app/Debug-x64-final-modes.json`, `native/optional-first-missing-preservation.json`, `build/dynamic-types-first-add-remove.json`, `native/model-warm-final/results.json` 및 `review/*-v2-independent/{coverage,verdict}.json`을 구분한다. 사용법은 [Generator](../Tools/GameDataGenerator/README.md#ingamedata-구조-yaml-모드)·[Core 직렬화](../ConsoleGameCore/Serialization/README.md)·[테스트](../Tools/Tests/README.md) README, 상세 현재 계약은 [009 §9](GameDesign/009_InGameData및저장복원설계안.md)·[012 §11](GameDesign/012_InGameDataYaml정의및자동생성설계안.md#11-구현검증-상태-관리)을 따른다.
+- 현재 source/실행 gate는 확보했으나 최종 보호 입력·소스/산출물 정체성·문서/전체 acceptance 집계는 조정자가 별도로 마감한다. 이 문서가 최종 수용/작업 상태를 대신 게시하지 않는다. publication은 없으며 로컬만 반영했다. 과거 FAIL/BLOCKED·Frame·승인 차단·미구현 콘텐츠 이력은 아래 그대로 보존한다. UI-08/09 전체 콘텐츠·수동 DPI/글꼴 인증·배포 키 정책까지 완료한 것은 아니다. 아래 Class/IGD1 writer/127·93 등은 각 이전 후보 시점의 기록이며 현행 생성 경로/모델 상태보다 우선하지 않는다.
+
 ### 상속형 Frame·세 가지 루프 방식 — 구현·통합·검증 완료
 
 - ConsoleGameCore의 FFrame.Run이 실제 루프·시간 제어를 제공하고, const 사본으로 보관한 초기 Basic/FixedUpdate/FrameSkip 옵션은 런타임에 변경하지 않는다. TextRPG의 FTextRpgFrame이 필요한 훅을 구현하며 Main의 외부 while·프레임 조립 람다와 기존 FFramePipeline을 제거했다.

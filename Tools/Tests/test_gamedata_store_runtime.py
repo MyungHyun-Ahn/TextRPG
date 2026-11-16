@@ -3,7 +3,8 @@ import argparse
 import hashlib
 from pathlib import Path
 import subprocess
-from native_build import ROOT, build_native_test, run_directory, native_report, native_cli
+from native_build import (ROOT, build_native_test, run_directory, native_report, native_cli,
+                          native_contract_sources, generated_source_paths)
 
 
 def main():
@@ -27,14 +28,16 @@ def main():
                     ('FGameDataPackage.cpp', 'FGameDataStore.cpp', 'FGeneratedYaml.cpp')]
         if args.suite == 'SaveData':
             sources = [ROOT / name for name in ('Tests/SaveData/Main.cpp', 'TextRPG/InGameData/FSaveDataStore.cpp',
-                                               'TextRPG/InGameData/FSaveDataStore.h', 'GameData/Runtime/GameData/pch.h',
-                                               'GameData/Runtime/GameData/pch.cpp', 'NativeTests.vcxproj', 'NativeTests.vcxproj.filters',
+                                               'TextRPG/InGameData/FSaveDataStore.h', 'TextRPG/pch.h',
+                                               'TextRPG/pch.cpp', 'NativeTests.vcxproj', 'NativeTests.vcxproj.filters',
                                                'Tools/Tests/native_build.py', 'Tools/Tests/test_gamedata_store_runtime.py')]
         if args.suite == 'InGameData':
             sources = [ROOT / 'Tests/InGameData/Main.cpp', ROOT / 'TextRPG/InGameData/InGameData.cpp',
                        ROOT / 'TextRPG/InGameData/InGameData.h'] + sources[1:]
         sources += [ROOT / 'GameData/Runtime/GameData/GameDataPch.h']
-        hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+        sources += native_contract_sources(args.suite, args.generated_root)
+        hashes = {str(p.relative_to(ROOT) if p.is_relative_to(ROOT) else p): hashlib.sha256(p.read_bytes()).hexdigest()
+                  for p in sorted(set(sources))}
         result['sourceSha256'] = hashes
         with build_native_test(args.suite, args.architecture, args.configuration, work,
                                generated_root=args.generated_root, analyze=not args.no_analyze) as (build, env):
@@ -65,6 +68,8 @@ def main():
         # build lock 해제와 원본 drift 검사도 전체 성공 게시보다 먼저 끝난다.
         drift = [name for name, digest in hashes.items() if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest]
         result['sourceDrift'] = drift
+        result['generatedSourceSha256'] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                                          for path in generated_source_paths(args.suite, args.generated_root)}
         result['passed'] = (result['compileExit'] == 0 and result['warnings'] == 0 and result['runExit'] == 0
                             and result['passCheckpointGroups'] > 0 and not drift)
     return 0 if result['passed'] else 1

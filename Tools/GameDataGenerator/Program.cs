@@ -35,6 +35,8 @@ internal static class Program
 
     private static int Run(FGameDataGeneratorOptions options)
     {
+        if (options.InGameSchema != null)
+            return FInGameSchemaGenerator.Run(options);
         ValidateOutputBoundary(options);
         if (!Directory.Exists(options.InputRoot))
         {
@@ -95,20 +97,39 @@ internal sealed class FGameDataGeneratorOptions
 
     public required bool SelfTest { get; init; }
 
+    public string? InGameSchema { get; init; }
+
+    public string? InGameOutputRoot { get; init; }
+
+    public string InGameNamespace { get; init; } = "GameData::InGameData";
+
     public static FGameDataGeneratorOptions Parse(string[] args)
     {
         string solutionRoot = FindSolutionRoot();
         string inputRoot = Path.Combine(solutionRoot, "GameData", "Excel");
-        string outputRoot = Path.Combine(solutionRoot, "GameData", "Class");
+        string outputRoot = Path.Combine(solutionRoot, "GameData", "Generated", "GameData");
         string yamlOutputRoot = Path.Combine(solutionRoot, "GameData", "Data");
         bool check = false;
         bool validateOnly = false;
         bool selfTest = false;
+        string? inGameSchema = null;
+        string? inGameOutputRoot = null;
+        string? inGameNamespace = null;
 
         for (int index = 0; index < args.Length; ++index)
         {
             switch (args[index])
             {
+                case "--ingame-schema":
+                    inGameSchema = RequirePathArgument(args, ref index, "--ingame-schema");
+                    break;
+                case "--ingame-namespace":
+                    inGameNamespace = RequirePathArgument(args, ref index, "--ingame-namespace");
+                    FInGameSchemaGenerator.ValidateNamespace(inGameNamespace);
+                    break;
+                case "--ingame-output-root":
+                    inGameOutputRoot = RequirePathArgument(args, ref index, "--ingame-output-root");
+                    break;
                 case "--input-root":
                     inputRoot = RequirePathArgument(args, ref index, "--input-root");
                     break;
@@ -141,6 +162,11 @@ internal sealed class FGameDataGeneratorOptions
             throw new InvalidOperationException("--self-test cannot be combined with other arguments.");
         }
 
+        if ((inGameOutputRoot != null || inGameNamespace != null) && inGameSchema == null)
+            throw new InvalidOperationException("--ingame-output-root/--ingame-namespace requires --ingame-schema.");
+        if (inGameSchema != null && args.Any(arg => arg is "--output-root" or "--yaml-output-root"))
+            throw new InvalidOperationException("Static Excel output roots cannot be combined with --ingame-schema.");
+
         return new FGameDataGeneratorOptions
         {
             InputRoot = Path.GetFullPath(inputRoot),
@@ -149,6 +175,10 @@ internal sealed class FGameDataGeneratorOptions
             Check = check,
             ValidateOnly = validateOnly,
             SelfTest = selfTest,
+            InGameSchema = inGameSchema == null ? null : Path.GetFullPath(inGameSchema),
+            InGameNamespace = inGameNamespace ?? "GameData::InGameData",
+            InGameOutputRoot = inGameSchema == null ? null : Path.GetFullPath(inGameOutputRoot ??
+                Path.Combine(solutionRoot, "GameData", "Generated", "InGameData")),
         };
     }
 

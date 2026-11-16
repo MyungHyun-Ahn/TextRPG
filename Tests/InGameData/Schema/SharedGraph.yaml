@@ -1,0 +1,70 @@
+# 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
+schema_version: 2
+types:
+  - name: SFixtureEnums
+    fields:
+      - {name: Kind, type: 'enum<SceneType>', missing: reject, since: 1}
+      - {name: Kinds, type: 'vector<enum<SceneType>>', missing: reject, since: 1}
+      - {name: Ordered, type: 'map<enum<SceneType>, enum<SceneType>>', missing: reject, since: 1}
+      - {name: Hashed, type: 'unordered_map<enum<SceneType>, vector<enum<SceneType>>>', missing: reject, since: 1}
+  - name: SFixtureCharacter
+    fields:
+      - name: CharacterId
+        type: 'string'
+        missing: reject
+        since: 1
+      - name: CurrentHp
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SFixtureGraph
+    fields:
+      - name: Primary
+        type: 'shared_ptr<SFixtureCharacter>'
+        missing: reject
+        since: 1
+      - name: Characters
+        type: 'vector<shared_ptr<SFixtureCharacter>>'
+        missing: reject
+        since: 1
+      - name: Mapped
+        type: 'map<string, shared_ptr<SFixtureCharacter>>'
+        missing: reject
+        since: 1
+      - name: Hashed
+        type: 'unordered_map<uint64, vector<shared_ptr<SFixtureCharacter>>>'
+        missing: reject
+        since: 1
+      - name: Nested
+        type: 'vector<map<string, shared_ptr<SFixtureCharacter>>>'
+        missing: reject
+        since: 1
+      - name: Unique
+        type: 'unique_ptr<SFixtureCharacter>'
+        missing: reject
+        since: 1
+      - name: Values
+        type: 'vector<SFixtureCharacter>'
+        missing: reject
+        since: 1
+  - name: SStableNode
+    fields:
+      - name: Value
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SFixtureEvolution
+    fields:
+      - name: Value
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: KeptObject
+        type: 'shared_ptr<SStableNode>'
+        missing: reject
+        since: 1
+      - name: AddedCounter
+        type: 'uint32'
+        missing: default
+        since: 2
+        default: 0

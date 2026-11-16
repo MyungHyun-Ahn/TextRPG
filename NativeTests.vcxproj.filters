@@ -4,6 +4,10 @@
     <Filter Include="ConsoleGameCore">
       <UniqueIdentifier>{B51D8016-9524-5F3C-80FF-708C286BC133}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tests\InGameData\Schema" />
+    <Filter Include="GameData\Generated" />
+    <Filter Include="GameData\Generated\InGameData" />
+    <Filter Include="TextRPG\CustomInGameData" />
     <Filter Include="GameData">
       <UniqueIdentifier>{67FCECD0-57D5-5C28-B426-830E765F3DBE}</UniqueIdentifier>
     </Filter>
@@ -63,6 +67,8 @@
     <ClCompile Include="Tests\SaveData\Main.cpp">
       <Filter>Tests\SaveData</Filter>
     </ClCompile>
+    <ClCompile Include="TextRPG\CustomInGameData\FCharacterInGameData.cpp"><Filter>TextRPG\CustomInGameData</Filter></ClCompile>
+    <ClCompile Include="GameData\Generated\InGameData\*.g.cpp"><Filter>GameData\Generated\InGameData</Filter></ClCompile>
     <ClCompile Include="TextRPG\pch.cpp">
       <Filter>TextRPG</Filter>
     </ClCompile>
@@ -152,6 +158,7 @@
     <ClInclude Include="TextRPG\UI\InGameData\FInGameStatusUi.h">
       <Filter>TextRPG\UI\InGameData</Filter>
     </ClInclude>
+    <ClInclude Include="TextRPG\CustomInGameData\FCharacterInGameData.h"><Filter>TextRPG\CustomInGameData</Filter></ClInclude>
     <ClInclude Include="TextRPG\pch.h">
       <Filter>TextRPG</Filter>
     </ClInclude>
@@ -162,5 +169,8 @@
       <Filter>TextRPG\UI</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Tests\InGameData\Schema\SharedGraph.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
+    <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
+  </ItemGroup>
 </Project>

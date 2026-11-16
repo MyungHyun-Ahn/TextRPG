@@ -76,6 +76,9 @@
     <ClCompile Include="UI\Common\FUiTextArtView.cpp" />
     <ClCompile Include="UI\FUIManager.cpp" />
     <ClCompile Include="Frame\FFrame.cpp" />
+    <ClCompile Include="Serialization\FSerializationArchive.cpp" />
+    <ClInclude Include="Serialization\ISerializable.h" />
+    <ClInclude Include="Serialization\FSerializationArchive.h" />
     <ClInclude Include="Frame\FrameTypes.h" />
     <ClInclude Include="Frame\IFrameClock.h" />
     <ClInclude Include="Frame\FFrame.h" />

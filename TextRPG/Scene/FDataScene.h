@@ -78,8 +78,7 @@ namespace TextRPG
 	class FDataScene final : public IScene, public IUiInputTarget
 	{
 	public:
-		// SceneManager의 기존 호출 경계만 유지하며 path는 자산 탐색에 사용하지 않는다.
-		FDataScene(const GameData::FGameDataStore& store, FGameUiBridge& uiManager, std::filesystem::path,
+		FDataScene(const GameData::FGameDataStore& store, FGameUiBridge& uiManager,
 			const InGameData* progress = nullptr, bool canContinue = false);
 		~FDataScene() override;
 
@@ -162,7 +161,6 @@ namespace TextRPG
 		void RefreshUiTopLayer();
 		[[nodiscard]] bool IsUiBusy() const noexcept;
 		SSceneAction m_pendingAction;
-		std::vector<SUIOption> m_options;
 
 	};
 }

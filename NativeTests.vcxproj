@@ -27,7 +27,7 @@
     <NativeTestSuite Condition="'$(NativeTestSuite)'==''">SceneUiRuntime</NativeTestSuite>
     <NativeWithoutTextArt Condition="'$(NativeWithoutTextArt)'==''">false</NativeWithoutTextArt>
     <NativeAnalyze Condition="'$(NativeAnalyze)'==''">false</NativeAnalyze>
-    <NativeGeneratedRoot Condition="'$(NativeGeneratedRoot)'==''">$(MSBuildThisFileDirectory)GameData\Class</NativeGeneratedRoot>
+    <NativeGeneratedRoot Condition="'$(NativeGeneratedRoot)'==''">$(MSBuildThisFileDirectory)GameData\Generated\GameData</NativeGeneratedRoot>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -47,10 +47,15 @@
     <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup>
-    <NativeUseGameDataLibrary Condition="'$(NativeUseGameDataLibrary)'=='' and '$(NativeTestSuite)'=='SceneUiRuntime' and '$(NativeWithoutTextArt)'!='true' and '$(NativeGeneratedRoot)'=='$(MSBuildThisFileDirectory)GameData\Class'">true</NativeUseGameDataLibrary>
+    <NativeUseGameDataLibrary Condition="'$(NativeUseGameDataLibrary)'=='' and ('$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData') and '$(NativeWithoutTextArt)'!='true' and '$(NativeGeneratedRoot)'=='$(MSBuildThisFileDirectory)GameData\Generated\GameData'">true</NativeUseGameDataLibrary>
     <NativeUseGameDataLibrary Condition="'$(NativeUseGameDataLibrary)'==''">false</NativeUseGameDataLibrary>
     <!-- /GL로 생성한 Release 데이터 lib 소비 시 /LTCG와 충돌하는 증분 링크만 끈다. obj/PCH 증분 빌드는 유지한다. -->
     <LinkIncremental Condition="'$(Configuration)'=='Release' and '$(NativeUseGameDataLibrary)'=='true'">false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(NativeWithoutTextArt)'=='true'">
+    <NativeGeneratedSourceRoot Condition="'$(NativeGeneratedSourceRoot)'==''">$(MSBuildThisFileDirectory)GameData\Generated\GameData</NativeGeneratedSourceRoot>
+    <NativePythonExecutable Condition="'$(NativePythonExecutable)'==''">python</NativePythonExecutable>
+    <NativeGeneratedRoot>$(OutDir)headers-without-textart</NativeGeneratedRoot>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -61,7 +66,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <ExceptionHandling>Sync</ExceptionHandling>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)TextRPG;$(MSBuildThisFileDirectory)ConsoleGameCore;$(MSBuildThisFileDirectory)GameData\Runtime;$(NativeGeneratedRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)TextRPG;$(MSBuildThisFileDirectory)ConsoleGameCore;$(MSBuildThisFileDirectory)GameData\Runtime;$(NativeGeneratedRoot);$(MSBuildThisFileDirectory)GameData\Generated\InGameData;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)NativeTests.pch</PrecompiledHeaderOutputFile>
@@ -79,10 +84,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(NativeTestSuite)'=='SaveData'">
-    <ClCompile>
-      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
-    </ClCompile>
     <Link>
       <AdditionalDependencies>crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -90,14 +91,11 @@
   <ItemGroup Condition="'$(NativeTestSuite)'=='SaveData' or '$(NativeTestSuite)'=='SceneUiRuntime'">
     <ClCompile Include="TextRPG\InGameData\FSaveDataStore.cpp">
       <ExcludedFromBuild Condition="'$(NativeTestSuite)'=='SaveData'">true</ExcludedFromBuild>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <ClCompile Include="Tests\SaveData\Main.cpp" Condition="'$(NativeTestSuite)'=='SaveData'" />
   </ItemGroup>
-  <ItemGroup Condition="'$(NativeTestSuite)'=='InputManager' or '$(NativeTestSuite)'=='SceneUiRuntime'">
-    <ClCompile Include="TextRPG\pch.cpp" Condition="'$(NativeTestSuite)'=='SceneUiRuntime'">
+  <ItemGroup Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
+    <ClCompile Include="TextRPG\pch.cpp" Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
@@ -130,11 +128,8 @@
       <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
-    <ClCompile Include="TextRPG\InGameData\InGameData.cpp">
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
-    </ClCompile>
+    <ClCompile Include="TextRPG\CustomInGameData\FCharacterInGameData.cpp" />
+    <ClCompile Include="TextRPG\InGameData\InGameData.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(NativeTestSuite)'=='GameDataStore'">
     <ClCompile Include="Tests\SceneUiRuntime\GameDataStore.cpp">
@@ -150,7 +145,7 @@
       <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='GameDataStore' or '$(NativeTestSuite)'=='GameDataStoreExceptions' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
+  <ItemGroup Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='GameDataStore' or '$(NativeTestSuite)'=='GameDataStoreExceptions' or '$(NativeTestSuite)'=='InGameData'">
     <ClCompile Include="GameData\Runtime\GameData\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
@@ -182,10 +177,13 @@
     <ClInclude Include="GameData\Runtime\GameData\pch.h" />
     <ClInclude Include="TextRPG\InGameData\FSaveDataStore.h" />
     <ClInclude Include="TextRPG\InGameData\InGameData.h" />
+    <ClInclude Include="TextRPG\CustomInGameData\FCharacterInGameData.h" />
     <ClInclude Include="TextRPG\InGameData\FGameSession.h" />
     <ClInclude Include="TextRPG\UI\InGameData\FInGameStatusUi.h" />
     <ClInclude Include="TextRPG\pch.h" />
     <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h" />
+    <None Include="Tests\InGameData\Schema\SharedGraph.yaml" />
+    <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore'">
     <ClCompile>
@@ -213,7 +211,7 @@
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)ConsoleGameCore</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore' or '$(NativeTestSuite)'=='InputManager' or '$(NativeTestSuite)'=='SceneUiRuntime'">
+  <ItemGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore' or '$(NativeTestSuite)'=='InputManager' or '$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData'">
     <ProjectReference Include="ConsoleGameCore\ConsoleGameCore.vcxproj">
       <Project>{99FC8F07-316A-425E-8325-FCE918FB7E0F}</Project>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
@@ -229,6 +227,72 @@
       <AdditionalProperties>RunCodeAnalysis=$(NativeAnalyze)</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
+  <!-- 정적 생성 헤더 변형은 제품 lib로 대체하지 않고 같은 생성 CPP를 해당 헤더로 컴파일한다. -->
+  <ItemGroup Condition="('$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData') and '$(NativeUseGameDataLibrary)'!='true'">
+    <ClCompile Include="GameData\Generated\InGameData\*.g.cpp">
+      <InGameDataGenerated>true</InGameDataGenerated>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+  </ItemGroup>
+  <Target Name="GenerateNativeInGameDataBeforeCompile" Condition="'$(DesignTimeBuild)'!='true' and ('$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData') and '$(NativeUseGameDataLibrary)'!='true'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)GameData\GameData.vcxproj" Targets="GenerateInGameDataBeforeCompile" BuildInParallel="false" Properties="Configuration=$(Configuration);Platform=$(Platform)" RemoveProperties="OutDir;IntDir;TargetName;NativeTestSuite;NativeGeneratedRoot;NativeWithoutTextArt;NativeUseGameDataLibrary;NativeCoreDependencyNegative" />
+  </Target>
+  <!-- 같은 생성 target을 공유한다. 생성 실패 시 fixture 갱신과 consumer 실행을 모두 중단한다. -->
+  <Target Name="RefreshNativeOptionalHeaders" BeforeTargets="BeforeClCompile;SelectClCompile" DependsOnTargets="GenerateNativeInGameDataBeforeCompile" Condition="'$(DesignTimeBuild)'!='true' and '$(NativeWithoutTextArt)'=='true'">
+    <Exec Command="&quot;$(NativePythonExecutable)&quot; -c &quot;import sys; sys.path.insert(0, sys.argv[1]); from native_build import _without_textart; from pathlib import Path; _without_textart(Path(sys.argv[2]), Path(sys.argv[3]))&quot; &quot;$(MSBuildThisFileDirectory)Tools\Tests&quot; &quot;$(NativeGeneratedSourceRoot)\.&quot; &quot;$(OutDir).&quot;" />
+  </Target>
+  <Target Name="RefreshNativeInGameDataCompileItems" BeforeTargets="BeforeClCompile;SelectClCompile" DependsOnTargets="GenerateNativeInGameDataBeforeCompile;RefreshNativeOptionalHeaders" Condition="('$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData') and '$(NativeUseGameDataLibrary)'!='true'">
+    <ItemGroup>
+      <ClCompile Remove="@(ClCompile)" Condition="'%(ClCompile.InGameDataGenerated)'=='true'" />
+      <ClCompile Include="GameData\Generated\InGameData\*.g.cpp">
+        <InGameDataGenerated>true</InGameDataGenerated>
+        <PrecompiledHeader>Use</PrecompiledHeader>
+        <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+        <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+      </ClCompile>
+    </ItemGroup>
+  </Target>
+  <Target Name="GenerateInGameDataFixtureBeforeCompile" Condition="'$(DesignTimeBuild)'!='true' and '$(NativeTestSuite)'=='InGameData'">
+    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(MSBuildThisFileDirectory)Tests\InGameData\Schema\CompatibilityV1.yaml&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)Out\Tests\InGameDataSchema\CompatibilityV1&quot; --ingame-namespace TextRPGTest::InGameDataV1 --check">
+      <Output TaskParameter="ExitCode" PropertyName="InGameDataCompatibilityV1CheckExitCode" />
+    </Exec>
+    <Exec Condition="'$(InGameDataCompatibilityV1CheckExitCode)'!='0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(MSBuildThisFileDirectory)Tests\InGameData\Schema\CompatibilityV1.yaml&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)Out\Tests\InGameDataSchema\CompatibilityV1&quot; --ingame-namespace TextRPGTest::InGameDataV1" />
+    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(MSBuildThisFileDirectory)Tests\InGameData\Schema\SharedGraph.yaml&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)Out\Tests\InGameDataSchema\SharedGraph&quot; --ingame-namespace TextRPGTest::InGameData --check">
+      <Output TaskParameter="ExitCode" PropertyName="InGameDataFixtureCheckExitCode" />
+    </Exec>
+    <Exec Condition="'$(InGameDataFixtureCheckExitCode)'!='0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(MSBuildThisFileDirectory)Tests\InGameData\Schema\SharedGraph.yaml&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)Out\Tests\InGameDataSchema\SharedGraph&quot; --ingame-namespace TextRPGTest::InGameData" />
+  </Target>
+  <Target Name="RefreshInGameDataFixtureCompileItems" BeforeTargets="BeforeClCompile;SelectClCompile" DependsOnTargets="GenerateInGameDataFixtureBeforeCompile" Condition="'$(NativeTestSuite)'=='InGameData'">
+    <ItemGroup>
+      <ClCompile Remove="@(ClCompile)" Condition="'%(ClCompile.InGameDataFixture)'=='true'" />
+    </ItemGroup>
+    <!-- 새 항목은 별도 원본 목록의 metadata로 변환하여 ClCompile 자기 참조 batching을 피한다. -->
+    <ItemGroup>
+      <_NativeSchemaSharedGraph Include="Out\Tests\InGameDataSchema\SharedGraph\*.g.cpp" />
+      <_NativeSchemaCompatibilityV1 Include="Out\Tests\InGameDataSchema\CompatibilityV1\*.g.cpp" />
+      <ClCompile Include="@(_NativeSchemaSharedGraph)">
+        <InGameDataFixture>true</InGameDataFixture>
+        <ObjectFileName>$(IntDir)SchemaSharedGraph_%(_NativeSchemaSharedGraph.Filename).obj</ObjectFileName>
+        <PrecompiledHeader>Use</PrecompiledHeader>
+        <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+        <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+      </ClCompile>
+      <ClCompile Include="@(_NativeSchemaCompatibilityV1)">
+        <InGameDataFixture>true</InGameDataFixture>
+        <ObjectFileName>$(IntDir)SchemaCompatibilityV1_%(_NativeSchemaCompatibilityV1.Filename).obj</ObjectFileName>
+        <PrecompiledHeader>Use</PrecompiledHeader>
+        <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+        <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+      </ClCompile>
+    </ItemGroup>
+  </Target>
+  <ItemDefinitionGroup Condition="'$(NativeTestSuite)'=='InGameData'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)Out\Tests\InGameDataSchema;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore' and '$(NativeCoreDependencyNegative)'=='true'">
     <ClCompile>
       <PreprocessorDefinitions>CORE_DEPENDENCY_NEGATIVE;%(PreprocessorDefinitions)</PreprocessorDefinitions>

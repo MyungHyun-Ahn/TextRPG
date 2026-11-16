@@ -7,6 +7,24 @@ ROOT = Path(__file__).resolve().parents[2]
 INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]', re.MULTILINE)
 
 class HeaderIncludePolicyTests(unittest.TestCase):
+    def test_scene_api_has_no_loose_data_root_parameter(self):
+        # 소스 계약만 검사한다. native 컴파일/런타임 검증은 별도 gate다.
+        for relative in ('Scene/FDataScene.h', 'Scene/FDataScene.cpp',
+                         'Scene/FSceneManager.h', 'Scene/FSceneManager.cpp'):
+            with self.subTest(source=relative):
+                text = (ROOT / 'TextRPG' / relative).read_text(encoding='utf-8-sig')
+                self.assertNotIn('std::filesystem::path', text)
+                self.assertNotIn('gameDataRoot', text)
+
+    def test_scene_and_text_art_do_not_retain_write_only_copies(self):
+        for relative, member in (('Scene/FDataScene', 'm_options'), ('UI/Common/FUiTextArt', 'm_artId')):
+            for extension in ('.h', '.cpp'):
+                with self.subTest(source=relative + extension):
+                    text = (ROOT / 'TextRPG' / (relative + extension)).read_text(encoding='utf-8-sig')
+                    self.assertNotRegex(text, rf'\b{member}\b')
+        scene = (ROOT / 'TextRPG/Scene/FDataScene.h').read_text(encoding='utf-8-sig')
+        self.assertIn('std::uint32_t OptionId = 0;', scene)
+
     def test_authored_headers_have_no_includes_except_pch(self):
         paths = [path for folder in ['TextRPG', 'ConsoleGameCore', 'GameData/Runtime', 'Tools', 'Tests']
                  for path in (ROOT / folder).rglob('*')
@@ -21,11 +39,12 @@ class HeaderIncludePolicyTests(unittest.TestCase):
         self.assertEqual([], violations)
 
     def test_generated_headers_have_no_includes(self):
-        paths = [p for p in (ROOT / 'GameData/Class').rglob('*.h')
-                 if p != ROOT / 'GameData/Class/GameDataAll.h']
-        self.assertTrue(paths)
-        self.assertEqual([], [str(path.relative_to(ROOT)) for path in paths
-                              if INCLUDE.search(path.read_text(encoding='utf-8-sig'))])
+        for folder, aggregate in (('GameData', 'GameDataAll.h'), ('InGameData', 'InGameDataAll.h')):
+            paths = [p for p in (ROOT / 'GameData/Generated' / folder).rglob('*.h') if p.name != aggregate]
+            with self.subTest(family=folder):
+                self.assertTrue(paths)
+                self.assertEqual([], [str(path.relative_to(ROOT)) for path in paths
+                                      if INCLUDE.search(path.read_text(encoding='utf-8-sig'))])
 
     def test_key_and_yaml_use_shared_pch_before_concrete_definitions(self):
         for filename in ('FGameDataKey.cpp', 'FGeneratedYaml.cpp'):
@@ -44,8 +63,13 @@ class HeaderIncludePolicyTests(unittest.TestCase):
                     'fstream', 'functional', 'iostream', 'iterator', 'limits', 'map', 'new', 'set',
                     'span', 'stdexcept', 'string', 'string_view', 'system_error', 'tuple',
                     'unordered_map', 'utility', 'vector'}
+        required |= {'bit', 'cmath', 'memory', 'optional', 'type_traits', 'unordered_set'}
         self.assertEqual(required, dependencies)
-        self.assertNotRegex(text, r'#\s*include\s*"')
+        authored = re.findall(r'#\s*include\s*"([^"]+)"', text)
+        self.assertEqual(authored, ['Serialization/ISerializable.h'])
+        self.assertGreater(text.index('#include "Serialization/ISerializable.h"'), text.index('#include <vector>'))
+        self.assertNotIn('FSerializationArchive.h', text)
+        self.assertNotIn('ConsoleGameCorePch.h', text)
         self.assertEqual(set(re.findall(r'^#define\s+(\w+)', text, re.MULTILINE)),
                          {'NOMINMAX', 'WIN32_LEAN_AND_MEAN'})
         self.assertNotRegex(text, r'\b(?:class|struct|namespace)\s+\w+')

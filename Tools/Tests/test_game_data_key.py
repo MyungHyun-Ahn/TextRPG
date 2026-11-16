@@ -55,7 +55,7 @@ def main():
                 if packer:
                     sources.append(root / "GameData/Runtime/GameData/FGameDataPackage.cpp")
                 name = "Packer.exe" if packer else "KeyTest.exe"
-                compiler = f'cl {flags} ' + ("/analyze " if analyze else "") + f'/I"{root / "GameData/Runtime"}" '
+                compiler = f'cl {flags} ' + ("/analyze " if analyze else "") + f'/I"{root / "ConsoleGameCore"}" /I"{root / "GameData/Runtime"}" '
                 compiler += " ".join(f'"{s}"' for s in sources) + f" /Fe:{name} /link crypt32.lib bcrypt.lib"
                 batch = directory / (label + ".cmd")
                 batch.write_text(f'@echo off\ncall "{vcvars}" {arch}\nif errorlevel 1 exit /b %errorlevel%\n{compiler}\nexit /b %errorlevel%\n')
@@ -65,7 +65,7 @@ def main():
         for analyze in (False, True):
             label = "exception-analysis" if analyze else "exception-normal"
             compiler = f'cl {flags} ' + ("/analyze " if analyze else "")
-            compiler += f'/I"{root / "GameData/Runtime"}" /I"{root / "Tools/GameDataPacker"}" '
+            compiler += f'/I"{root / "ConsoleGameCore"}" /I"{root / "GameData/Runtime"}" /I"{root / "Tools/GameDataPacker"}" '
             compiler += f'"{root / "Tests/GameDataKey/PackerExceptions.cpp"}" "{key}" '
             compiler += f'"{root / "GameData/Runtime/GameData/FGameDataPackage.cpp"}" /Fe:ExceptionTest.exe /link crypt32.lib bcrypt.lib'
             batch = directory / (label + ".cmd")

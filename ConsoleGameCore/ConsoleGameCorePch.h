@@ -25,6 +25,13 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <map>
+#include <set>
+#include <span>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
+#include <bit>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -33,6 +40,7 @@
 
 // 안정적인 공통 인터페이스만 포함한다. 구체 클래스와 생성 데이터는 .cpp에서 포함한다.
 #include "Objects/IObject.h"
+#include "Serialization/ISerializable.h"
 
 #include "Input/InputTypes.h"
 #include "Input/IInputSource.h"

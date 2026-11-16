@@ -14,6 +14,7 @@ internal static class FGameDataGeneratorSelfTest
         try
         {
             CreateEnumWorkbook(Path.Combine(validInputRoot, "Enums.xlsx"));
+            FInGameSchemaSelfTest.Run(testRoot, validInputRoot);
             CreateLocalizationWorkbook(Path.Combine(validInputRoot, "Localization.xlsx"), "Client");
             var diagnostics = new FDiagnosticBag();
             IReadOnlyList<FGameDataTable> tables = FWorkbookParser.ParseDirectory(validInputRoot, diagnostics);

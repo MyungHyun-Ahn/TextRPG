@@ -18,8 +18,10 @@
 // 타깃별 PCH는 안정적인 표준/SDK 정의만 공유한다. 주입과 구체 타입은 소비 .cpp에 둔다.
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -31,7 +33,9 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <memory>
 #include <new>
+#include <optional>
 #include <set>
 #include <span>
 #include <stdexcept>
@@ -39,6 +43,10 @@
 #include <string_view>
 #include <system_error>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include "Serialization/ISerializable.h"

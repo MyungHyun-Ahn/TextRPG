@@ -4,7 +4,8 @@ import hashlib
 from pathlib import Path
 import subprocess
 from native_build import (ROOT, build_native_test, run_directory, core_dependency_verdict,
-                          native_report, write_native_report, native_cli)
+                          native_report, write_native_report, native_cli, native_contract_sources,
+                          generated_source_paths)
 
 
 def _core_positive_control(args, work):
@@ -68,7 +69,8 @@ def main():
         originals += list((ROOT / 'Tests/ConsoleGameCore').glob('*.cpp'))
         originals += [ROOT / p for p in ['NativeTests.vcxproj', 'ConsoleGameCore/ConsoleGameCore.vcxproj', 'Tools/Tests/native_build.py']]
         originals += list((ROOT / 'Tests/SceneUiRuntime').glob('*.cpp')) + list((ROOT / 'Tests/SceneUiRuntime').glob('*.h'))
-        fingerprints = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in originals}
+        originals += native_contract_sources('ConsoleGameCore' if args.core_only else 'SceneUiRuntime', args.generated_root)
+        fingerprints = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(set(originals))}
         positive_control = _core_positive_control(args, work) if args.core_dependency_negative else {}
         with build_native_test('ConsoleGameCore' if args.core_only else 'SceneUiRuntime', args.architecture, args.configuration, work,
                                generated_root=args.generated_root, without_textart=args.without_textart,
@@ -121,6 +123,8 @@ def main():
         # __exit__/unlock에 실패한 빌드를 전체 성공으로 게시하지 않는다.
         drift = [path for path, digest in fingerprints.items() if hashlib.sha256(Path(path).read_bytes()).hexdigest() != digest]
         result.update(sourceHashes=fingerprints, sourceDrift=drift)
+        result['generatedSourceSha256'] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                                          for path in generated_source_paths('SceneUiRuntime', args.generated_root)}
         result['passed'] = (negative_passed if args.core_dependency_negative else
                             result['compileExit'] == 0 and result['warnings'] == 0 and result['runExit'] == 0
                             and result['passCheckpointGroups'] > 0) and not drift

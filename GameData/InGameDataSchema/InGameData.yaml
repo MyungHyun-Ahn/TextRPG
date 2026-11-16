@@ -1,0 +1,93 @@
+# 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
+schema_version: 1
+types:
+  - name: SCharacterStats
+    fields:
+      - name: MaxHp
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: Attack
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: Defense
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SCharacterProgress
+    fields:
+      - name: CharacterId
+        type: 'string'
+        missing: reject
+        since: 1
+      - name: Level
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: Experience
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: CurrentHp
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: StatBonuses
+        type: 'SCharacterStats'
+        missing: reject
+        since: 1
+  - name: SInventoryItemProgress
+    fields:
+      - name: InstanceId
+        type: 'uint64'
+        missing: reject
+        since: 1
+      - name: ItemId
+        type: 'string'
+        missing: reject
+        since: 1
+      - name: Count
+        type: 'uint32'
+        missing: reject
+        since: 1
+  - name: SAchievementProgress
+    fields:
+      - name: AchievementId
+        type: 'string'
+        missing: reject
+        since: 1
+      - name: Progress
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: IsCompleted
+        type: 'bool'
+        missing: reject
+        since: 1
+  - name: SRootInGameData
+    fields:
+      - name: m_contentVersion
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: m_sceneId
+        type: 'string'
+        missing: reject
+        since: 1
+      - name: m_character
+        type: 'shared_ptr<SCharacterProgress>'
+        missing: reject
+        since: 1
+      - name: m_gold
+        type: 'uint32'
+        missing: reject
+        since: 1
+      - name: m_inventory
+        type: 'vector<SInventoryItemProgress>'
+        missing: reject
+        since: 1
+      - name: m_achievements
+        type: 'vector<SAchievementProgress>'
+        missing: reject
+        since: 1

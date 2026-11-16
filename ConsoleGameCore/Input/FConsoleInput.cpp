@@ -169,7 +169,6 @@ namespace TextRPG
 			event.HasMousePosition = true;
 			event.MouseX = static_cast<int>(mouse.dwMousePosition.X) - viewportOrigin.X;
 			event.MouseY = static_cast<int>(mouse.dwMousePosition.Y) - viewportOrigin.Y;
-			event.MouseLeftPressed = (mouse.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) != 0;
 			constexpr std::array<DWORD, 5> kButtonMasks = {FROM_LEFT_1ST_BUTTON_PRESSED, RIGHTMOST_BUTTON_PRESSED,
 				FROM_LEFT_2ND_BUTTON_PRESSED, FROM_LEFT_3RD_BUTTON_PRESSED, FROM_LEFT_4TH_BUTTON_PRESSED};
 			m_pendingNext = 0;

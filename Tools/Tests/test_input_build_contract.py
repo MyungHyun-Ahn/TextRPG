@@ -179,7 +179,7 @@ def _native_publication_worker(runner, fault, directory, imported=False, mode='d
                'optional': ['--without-textart'], 'progress': ['--progress-tests'],
                'boundary': ['--boundary-tests', '02'], 'root-entry': ['--root-entry-tests', 'getid'],
                'legacy': ['--yaml-root', str(ROOT / 'GameData/Data/Client')],
-               'generated': ['--generated-root', str(ROOT / 'GameData/Class')], 'analysis': ['--analyze']}
+               'generated': ['--generated-root', str(ROOT / 'GameData/Generated/GameData')], 'analysis': ['--analyze']}
     with mock.patch.object(native_build, 'build_native_test', build), \
          mock.patch('subprocess.run', side_effect=native_control), \
          mock.patch.object(Path, 'open', open_control), mock.patch.object(Path, 'replace', replace_control), \
@@ -209,6 +209,161 @@ def _native_publication_worker(runner, fault, directory, imported=False, mode='d
 
 
 class InputBuildContract(unittest.TestCase):
+    def _optional_ordering_fixture(self, initial, *, custom=False, producer_failure=False):
+        """실제 backend/복사/MSBuild graph를 사용하고 생성기만 사설 결정적 target으로 대체한다."""
+        import native_build
+        from xml.sax.saxutils import escape
+        msbuild, popen = native_build._visual_studio(), subprocess.Popen
+        with tempfile.TemporaryDirectory(prefix='optional-ordering-') as directory:
+            root = Path(directory)
+            default = root / 'GameData/Generated/GameData'
+            source = root / 'altered-generated' if custom else default
+            cache_headers = {'Common/GameDataEnums.g.h': b'// enum fixture\n',
+                             'Scene/SceneData.g.h': b'// scene fixture\n',
+                             'GameDataAll.h': b'// umbrella fixture\n',
+                             'TextArt/TextArtData.g.h': b'// optional fixture\n'}
+            for name, data in cache_headers.items():
+                if initial == 'complete' or (initial == 'partial' and name == 'Scene/SceneData.g.h'):
+                    target = source / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(data)
+            if custom:
+                (source / 'Scene/SceneData.g.h').write_bytes(b'// deliberately altered scene\n')
+            events = root / 'events.txt'
+            producer = '<WriteLinesToFile File="' + escape(str(events)) + '" Lines="producer" />'
+            if producer_failure:
+                producer += '<Error Text="INT001_EXPECTED_PRODUCER_FAILURE" />'
+            else:
+                for name, data in cache_headers.items():
+                    target = default / name
+                    seed = root / 'producer-input' / name
+                    seed.parent.mkdir(parents=True, exist_ok=True)
+                    seed.write_bytes(data)
+                    producer += ('<MakeDir Directories="' + escape(str(target.parent)) + '" />'
+                                 '<Copy SourceFiles="' + escape(str(seed)) + '" DestinationFiles="' +
+                                 escape(str(target)) + '" SkipUnchangedFiles="true" />')
+            consumer = ''.join('<Error Condition="!Exists(\'$(NativeGeneratedRoot)/' + name +
+                               '\')" Text="INT001_INCOMPLETE_OPTIONAL_FIXTURE ' + name + '" />'
+                               for name in cache_headers if not name.startswith('TextArt/'))
+            project = ('<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
+                       '<Import Project="' + escape(str(ROOT / 'NativeTests.vcxproj')) + '" />'
+                       '<Target Name="GenerateNativeInGameDataBeforeCompile">' + producer + '</Target>'
+                       '<Target Name="ContractConsumer" DependsOnTargets="RefreshNativeInGameDataCompileItems">' +
+                       consumer + '<WriteLinesToFile File="' + escape(str(events)) + '" Lines="consumer" />'
+                       '</Target></Project>')
+            (root / 'NativeTests.vcxproj').write_text(project, encoding='utf-8')
+            commands = []
+
+            def graph_only(command, **kwargs):
+                commands.append(command)
+                return popen(['-t:ContractConsumer' if arg == '-t:Build' else arg for arg in command], **kwargs)
+
+            with mock.patch.object(native_build, 'ROOT', root), \
+                 mock.patch.object(native_build, '_visual_studio', return_value=msbuild), \
+                 mock.patch.object(subprocess, 'Popen', side_effect=graph_only):
+                observations = []
+                for index in range(1 if producer_failure else 2):
+                    work = root / ('run' + str(index))
+                    work.mkdir()
+                    with native_build.build_native_test('SceneUiRuntime', 'x64', 'Debug', work,
+                            generated_root=source if custom else None, without_textart=True) as (result, _):
+                        log = (work / 'compile.log').read_text(encoding='utf-8-sig', errors='replace')
+                        print('CONTROL optional-ordering ' + json.dumps({'initial': initial, 'custom': custom,
+                            'producerFailure': producer_failure, 'iteration': index, 'build': result,
+                            'compileLog': log, 'scope': 'real-MSBuild-graph-private-producer-no-native-compilation'}))
+                        if producer_failure:
+                            self.assertEqual(result['compileExit'], 1, log)
+                            self.assertIn('INT001_EXPECTED_PRODUCER_FAILURE', log)
+                            self.assertNotIn('consumer', events.read_text(encoding='utf-8-sig'))
+                            self.assertFalse((Path(result['cacheDirectory']) / 'headers-without-textart').exists())
+                            return
+                        self.assertEqual(result['compileExit'], 0, log)
+                        fixture = Path(result['cacheDirectory']) / 'headers-without-textart'
+                        expected = {name for name in cache_headers if not name.startswith('TextArt/')}
+                        self.assertEqual({p.relative_to(fixture).as_posix() for p in fixture.rglob('*.h')}, expected)
+                        for name in expected:
+                            self.assertEqual((fixture / name).read_bytes(), (source / name).read_bytes())
+                        observations.append({name: ((fixture / name).read_bytes(), (fixture / name).stat().st_mtime_ns)
+                                             for name in expected})
+                self.assertEqual(observations[0], observations[1], 'unchanged bytes must reuse fixture mtimes/cache')
+            self.assertEqual(events.read_text(encoding='utf-8-sig').splitlines(), ['producer', 'consumer'] * 2)
+            self.assertEqual(commands[0], commands[1], 'one stable native command/cache per variant')
+            self.assertTrue((source / 'TextArt/TextArtData.g.h').is_file(), 'never remove original input headers')
+            self.assertTrue((default / 'TextArt/TextArtData.g.h').is_file())
+
+    def test_optional_generated_fixture_complete_positive_control(self):
+        self._optional_ordering_fixture('complete')
+
+    def test_optional_generated_fixture_waits_for_missing_or_partial_producer(self):
+        for initial in ('missing', 'partial'):
+            with self.subTest(initial=initial):
+                self._optional_ordering_fixture(initial)
+
+    def test_optional_generated_fixture_preserves_custom_root_and_producer_failure(self):
+        self._optional_ordering_fixture('complete', custom=True)
+        for initial in ('missing', 'partial'):
+            with self.subTest(initial=initial):
+                self._optional_ordering_fixture(initial, producer_failure=True)
+
+    def test_optional_generated_fixture_rejects_missing_custom_root_before_producer(self):
+        import native_build
+        with tempfile.TemporaryDirectory(prefix='optional-wrong-root-') as directory:
+            root = Path(directory)
+            with mock.patch.object(native_build, 'ROOT', root), \
+                 mock.patch.object(native_build, '_visual_studio') as discovery, \
+                 mock.patch.object(subprocess, 'Popen') as producer:
+                with self.assertRaisesRegex(ValueError, '^generated headers directory does not exist$'):
+                    with native_build.build_native_test('SceneUiRuntime', 'x64', 'Debug', root,
+                            generated_root=root / 'missing-custom-root', without_textart=True):
+                        self.fail('wrong-root invocation must not yield a build result')
+                discovery.assert_not_called()
+                producer.assert_not_called()
+                self.assertFalse((root / 'Out').exists())
+
+    def test_optional_generated_fixture_removes_retired_headers(self):
+        from native_build import _without_textart
+        with tempfile.TemporaryDirectory(prefix='optional-generated-') as directory:
+            root = Path(directory)
+            generated, cache = root / 'generated', root / 'cache'
+            generated.mkdir()
+            (generated / 'Obsolete.g.h').write_text('// fixture removed later\n', encoding='utf-8')
+            optional = generated / 'TextArt'
+            optional.mkdir()
+            (optional / 'TextArtData.g.h').write_text('// deliberately excluded\n', encoding='utf-8')
+            fixture = _without_textart(generated, cache)
+            self.assertTrue((fixture / 'Obsolete.g.h').is_file())
+            self.assertFalse((fixture / 'TextArt/TextArtData.g.h').exists())
+            (generated / 'Obsolete.g.h').unlink()
+            (generated / 'Added.g.h').write_text('// newly generated fixture type\n', encoding='utf-8')
+            self.assertEqual(_without_textart(generated, cache), fixture)
+            self.assertFalse((fixture / 'Obsolete.g.h').exists(), 'same cache must not resurrect removed generated types')
+            self.assertEqual((fixture / 'Added.g.h').read_bytes(), (generated / 'Added.g.h').read_bytes())
+
+    def test_source_fingerprints_cover_generated_and_fixture_inputs(self):
+        import native_build
+        with tempfile.TemporaryDirectory(prefix='native-fingerprint-') as directory:
+            root = Path(directory)
+            files = ('GameData/Generated/GameData/Common/GameDataEnums.g.h',
+                     'GameData/Generated/InGameData/SRoot.g.h', 'GameData/Generated/InGameData/SRoot.g.cpp',
+                     'GameData/InGameDataSchema/InGameData.yaml',
+                     'Tests/InGameData/Schema/SharedGraph.yaml', 'Tests/InGameData/Schema/CompatibilityV1.yaml',
+                     'Out/Tests/InGameDataSchema/SharedGraph/SFixture.g.cpp',
+                     'Out/Tests/InGameDataSchema/CompatibilityV1/SFixture.g.cpp',
+                     'ConsoleGameCore/Serialization/FSerializationArchive.h',
+                     'ConsoleGameCore/Serialization/FSerializationArchive.cpp',
+                     'TextRPG/CustomInGameData/FCharacterInGameData.cpp')
+            for name in files:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('// dependency identity fixture\n', encoding='utf-8')
+            with mock.patch.object(native_build, 'ROOT', root):
+                paths = set(native_build.native_contract_sources('InGameData'))
+                self.assertTrue({root / name for name in files} <= paths)
+                generated = set(native_build.generated_source_paths('InGameData'))
+                self.assertTrue({root / name for name in files if name.endswith('.g.cpp')} <= generated)
+                scene = set(native_build.generated_source_paths('SceneUiRuntime'))
+                self.assertFalse(any(path.is_relative_to(root / 'Out') for path in scene))
+
     def test_native_runners_use_incremental_pch_msbuild(self):
         for filename in ("test_input_manager.py", "test_scene_ui_runtime.py",
                          "test_gamedata_store_runtime.py", "test_gamedata_store_exceptions.py"):
@@ -229,11 +384,14 @@ class InputBuildContract(unittest.TestCase):
         defaults = project.find("m:ItemDefinitionGroup/m:ClCompile", NS)
         self.assertEqual(defaults.findtext("m:PrecompiledHeader", namespaces=NS), "Use")
         self.assertIn("$(IntDir)", defaults.findtext("m:PrecompiledHeaderOutputFile", namespaces=NS))
-        for kind in ("ClCompile", "ClInclude"):
-            items = [x for x in project.findall(f".//m:{kind}", NS) if x.get("Include")]
+        for kind in ("ClCompile", "ClInclude", "None"):
+            items = [x for x in project.findall(f"m:ItemGroup/m:{kind}", NS) if x.get("Include")]
             paths = [x.get("Include") for x in items]
             self.assertEqual(len(paths), len(set(paths)))
-            self.assertTrue(all((ROOT / name.replace("\\", "/")).is_file() for name in paths))
+            from test_game_data_build_contract import expanded_paths
+            resolved = expanded_paths(ROOT, items)
+            self.assertEqual(len(resolved), len(set(resolved)))
+            self.assertTrue(all((ROOT / name.replace("\\", "/")).is_file() for name in resolved))
             linked = [x.get("Include") for x in filters.findall(f".//m:{kind}", NS)]
             self.assertEqual(set(paths), set(linked))
         self.assertEqual(project.findtext("m:PropertyGroup/m:RunCodeAnalysis", namespaces=NS), "$(NativeAnalyze)")
@@ -334,11 +492,11 @@ class InputBuildContract(unittest.TestCase):
 
     def test_store_default_analysis_and_legacy_roots_are_preserved(self):
         code, result, builds, calls = self._store_runner("test_gamedata_store_runtime.py",
-            ("--generated-root", str(ROOT / "GameData/Class"), "--data-root", str(ROOT / "GameData")))
+            ("--generated-root", str(ROOT / "GameData/Generated/GameData"), "--data-root", str(ROOT / "GameData")))
         self.assertEqual(code, 0)
         self.assertEqual(builds[0][:3], ("GameDataStore", "x64", "Debug"))
         self.assertTrue(builds[0][3]["analyze"])
-        self.assertEqual(builds[0][3]["generated_root"], ROOT / "GameData/Class")
+        self.assertEqual(builds[0][3]["generated_root"], ROOT / "GameData/Generated/GameData")
         self.assertEqual(calls[0].args[0][1], str(ROOT / "GameData"))
         self.assertEqual(result["passCheckpointGroups"], 1)
         code, _, builds, _ = self._store_runner("test_gamedata_store_runtime.py", ("--no-analyze", "--configuration", "Release"))
@@ -737,7 +895,8 @@ class InputBuildContract(unittest.TestCase):
                           if any(i.get('Include') == 'GameData\\GameData.vcxproj' for i in g))
         self.assertEqual(data_group.get('Condition'), "'$(NativeUseGameDataLibrary)'=='true'")
         backend = (ROOT / 'Tools/Tests/native_build.py').read_text(encoding='utf-8-sig')
-        self.assertIn('not without_textart and generated == (ROOT / "GameData/Class").resolve()', backend)
+        self.assertIn('not without_textart and generated == (ROOT / "GameData/Generated/GameData").resolve()', backend)
+        self.assertIn('suite in ("SceneUiRuntime", "InGameData")', backend)
         for item in project.findall('.//m:ClCompile', NS):
             name = item.get('Include', '')
             if name.startswith('GameData\\Runtime\\GameData\\') and not name.endswith('pch.cpp'):
@@ -775,6 +934,38 @@ class InputBuildContract(unittest.TestCase):
                 self.assertEqual(entries[0].findtext("m:Filter", namespaces=NS), "Input")
 
 
+    def test_session_checks_newer_progress_before_serialization_and_write(self):
+        source = (ROOT / 'TextRPG/InGameData/FGameSession.cpp').read_text(encoding='utf-8')
+        body = source[source.index('bool FGameSession::Save('):]
+        for marker in ('store.Load(existing.Bytes, probeError)', 'CanOverwriteProgressVersion(existing.Bytes, error)',
+                       'm_progress->Serialize(plain.Bytes, error)', 'store.Save(plain.Bytes, error)'):
+            self.assertIn(marker, body)
+        probe = body.index('store.Load(existing.Bytes, probeError)')
+        veto = body.index('CanOverwriteProgressVersion(existing.Bytes, error)')
+        encode = body.index('m_progress->Serialize(plain.Bytes, error)')
+        publish = body.index('store.Save(plain.Bytes, error)')
+        self.assertLess(probe, veto)
+        self.assertLess(veto, encode)
+        self.assertLess(encode, publish)
+        self.assertIn('Refusing to overwrite a newer progress schema version.', source)
+        self.assertIn('Refusing to overwrite a newer progress format version.', source)
+
+    def test_runtime_uses_one_generated_progress_root(self):
+        """진행 원본은 생성 구조체 하나이며 저장용 수작업 사본을 중복 보관하지 않는다."""
+        header = (ROOT / 'TextRPG/InGameData/InGameData.h').read_text(encoding='utf-8')
+        source = (ROOT / 'TextRPG/InGameData/InGameData.cpp').read_text(encoding='utf-8')
+        for name in ('SCharacterStats', 'SCharacterProgress', 'SInventoryItemProgress', 'SAchievementProgress'):
+            self.assertNotRegex(header, r'\bstruct\s+' + name + r'\b')
+            self.assertIn('using ' + name + ' = GameData::InGameData::' + name + ';', header)
+        self.assertIn('class InGameData final : public ISerializable', header)
+        self.assertEqual(header.count('GameData::InGameData::SRootInGameData m_data;'), 1)
+        self.assertNotRegex(header, r'\bm_(?:contentVersion|sceneId|character|gold|inventory|achievements)\b')
+        self.assertNotRegex(source, r'\bvoid\s+Write(?:Stats|Character|Item|Achievement)\s*\(')
+        self.assertIn('return ForwardSerializeFields(m_data, writer, error);', source)
+        self.assertIn('return ForwardDeserializeFields(m_data, reader, error);', source)
+        self.assertIn('FSerializationArchive::Serialize(*this, output, error,', source)
+        self.assertIn('FSerializationArchive::Deserialize(bytes, *candidate, error,', source)
+
     def test_inherited_frame_keeps_main_as_composition_only(self):
         header = ROOT / 'TextRPG/Frame/FTextRpgFrame.h'
         self.assertTrue(header.is_file(), 'TextRPG must supply a real FFrame subclass')
@@ -810,7 +1001,7 @@ class InputBuildContract(unittest.TestCase):
         self.assertLess(end_body.index('sceneManager.EndFrame(errorMessage)'),
                         end_body.index('session.TakeStartResult(sceneManager, dataError)'),
                         "queued progress is not reported Started or saved before publication")
-        self.assertIn('!sceneManager.LoadStartupScene(uiManager, {}, errorMessage) || !sceneManager.EndFrame(errorMessage)', text)
+        self.assertIn('!sceneManager.LoadStartupScene(uiManager, errorMessage) || !sceneManager.EndFrame(errorMessage)', text)
         quit_branch = input_body[input_body.index('action.Type == ESceneAction::Quit'):input_body.index('action.Type == ESceneAction::StartGame')]
         self.assertLess(quit_branch.index('CancelPendingTransitions()'), quit_branch.index('session.Save(dataError)'))
         self.assertIn('RequestExit();', quit_branch)

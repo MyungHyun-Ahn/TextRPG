@@ -99,7 +99,7 @@ namespace TextRPG
 		}
 		const bool canContinue = session.CanContinue(sceneManager, uiManager, dataError);
 		sceneManager.SetContinueAvailable(canContinue);
-		if (!sceneManager.LoadStartupScene(uiManager, {}, errorMessage) || !sceneManager.EndFrame(errorMessage))
+		if (!sceneManager.LoadStartupScene(uiManager, errorMessage) || !sceneManager.EndFrame(errorMessage))
 		{
 			std::wcerr << errorMessage << L'\n';
 			RequestExit(1);

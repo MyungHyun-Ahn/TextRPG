@@ -36,7 +36,6 @@ namespace TextRPG
 			errorMessage.assign(error.begin(), error.end());
 			return false;
 		}
-		m_artId = artId;
 		SetLines(std::move(lines));
 		errorMessage.clear();
 		return true;

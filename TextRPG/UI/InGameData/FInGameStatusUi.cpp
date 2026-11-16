@@ -3,6 +3,7 @@
 #include "UI/Common/FUiTextArtView.h"
 #include "UI/Common/FUiTextArt.h"
 #include "FInGameStatusUi.h"
+#include "InGameDataAll.h"
 #include "InGameData/InGameData.h"
 #include "CharacterDefinition/CharacterDefinitionData.g.h"
 #include "GameData/FGameDataStore.h"

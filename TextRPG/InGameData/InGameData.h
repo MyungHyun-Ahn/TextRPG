@@ -4,39 +4,13 @@ namespace GameData { class FGameDataStore; }
 
 namespace TextRPG
 {
-	struct SCharacterStats final
-	{
-		std::uint32_t MaxHp{};
-		std::uint32_t Attack{};
-		std::uint32_t Defense{};
-		bool operator==(const SCharacterStats&) const = default;
-	};
-	struct SCharacterProgress final
-	{
-		std::wstring CharacterId;
-		std::uint32_t Level{};
-		std::uint32_t Experience{};
-		std::uint32_t CurrentHp{};
-		SCharacterStats StatBonuses;
-		bool operator==(const SCharacterProgress&) const = default;
-	};
-	struct SInventoryItemProgress final
-	{
-		std::uint64_t InstanceId{};
-		std::wstring ItemId;
-		std::uint32_t Count{};
-		bool operator==(const SInventoryItemProgress&) const = default;
-	};
-	struct SAchievementProgress final
-	{
-		std::wstring AchievementId;
-		std::uint32_t Progress{};
-		bool IsCompleted{};
-		bool operator==(const SAchievementProgress&) const = default;
-	};
+	using SCharacterStats = GameData::InGameData::SCharacterStats;
+	using SCharacterProgress = GameData::InGameData::SCharacterProgress;
+	using SInventoryItemProgress = GameData::InGameData::SInventoryItemProgress;
+	using SAchievementProgress = GameData::InGameData::SAchievementProgress;
 
 	// 진행 값만 소유한다. 정의/Scene/UI/저장 서비스의 수명이나 포인터를 보관하지 않는다.
-	class InGameData final
+	class InGameData final : public ISerializable
 	{
 	public:
 		InGameData(const InGameData&) = delete;
@@ -46,6 +20,7 @@ namespace TextRPG
 		[[nodiscard]] static bool Deserialize(const std::vector<std::uint8_t>& bytes, const GameData::FGameDataStore& store,
 			std::unique_ptr<InGameData>& output, std::string& error);
 		[[nodiscard]] bool Serialize(std::vector<std::uint8_t>& output, std::string& error) const;
+		[[nodiscard]] std::string_view GetSerializableTypeName() const noexcept override;
 		[[nodiscard]] const SCharacterProgress& GetCharacter() const noexcept;
 		[[nodiscard]] std::uint32_t GetGold() const noexcept;
 		[[nodiscard]] const std::wstring& GetSceneId() const noexcept;
@@ -60,14 +35,13 @@ namespace TextRPG
 			const std::vector<SInventoryItemProgress>& inventory, std::string& error);
 		[[nodiscard]] bool SetAchievements(const GameData::FGameDataStore& store,
 			const std::vector<SAchievementProgress>& achievements, std::string& error);
+	protected:
+		[[nodiscard]] bool SerializeFields(FBinaryWriter& writer, std::string& error) const override;
+		[[nodiscard]] bool DeserializeFields(FBinaryReader& reader, std::string& error) override;
 	private:
-		InGameData() = default;
+		InGameData();
 		[[nodiscard]] bool Validate(const GameData::FGameDataStore& store, std::string& error) const;
-		std::uint32_t m_contentVersion{};
-		std::wstring m_sceneId;
-		SCharacterProgress m_character;
-		std::uint32_t m_gold{};
-		std::vector<SInventoryItemProgress> m_inventory;
-		std::vector<SAchievementProgress> m_achievements;
+		// 유일한 변경 가능 원본이다. UI에는 내부 shared_ptr나 변경 가능한 루트를 노출하지 않는다.
+		GameData::InGameData::SRootInGameData m_data;
 	};
 }

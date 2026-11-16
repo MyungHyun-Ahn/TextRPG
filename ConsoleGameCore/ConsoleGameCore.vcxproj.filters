@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
+    <Filter Include="Serialization">
+      <UniqueIdentifier>{B0FD5D40-C76E-49A1-BEBB-28F52640D535}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Frame">
       <UniqueIdentifier>{1C1F4FDE-DD7E-5E53-BE1C-F756368BCC0F}</UniqueIdentifier>
     </Filter>
@@ -132,5 +135,9 @@
       <Filter>UI</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ClCompile Include="Serialization\FSerializationArchive.cpp"><Filter>Serialization</Filter></ClCompile>
+    <ClInclude Include="Serialization\ISerializable.h"><Filter>Serialization</Filter></ClInclude>
+    <ClInclude Include="Serialization\FSerializationArchive.h"><Filter>Serialization</Filter></ClInclude>
+  </ItemGroup>
 </Project>

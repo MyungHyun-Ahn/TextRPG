@@ -3,7 +3,8 @@ import argparse
 import hashlib
 from pathlib import Path
 import subprocess
-from native_build import ROOT, build_native_test, run_directory, native_report, native_cli
+from native_build import (ROOT, build_native_test, run_directory, native_report, native_cli,
+                          native_contract_sources, generated_source_paths)
 
 
 def main():
@@ -23,7 +24,8 @@ def main():
         sources += [ROOT / 'GameData/Runtime/GameData' / name for name in
                     ('FGameDataPackage.cpp', 'FGeneratedYaml.cpp', 'FGameDataStore.cpp')]
         sources += [ROOT / 'GameData/Runtime/GameData/GameDataPch.h']
-        hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+        sources += native_contract_sources('GameDataStoreExceptions')
+        hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(set(sources))}
         report['sourceSha256'] = hashes
         records = report['records']
         for mode in (('normal', 'analyze') if args.mode == 'both' else (args.mode,)):
@@ -54,6 +56,8 @@ def main():
                     (out / (name + '.log')).write_bytes(output)
                     print(name, 'exit=', exit_code, output.decode('utf-8', errors='replace').strip())
         drift = [name for name, digest in hashes.items() if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest]
+        report['generatedSourceSha256'] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                                          for path in generated_source_paths('GameDataStoreExceptions')}
         report.update(passed=bool(records) and all(record['passed'] for record in records) and not drift,
                       recordCount=len(records), sourceDrift=drift)
     return 0 if report['passed'] else 1

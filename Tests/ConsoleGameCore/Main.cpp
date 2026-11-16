@@ -2,6 +2,7 @@
 #ifdef CORE_DEPENDENCY_NEGATIVE
 #include "Common/GameDataEnums.g.h"
 #endif
+#include "Serialization/FSerializationArchive.h"
 #include "Rendering/FFrameBuffer.h"
 #include "Input/FInputManager.h"
 #include "UI/Common/FUiElement.h"
@@ -18,9 +19,824 @@
 #include <cstdlib>
 #include <crtdbg.h>
 
+enum class EFixtureMood : std::int32_t { Calm = 2, Alert = 7 };
+enum class EWidthI8 : std::int8_t { Low = -128, High = 127 };
+enum class EWidthU8 : std::uint8_t { Low = 0, High = 255 };
+enum class EWidthI16 : std::int16_t { Low = -32768, High = 32767 };
+enum class EWidthU16 : std::uint16_t { Low = 0, High = 65535 };
+enum class EWidthU32 : std::uint32_t { Low = 0, High = 0xffffffffU };
+enum class EWidthI64 : std::int64_t { Low = (-9223372036854775807LL - 1), High = 9223372036854775807LL };
+enum class EWidthU64 : std::uint64_t { Low = 0, High = 0xffffffffffffffffULL };
+namespace TextRPG
+{
+	template<class E> struct TFixtureWidthTraits
+	{
+		static bool IsValid(E value) noexcept { return value == E::Low || value == E::High; }
+	};
+	template<> struct TSerializationEnumTraits<EWidthI8> : TFixtureWidthTraits<EWidthI8>
+	{ static constexpr std::string_view kTypeName = "EWidthI8"; };
+	template<> struct TSerializationEnumTraits<EWidthU8> : TFixtureWidthTraits<EWidthU8>
+	{ static constexpr std::string_view kTypeName = "EWidthU8"; };
+	template<> struct TSerializationEnumTraits<EWidthI16> : TFixtureWidthTraits<EWidthI16>
+	{ static constexpr std::string_view kTypeName = "EWidthI16"; };
+	template<> struct TSerializationEnumTraits<EWidthU16> : TFixtureWidthTraits<EWidthU16>
+	{ static constexpr std::string_view kTypeName = "EWidthU16"; };
+	template<> struct TSerializationEnumTraits<EWidthU32> : TFixtureWidthTraits<EWidthU32>
+	{ static constexpr std::string_view kTypeName = "EWidthU32"; };
+	template<> struct TSerializationEnumTraits<EWidthI64> : TFixtureWidthTraits<EWidthI64>
+	{ static constexpr std::string_view kTypeName = "EWidthI64"; };
+	template<> struct TSerializationEnumTraits<EWidthU64> : TFixtureWidthTraits<EWidthU64>
+	{ static constexpr std::string_view kTypeName = "EWidthU64"; };
+	template<> struct TSerializationEnumTraits<EFixtureMood>
+	{
+		static constexpr std::string_view kTypeName = "EFixtureMood";
+		static bool IsValid(EFixtureMood value) noexcept { return value == EFixtureMood::Calm || value == EFixtureMood::Alert; }
+	};
+}
 using namespace TextRPG;
 namespace
 {
+	struct SScalar : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SScalar";
+		std::int32_t Number = -17;
+		std::wstring Text = L"가\U0001F600";
+		mutable int Before = 0;
+		int After = 0;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Number", Number, e) && w.Field("Text", Text, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Number", Number, e) && r.Field("Text", Text, e); }
+		bool OnBeforeSerialize(std::string&) const override { ++Before; return true; }
+		bool OnAfterDeserialize(std::string&) override { ++After; return true; }
+	};
+
+	void TestSerializationScalar()
+	{
+		SScalar source, candidate;
+		candidate.Number = 0; candidate.Text.clear();
+		std::vector<std::uint8_t> bytes = {91};
+		std::string error;
+		const bool written = FSerializationArchive::Serialize(source, bytes, error);
+		std::cout << "TRACE SERIAL-01 written=" << written << " error=" << error << '\n';
+		assert(written);
+		assert(FSerializationArchive::Deserialize(bytes, candidate, error));
+		assert(candidate.Number == -17 && candidate.Text == source.Text && source.Before == 1 && candidate.After == 1);
+		std::cout << "PASS SERIAL-01 scalar fieldwise UTF16 hooks roundtrip\n";
+	}
+
+	struct SNode : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SNode";
+		std::int32_t Value = 0;
+		std::shared_ptr<SNode> Next;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Value", Value, e) && w.Field("Next", Next, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Next", Next, e) && r.Field("Value", Value, e); }
+	};
+	struct SGraph : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SGraph";
+		std::vector<std::map<std::int32_t, std::vector<std::shared_ptr<SNode>>>> Nested;
+		std::unordered_map<std::wstring, std::shared_ptr<SNode>> Lookup;
+		std::vector<SScalar> Values;
+		std::unique_ptr<SNode> Unique;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Nested", Nested, e) && w.Field("Lookup", Lookup, e) && w.Field("Values", Values, e) && w.Field("Unique", Unique, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Unique", Unique, e) && r.Field("Lookup", Lookup, e) && r.Field("Values", Values, e) && r.Field("Nested", Nested, e); }
+	};
+	void TestSerializationGraph()
+	{
+		SGraph source, restored;
+		auto child = std::make_shared<SNode>(); child->Value = 42;
+		auto leaf = std::make_shared<SNode>(); leaf->Value = 73; child->Next = leaf;
+		source.Nested = {{{7, {child, nullptr, leaf, child}}}};
+		source.Lookup.emplace(L"z", leaf); source.Lookup.emplace(L"a", child);
+		source.Values.emplace_back(); source.Unique = std::make_unique<SNode>(); source.Unique->Value = -55;
+		std::vector<std::uint8_t> bytes, again; std::string error;
+		const bool written = FSerializationArchive::Serialize(source, bytes, error);
+		std::cout << "TRACE SERIAL-02 written=" << written << " error=" << error << '\n';
+		assert(written);
+		assert(FSerializationArchive::Deserialize(bytes, restored, error));
+		const auto& entries = restored.Nested.at(0).at(7);
+		assert(entries[0] == entries[3] && !entries[1] && entries[0]->Next == entries[2]);
+		assert(entries[0] == restored.Lookup.at(L"a") && entries[2] == restored.Lookup.at(L"z"));
+		assert(entries[0] != child && restored.Unique->Value == -55 && restored.Values[0].Number == -17);
+		source.Lookup.clear(); source.Lookup.emplace(L"a", child); source.Lookup.emplace(L"z", leaf);
+		assert(FSerializationArchive::Serialize(source, again, error) && bytes == again);
+		std::cout << "PASS SERIAL-02 recursive containers shared identity null forward field order unique values deterministic unordered\n";
+	}
+
+	struct SEnumFields : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SEnumFields";
+		EFixtureMood Mood = EFixtureMood::Alert;
+		std::map<EFixtureMood, std::uint64_t> Counts{{EFixtureMood::Calm, 99}};
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override { return w.Field("Mood", Mood, e) && w.Field("Counts", Counts, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override { return r.Field("Mood", Mood, e) && r.Field("Counts", Counts, e); }
+	};
+	void TestSerializationEnum()
+	{
+		SEnumFields source, restored; std::vector<std::uint8_t> bytes; std::string error;
+		const bool written = FSerializationArchive::Serialize(source, bytes, error);
+		std::cout << "TRACE SERIAL-03 written=" << written << " error=" << error << '\n';
+		assert(written && FSerializationArchive::Deserialize(bytes, restored, error));
+		assert(restored.Mood == EFixtureMood::Alert && restored.Counts.at(EFixtureMood::Calm) == 99);
+		source.Mood = static_cast<EFixtureMood>(3); const auto before = bytes;
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == before);
+		std::cout << "PASS SERIAL-03 explicit enum trait keys invalid enum preserves output\n";
+	}
+
+	struct FCustomNode : SNode
+	{
+		static inline int BeforeHits = 0, AfterHits = 0, DestructorHits = 0;
+		static inline std::function<void()> FactoryCallback, DestructorCallback;
+		static inline bool ThrowAfter = false;
+		~FCustomNode() override { ++DestructorHits; if (DestructorCallback) DestructorCallback(); }
+		bool OnBeforeSerialize(std::string&) const override { ++BeforeHits; return true; }
+		bool OnAfterDeserialize(std::string&) override { ++AfterHits; if (ThrowAfter) throw 61; return true; }
+	};
+	struct FCustomScalar : SScalar
+	{
+		bool OnAfterDeserialize(std::string&) override { ++FCustomNode::AfterHits; return true; }
+	};
+	void TestSerializationRegistry()
+	{
+		FSerializableTypeRegistry registry; std::string error;
+		const bool registered = registry.Register<SNode>(SNode::kTypeName, [] { return std::make_unique<SNode>(); }, error);
+		std::cout << "TRACE SERIAL-04 registered=" << registered << " error=" << error << '\n';
+		assert(registered);
+		assert(!registry.Register<SNode>(SNode::kTypeName, [] { return std::make_unique<SNode>(); }, error));
+		assert(!registry.Replace<SNode>("Other", [] { return std::make_unique<SNode>(); }, error));
+		assert(registry.Replace<SNode>(SNode::kTypeName, []() -> std::unique_ptr<SNode>
+		{ if (FCustomNode::FactoryCallback) FCustomNode::FactoryCallback(); return std::make_unique<FCustomNode>(); }, error));
+		assert(registry.Register<SScalar>(SScalar::kTypeName, []() -> std::unique_ptr<SScalar>
+		{ if (FCustomNode::FactoryCallback) FCustomNode::FactoryCallback(); return std::make_unique<FCustomScalar>(); }, error));
+		SGraph source, candidate;
+		source.Values.emplace_back(); source.Values.emplace_back();
+		auto node = std::make_shared<SNode>(); node->Value = 111;
+		auto separate = std::make_shared<SNode>(); separate->Value = node->Value;
+		source.Nested = {{{5, {node, node, separate}}}}; source.Lookup.emplace(L"item", node);
+		source.Unique = std::make_unique<SNode>(); source.Unique->Value = 222;
+		std::vector<std::uint8_t> bytes;
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		int factoryHits = 0;
+		FCustomNode::FactoryCallback = [&]
+		{
+			++factoryHits;
+			std::string nestedError;
+			assert(!registry.Replace<SNode>(SNode::kTypeName, [] { return std::make_unique<SNode>(); }, nestedError));
+		};
+		FCustomNode::AfterHits = 0;
+		assert(FSerializationArchive::Deserialize(bytes, candidate, error, 1, &registry));
+		assert(factoryHits == 5 && FCustomNode::AfterHits == 5);
+		assert(candidate.Values.size() == 2 && candidate.Values[0].Number == -17 &&
+			!dynamic_cast<FCustomScalar*>(&candidate.Values[0]));
+		assert(candidate.Nested[0].at(5)[2] != candidate.Nested[0].at(5)[0] &&
+			candidate.Nested[0].at(5)[2]->Value == candidate.Nested[0].at(5)[0]->Value);
+		assert(dynamic_cast<FCustomNode*>(candidate.Unique.get()) && dynamic_cast<FCustomNode*>(candidate.Lookup.at(L"item").get()));
+		assert(candidate.Lookup.at(L"item") == candidate.Nested[0].at(5)[1]);
+		FCustomNode::FactoryCallback = {};
+		assert(registry.Replace<SNode>(SNode::kTypeName, []() -> std::unique_ptr<SNode> { return {}; }, error));
+		SGraph rejected;
+		assert(!FSerializationArchive::Deserialize(bytes, rejected, error, 1, &registry));
+		assert(!error.empty());
+		assert(registry.Replace<SNode>(SNode::kTypeName, []() -> std::unique_ptr<SNode> { throw 31; }, error));
+		assert(!FSerializationArchive::Deserialize(bytes, rejected, error, 1, &registry));
+		assert(FSerializationArchive::Deserialize(bytes, rejected, error));
+		std::cout << "PASS SERIAL-04 nested Custom factories hooks exact hits null throw no fallback registry pin recovery\n";
+	}
+
+	struct SOldEvolution : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SEvolution";
+		std::shared_ptr<SNode> RemovedObject, KeptObject;
+		std::shared_ptr<SScalar> Retired;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("RemovedObject", RemovedObject, e) && w.Field("KeptObject", KeptObject, e) && w.Field("Retired", Retired, e); }
+		bool DeserializeFields(FBinaryReader&, std::string&) override { return false; }
+	};
+	struct SNewEvolution : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SEvolution";
+		std::shared_ptr<SNode> KeptObject;
+		std::int32_t Added = 89;
+		int Reads = 0, After = 0;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("KeptObject", KeptObject, e) && w.Field("Added", Added, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ ++Reads; return r.Field("Added", Added, e, r.GetSchemaVersion() >= 2) && r.Field("KeptObject", KeptObject, e); }
+		bool OnAfterDeserialize(std::string&) override { ++After; return true; }
+	};
+	std::uint32_t FixtureU32(const std::vector<std::uint8_t>& bytes, std::size_t offset)
+	{
+		assert(offset + 4 <= bytes.size());
+		return std::uint32_t(bytes[offset]) | (std::uint32_t(bytes[offset + 1]) << 8) |
+			(std::uint32_t(bytes[offset + 2]) << 16) | (std::uint32_t(bytes[offset + 3]) << 24);
+	}
+	void FixtureSetU32(std::vector<std::uint8_t>& bytes, std::size_t offset, std::uint32_t value)
+	{
+		assert(offset + 4 <= bytes.size());
+		for (std::size_t i = 0; i < 4; ++i) bytes[offset + i] = static_cast<std::uint8_t>(value >> (i * 8));
+	}
+	void TestSerializationEvolutionFraming()
+	{
+		SOldEvolution old;
+		old.RemovedObject = std::make_shared<SNode>(); old.RemovedObject->Value = 481;
+		old.KeptObject = old.RemovedObject; old.Retired = std::make_shared<SScalar>();
+		std::vector<std::uint8_t> bytes; std::string error;
+		assert(FSerializationArchive::Serialize(old, bytes, error));
+		FSerializableTypeRegistry registry; int retiredFactories = 0;
+		assert(registry.Register<SScalar>(SScalar::kTypeName, [&] { ++retiredFactories; return std::make_unique<SScalar>(); }, error));
+		SNewEvolution current;
+		assert(FSerializationArchive::Deserialize(bytes, current, error, 2, &registry));
+		assert(current.KeptObject->Value == 481 && current.Added == 89 && current.After == 1 && retiredFactories == 0);
+		// 실제 사용하지 않는 은퇴 타입도 객체/필드 framing 전체를 검사해야 한다.
+		std::size_t table = 16 + FixtureU32(bytes, 12);
+		assert(FixtureU32(bytes, table) == 2); table += 4;
+		table += 4 + FixtureU32(bytes, table);
+		const auto retiredBegin = table + 4;
+		const auto retiredField = retiredBegin + 4 + FixtureU32(bytes, retiredBegin) + 4;
+		const auto signature = retiredField + 4 + FixtureU32(bytes, retiredField);
+		const auto payloadLength = signature + 4 + FixtureU32(bytes, signature);
+		auto malformed = bytes; FixtureSetU32(malformed, payloadLength, 0xffffffffU);
+		SNewEvolution rejected;
+		const bool accepted = FSerializationArchive::Deserialize(malformed, rejected, error, 2, &registry);
+		std::cout << "TRACE SERIAL-05 malformed retired accepted=" << accepted << " reads=" << rejected.Reads << " error=" << error << '\n';
+		assert(!accepted && rejected.Reads == 0 && rejected.After == 0 && retiredFactories == 0 && !error.empty());
+		for (std::size_t cut = 0; cut < bytes.size(); ++cut)
+		{
+			std::vector<std::uint8_t> prefix(bytes.begin(), bytes.begin() + cut);
+			SNewEvolution candidate;
+			assert(!FSerializationArchive::Deserialize(prefix, candidate, error, 2) && !error.empty());
+		}
+		malformed = bytes; malformed.push_back(0);
+		assert(!FSerializationArchive::Deserialize(malformed, rejected, error, 2) && rejected.Reads == 0);
+		malformed = bytes; FixtureSetU32(malformed, 8, 3);
+		assert(!FSerializationArchive::Deserialize(malformed, rejected, error, 2) && rejected.Reads == 0);
+		malformed = bytes; FixtureSetU32(malformed, 8, 2);
+		assert(!FSerializationArchive::Deserialize(malformed, rejected, error, 2)); // 같은 버전의 필수 필드는 누락 불가
+		old.RemovedObject->Next = old.RemovedObject;
+		const auto preserved = bytes;
+		assert(!FSerializationArchive::Serialize(old, bytes, error) && bytes == preserved);
+		old.RemovedObject->Next.reset();
+		std::cout << "PASS SERIAL-05 deletion forward references retired skip bounded full framing prefixes future version default cycle reject\n";
+	}
+
+	struct FBoundaryNode : SNode
+	{
+		std::function<bool(std::string&)> BeforeCallback;
+		bool OnBeforeSerialize(std::string& error) const override { return !BeforeCallback || BeforeCallback(error); }
+	};
+	struct SBoundaryRoot : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SBoundaryRoot";
+		std::shared_ptr<FBoundaryNode> Child;
+		mutable FBinaryWriter* OuterWriter = nullptr;
+		FBinaryReader* OuterReader = nullptr;
+		mutable int Queries = 0;
+		mutable std::function<void()> QueryCallback;
+		std::string_view GetSerializableTypeName() const noexcept override
+		{ ++Queries; if (QueryCallback) QueryCallback(); return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ OuterWriter = &w; return w.Field("Child", Child, e) && w.Field("Other", std::int32_t{6}, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ OuterReader = &r; std::int32_t other = 0; return r.Field("Child", Child, e) && r.Field("Other", other, e); }
+	};
+	void TestSerializationEntryBoundaries()
+	{
+		SBoundaryRoot source; source.Child = std::make_shared<FBoundaryNode>();
+		std::vector<std::uint8_t> bytes{71}; std::string error;
+		int queryReentries = 0;
+		source.QueryCallback = [&]
+		{
+			++queryReentries; std::string nestedError;
+			assert(!FSerializationArchive::Serialize(source, bytes, nestedError) && bytes == std::vector<std::uint8_t>{71});
+		};
+		bool nestedFieldAccepted = false; int fieldReentries = 0;
+		source.Child->BeforeCallback = [&](std::string& e)
+		{ ++fieldReentries; nestedFieldAccepted = source.OuterWriter->Field("Injected", std::int32_t{42}, e); return true; };
+		const bool written = FSerializationArchive::Serialize(source, bytes, error);
+		std::cout << "TRACE SERIAL-06 nested field=" << nestedFieldAccepted << " written=" << written << " error=" << error << '\n';
+		assert(!written && !nestedFieldAccepted && fieldReentries == 1 && queryReentries == 1 && source.Queries == 1);
+		assert(bytes == std::vector<std::uint8_t>{71});
+		source.QueryCallback = {}; source.Child->BeforeCallback = {};
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		FSerializableTypeRegistry registry; SBoundaryRoot candidate; int readReentries = 0;
+		assert(registry.Register<FBoundaryNode>(FBoundaryNode::kTypeName, [&]
+		{
+			++readReentries; std::int32_t ignored = 0; std::string nestedError;
+			assert(!candidate.OuterReader->Field("Other", ignored, nestedError));
+			return std::make_unique<FBoundaryNode>();
+		}, error));
+		assert(!FSerializationArchive::Deserialize(bytes, candidate, error, 1, &registry) && readReentries == 1);
+		assert(FSerializationArchive::Deserialize(bytes, candidate, error));
+		std::cout << "PASS SERIAL-06 first virtual query archive reentry nested field rejection output preservation recovery\n";
+	}
+
+	std::size_t FixtureFieldPayload(const std::vector<std::uint8_t>& bytes, std::string_view wanted)
+	{
+		std::size_t position = 16 + 4 + FixtureU32(bytes, 16);
+		const auto count = FixtureU32(bytes, position); position += 4;
+		for (std::uint32_t i = 0; i < count; ++i)
+		{
+			const auto nameSize = FixtureU32(bytes, position); position += 4;
+			const std::string name(bytes.begin() + position, bytes.begin() + position + nameSize); position += nameSize;
+			position += 4 + FixtureU32(bytes, position);
+			const auto size = FixtureU32(bytes, position); position += 4;
+			if (name == wanted) return position;
+			position += size;
+		}
+		assert(false); return 0;
+	}
+	struct SPrimitives : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SPrimitives";
+		bool Flag = true;
+		std::int32_t I32 = (std::numeric_limits<std::int32_t>::min)();
+		std::uint32_t U32 = (std::numeric_limits<std::uint32_t>::max)();
+		std::int64_t I64 = (std::numeric_limits<std::int64_t>::min)();
+		std::uint64_t U64 = (std::numeric_limits<std::uint64_t>::max)();
+		float F32 = -0.0f;
+		double F64 = -1.25e100;
+		std::wstring Text = L"한글\U0001F600";
+		std::vector<bool> Bits{true, false, true};
+		std::map<std::int32_t, std::int32_t> Map{{-9, 11}, {9, 22}};
+		std::unique_ptr<std::int32_t> Unique = std::make_unique<std::int32_t>(-21);
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{
+			return w.Field("Flag", Flag, e) && w.Field("I32", I32, e) && w.Field("U32", U32, e) && w.Field("I64", I64, e) &&
+				w.Field("U64", U64, e) && w.Field("F32", F32, e) && w.Field("F64", F64, e) && w.Field("Text", Text, e) &&
+				w.Field("Bits", Bits, e) && w.Field("Map", Map, e) && w.Field("Unique", Unique, e);
+		}
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{
+			return r.Field("Flag", Flag, e) && r.Field("I32", I32, e) && r.Field("U32", U32, e) && r.Field("I64", I64, e) &&
+				r.Field("U64", U64, e) && r.Field("F32", F32, e) && r.Field("F64", F64, e) && r.Field("Text", Text, e) &&
+				r.Field("Bits", Bits, e) && r.Field("Map", Map, e) && r.Field("Unique", Unique, e);
+		}
+	};
+	void TestSerializationMalformedPrimitives()
+	{
+		SPrimitives source, candidate; std::string error; std::vector<std::uint8_t> bytes;
+		assert(FSerializationArchive::Serialize(source, bytes, error) && FSerializationArchive::Deserialize(bytes, candidate, error));
+		assert(candidate.Flag && candidate.I32 == source.I32 && candidate.U32 == source.U32 && candidate.I64 == source.I64 && candidate.U64 == source.U64);
+		assert(std::signbit(candidate.F32) && candidate.F64 == source.F64 && candidate.Text == source.Text && candidate.Bits == source.Bits);
+		assert(candidate.Map == source.Map && *candidate.Unique == -21);
+		auto broken = bytes; FixtureSetU32(broken, 12, 0xffffffffU);
+		bool accepted = FSerializationArchive::Deserialize(broken, candidate, error);
+		std::cout << "TRACE SERIAL-07 oversized blob accepted=" << accepted << " error=" << error << '\n';
+		assert(!accepted && !error.empty());
+		auto reject = [&](const std::vector<std::uint8_t>& packet)
+		{ error.clear(); assert(!FSerializationArchive::Deserialize(packet, candidate, error) && !error.empty()); };
+		broken = bytes; broken[FixtureFieldPayload(bytes, "Flag")] = 2; reject(broken);
+		broken = bytes; FixtureSetU32(broken, FixtureFieldPayload(bytes, "F32"), 0x7f800000U); reject(broken);
+		broken = bytes; const auto text = FixtureFieldPayload(bytes, "Text"); broken[text + 4] = 0; broken[text + 5] = 0xdc; reject(broken);
+		broken = bytes; FixtureSetU32(broken, FixtureFieldPayload(bytes, "Bits"), 0xffffffffU); reject(broken);
+		broken = bytes; const auto map = FixtureFieldPayload(bytes, "Map");
+		assert(FixtureU32(bytes, map) == 2);
+		for (std::size_t i = 0; i < 4; ++i) broken[map + 24 + i] = broken[map + 8 + i];
+		reject(broken);
+		broken = bytes; broken[FixtureFieldPayload(bytes, "Unique")] = 3; reject(broken);
+		const auto before = bytes;
+		source.Text = std::wstring(1, static_cast<wchar_t>(0xd800));
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == before);
+		source.Text.assign(32769, L'a'); assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == before);
+		source.Text.clear(); source.F64 = std::numeric_limits<double>::infinity();
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == before);
+		source.F64 = 0; source.Bits.assign(4097, false); assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == before);
+		std::vector<std::uint8_t> huge(1024 * 1024 + 1); reject(huge);
+		std::cout << "PASS SERIAL-07 primitive widths limits bool floats UTF16 duplicate keys overflow and output preservation\n";
+	}
+
+	void TestSerializationCleanupAndGraphLimits()
+	{
+		SGraph source; source.Unique = std::make_unique<SNode>();
+		std::string error; std::vector<std::uint8_t> bytes;
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		FSerializableTypeRegistry registry;
+		assert(registry.Register<SNode>(SNode::kTypeName, []() -> std::unique_ptr<SNode> { return std::make_unique<FCustomNode>(); }, error));
+		int destructorReentries = 0;
+		FCustomNode::DestructorCallback = [&]
+		{
+			++destructorReentries; std::string nestedError; std::vector<std::uint8_t> untouched{19};
+			assert(!FSerializationArchive::Serialize(source, untouched, nestedError) && untouched == std::vector<std::uint8_t>{19});
+			assert(!registry.Replace<SNode>(SNode::kTypeName, [] { return std::make_unique<SNode>(); }, nestedError));
+		};
+		FCustomNode::ThrowAfter = true;
+		SGraph failed;
+		assert(!FSerializationArchive::Deserialize(bytes, failed, error, 1, &registry) && destructorReentries == 1 && !failed.Unique);
+		FCustomNode::ThrowAfter = false; FCustomNode::DestructorCallback = {};
+		assert(FSerializationArchive::Deserialize(bytes, failed, error, 1, &registry));
+		const auto preserved = bytes;
+		auto chain = std::make_shared<SNode>(); auto tail = chain;
+		for (int i = 0; i < 70; ++i) { tail->Next = std::make_shared<SNode>(); tail = tail->Next; }
+		source.Lookup.emplace(L"deep", chain);
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved);
+		source.Lookup.clear();
+		// 동일 제어 블록의 다른 완전 객체 주소는 별칭으로 거부한다.
+		struct SPair { SNode First, Second; };
+		auto pair = std::make_shared<SPair>();
+		source.Lookup.emplace(L"first", std::shared_ptr<SNode>(pair, &pair->First));
+		source.Lookup.emplace(L"second", std::shared_ptr<SNode>(pair, &pair->Second));
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved);
+		source.Lookup.clear();
+		source.Lookup.emplace(L"mixed", std::shared_ptr<SNode>(source.Unique.get(), [](SNode*) {}));
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved);
+		source.Lookup.clear();
+		SNode external;
+		source.Lookup.emplace(L"ownerless", std::shared_ptr<SNode>(std::shared_ptr<SNode>{}, &external));
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved);
+		source.Lookup.clear();
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		SEnumFields enumeration;
+		assert(FSerializationArchive::Serialize(enumeration, bytes, error));
+		FixtureSetU32(bytes, FixtureFieldPayload(bytes, "Mood"), 3);
+		assert(!FSerializationArchive::Deserialize(bytes, enumeration, error));
+		std::cout << "PASS SERIAL-08 failed Custom destructor exact reentry hit guard registry lifetime depth alias witness mixed ownership enum wire reject\n";
+	}
+
+	struct SStringList : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SStringList";
+		std::vector<std::shared_ptr<SScalar>> Items;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override { return w.Field("Items", Items, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override { return r.Field("Items", Items, e); }
+	};
+	void TestSerializationAggregateBudget()
+	{
+		SStringList source;
+		for (int i = 0; i < 20; ++i)
+		{
+			auto item = std::make_shared<SScalar>(); item->Text.assign(32768, L'a'); source.Items.push_back(std::move(item));
+		}
+		std::vector<std::uint8_t> bytes{56}; std::string error;
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == std::vector<std::uint8_t>{56});
+		int visited = 0; for (const auto& item : source.Items) visited += item->Before;
+		std::cout << "TRACE SERIAL-09 oversized shared table visited=" << visited << " error=" << error << '\n';
+		assert(visited > 0 && visited < 20 && !error.empty());
+		source.Items.resize(2);
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		SStringList restored; assert(FSerializationArchive::Deserialize(bytes, restored, error) && restored.Items.size() == 2);
+		std::cout << "PASS SERIAL-09 aggregate shared byte budget stops before staging entire oversized graph and recovers\n";
+	}
+
+	struct SForwardData : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SForwardData";
+		std::int32_t Value = 37;
+		mutable int Before = 0;
+		int After = 0;
+		mutable std::function<bool(FBinaryWriter&, std::string&)> WriteCallback;
+		std::function<bool(FBinaryReader&, std::string&)> ReadCallback;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& writer, std::string& error) const override
+		{
+			if (WriteCallback && !WriteCallback(writer, error)) return false;
+			return writer.Field("Value", Value, error);
+		}
+		bool DeserializeFields(FBinaryReader& reader, std::string& error) override
+		{
+			if (ReadCallback && !ReadCallback(reader, error)) return false;
+			return reader.Field("Value", Value, error);
+		}
+		bool OnBeforeSerialize(std::string&) const override { ++Before; return true; }
+		bool OnAfterDeserialize(std::string&) override { ++After; return true; }
+	};
+	class FForwardWrapper : public ISerializable
+	{
+	public:
+		static constexpr std::string_view kTypeName = SForwardData::kTypeName;
+		mutable int Before = 0;
+		int After = 0;
+		bool ForwardAfterHook = false;
+		mutable bool IgnoreForwardFailure = false;
+		SForwardData& Data() { return m_data; }
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		static bool ProbeWrite(const ISerializable& data, FBinaryWriter& writer, std::string& error)
+		{ return ForwardSerializeFields(data, writer, error); }
+		static bool ProbeRead(ISerializable& data, FBinaryReader& reader, std::string& error)
+		{ return ForwardDeserializeFields(data, reader, error); }
+	protected:
+		bool SerializeFields(FBinaryWriter& writer, std::string& error) const override
+		{
+			const bool result = ForwardSerializeFields(m_data, writer, error);
+			return IgnoreForwardFailure || result;
+		}
+		bool DeserializeFields(FBinaryReader& reader, std::string& error) override
+		{
+			m_reader = &reader;
+			const bool result = ForwardDeserializeFields(m_data, reader, error);
+			return IgnoreForwardFailure || result;
+		}
+		bool OnBeforeSerialize(std::string&) const override { ++Before; return true; }
+		bool OnAfterDeserialize(std::string& error) override
+		{
+			++After;
+			if (ForwardAfterHook)
+			{
+				assert(!ForwardDeserializeFields(m_data, *m_reader, error));
+				return true; // 잘못된 전달을 무시해도 reader 실패가 중독된 상태여야 한다.
+			}
+			return true;
+		}
+	private:
+		SForwardData m_data;
+		FBinaryReader* m_reader = nullptr;
+	};
+	void TestSerializationCompositionForwarding()
+	{
+		FForwardWrapper wrapper, restored;
+		std::vector<std::uint8_t> wrapped{71}, direct;
+		std::string error;
+		assert(FSerializationArchive::Serialize(wrapper.Data(), direct, error));
+		const bool written = FSerializationArchive::Serialize(wrapper, wrapped, error);
+		std::cout << "TRACE SERIAL-10 wrapper forwarding=" << written << " error=" << error << '\n';
+		assert(written && wrapped == direct && wrapper.Before == 1 && wrapper.Data().Before == 1);
+		restored.Data().Value = -1;
+		assert(FSerializationArchive::Deserialize(wrapped, restored, error));
+		assert(restored.Data().Value == 37 && restored.After == 1 && restored.Data().After == 0);
+		assert(FSerializationArchive::Serialize(restored, wrapped, error) && wrapped == direct);
+		// 완전 객체 NVI에 같은 writer/reader를 다시 전달하는 경로는 여전히 거부한다.
+		wrapper.Data().WriteCallback = [&](FBinaryWriter& writer, std::string& e)
+		{ assert(!wrapper.Data().Serialize(writer, e)); return true; };
+		assert(!FSerializationArchive::Serialize(wrapper, wrapped, error) && wrapped == direct);
+		wrapper.Data().WriteCallback = {};
+		restored.Data().ReadCallback = [&](FBinaryReader& reader, std::string& e)
+		{ assert(!restored.Data().Deserialize(reader, e)); return true; };
+		assert(!FSerializationArchive::Deserialize(direct, restored, error));
+		restored.Data().ReadCallback = {};
+		restored.ForwardAfterHook = true;
+		assert(!FSerializationArchive::Deserialize(direct, restored, error));
+		restored.ForwardAfterHook = false;
+		wrapper.IgnoreForwardFailure = true;
+		wrapper.Data().WriteCallback = [](FBinaryWriter&, std::string&) -> bool { throw 83; };
+		assert(!FSerializationArchive::Serialize(wrapper, wrapped, error) && wrapped == direct);
+		wrapper.Data().WriteCallback = {}; wrapper.IgnoreForwardFailure = false;
+		wrapper.Data().WriteCallback = [&](FBinaryWriter& writer, std::string& e)
+		{ assert(!FForwardWrapper::ProbeWrite(wrapper.Data(), writer, e)); return true; };
+		assert(!FSerializationArchive::Serialize(wrapper, wrapped, error) && wrapped == direct);
+		wrapper.Data().WriteCallback = {};
+		SBoundaryRoot boundary; boundary.Child = std::make_shared<FBoundaryNode>();
+		boundary.Child->BeforeCallback = [&](std::string& e)
+		{ assert(!FForwardWrapper::ProbeWrite(wrapper.Data(), *boundary.OuterWriter, e)); return true; };
+		assert(!FSerializationArchive::Serialize(boundary, wrapped, error) && wrapped == direct);
+		restored.IgnoreForwardFailure = true;
+		restored.Data().ReadCallback = [](FBinaryReader&, std::string&) -> bool { throw 84; };
+		assert(!FSerializationArchive::Deserialize(direct, restored, error));
+		restored.Data().ReadCallback = {}; restored.IgnoreForwardFailure = false;
+		restored.Data().ReadCallback = [&](FBinaryReader& reader, std::string& e)
+		{ assert(!FForwardWrapper::ProbeRead(restored.Data(), reader, e)); return true; };
+		assert(!FSerializationArchive::Deserialize(direct, restored, error));
+		restored.Data().ReadCallback = {};
+		assert(FSerializationArchive::Deserialize(direct, restored, error));
+		std::cout << "PASS SERIAL-10 composition identical frame outer hooks once delegates no hooks phase rejection NVI rejection exception poison recovery\n";
+	}
+
+	struct SBudgetOrder : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SBudgetOrder";
+		SScalar Scalar;
+		std::vector<std::vector<std::int32_t>> Empty;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Scalar", Scalar, e) && w.Field("Empty", Empty, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Empty", Empty, e) && r.Field("Scalar", Scalar, e); }
+	};
+	struct SThreeInts : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SThreeInts";
+		std::int32_t A = 1, B = 2, C = 3;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("A", A, e) && w.Field("B", B, e) && w.Field("C", C, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("C", C, e) && r.Field("B", B, e) && r.Field("A", A, e); }
+	};
+	struct SObjectBudget : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SObjectBudget";
+		SScalar Prefix;
+		std::vector<std::vector<SThreeInts>> Objects;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Prefix", Prefix, e) && w.Field("Objects", Objects, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Objects", Objects, e) && r.Field("Prefix", Prefix, e); }
+	};
+	struct SStructuralBudget : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SStructuralBudget";
+		std::vector<std::vector<std::int32_t>> Values;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override { return w.Field("Values", Values, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override { return r.Field("Values", Values, e); }
+	};
+	void TestSerializationOrderIndependentBudgets()
+	{
+		SBudgetOrder source, restored; source.Empty.resize(4096);
+		std::string error; std::vector<std::uint8_t> bytes;
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		const bool read = FSerializationArchive::Deserialize(bytes, restored, error);
+		std::cout << "TRACE SERIAL-11 reversed field budget read=" << read << " error=" << error << '\n';
+		SObjectBudget objects, restoredObjects; objects.Objects.resize(1); objects.Objects[0].resize(4096);
+		const bool objectsWritten = FSerializationArchive::Serialize(objects, bytes, error);
+		std::cout << "TRACE SERIAL-11 4096 value objects written=" << objectsWritten << " error=" << error << '\n';
+		assert(read && restored.Empty.size() == 4096 && restored.Scalar.Number == -17);
+		assert(objectsWritten);
+		assert(FSerializationArchive::Deserialize(bytes, restoredObjects, error));
+		assert(restoredObjects.Objects.size() == 1 && restoredObjects.Objects[0].size() == 4096 &&
+			restoredObjects.Objects[0].back().C == 3 && restoredObjects.Prefix.Number == -17);
+		const auto preserved = bytes;
+		source.Empty.resize(4097);
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved);
+		objects.Objects.resize(3, objects.Objects[0]);
+		assert(!FSerializationArchive::Serialize(objects, bytes, error) && bytes == preserved);
+		assert(error == "object depth or count limit");
+		SStructuralBudget structural; structural.Values.resize(16, std::vector<std::int32_t>(4096));
+		assert(!FSerializationArchive::Serialize(structural, bytes, error) && bytes == preserved);
+		assert(error == "value depth or count limit");
+		std::cout << "PASS SERIAL-11 independent budgets reversed reads 4096 value objects container object structural bounds\n";
+	}
+
+	struct SReentryProbe : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SReentryProbe";
+		std::int32_t Value = 27;
+		std::function<void()> Query, Before, After;
+		std::string_view GetSerializableTypeName() const noexcept override { if (Query) Query(); return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override { return w.Field("Value", Value, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override { return r.Field("Value", Value, e); }
+		bool OnBeforeSerialize(std::string&) const override { if (Before) Before(); return true; }
+		bool OnAfterDeserialize(std::string&) override { if (After) After(); return true; }
+	};
+	struct FReentryScalar : SScalar
+	{
+		static inline std::function<void()> Cleanup;
+		~FReentryScalar() override { if (Cleanup) Cleanup(); }
+	};
+	struct SDiscardShared : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SDiscardShared";
+		std::shared_ptr<SNode> Child;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override { return w.Field("Child", Child, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override { return r.Field("Child", Child, e); }
+		bool OnAfterDeserialize(std::string&) override { Child.reset(); return true; }
+	};
+	void TestSerializationArchivePoison()
+	{
+		SScalar nestedSource, nestedCandidate;
+		std::vector<std::uint8_t> nestedBytes; std::string error;
+		assert(FSerializationArchive::Serialize(nestedSource, nestedBytes, error));
+		int cases = 0, correct = 0;
+		for (const bool nestedRead : {false, true})
+		{
+			int hits = 0;
+			auto reenter = [&]
+			{
+				++hits; std::string distinctError; std::vector<std::uint8_t> untouched{83};
+				nestedCandidate.Number = -983;
+				const bool accepted = nestedRead ? FSerializationArchive::Deserialize(nestedBytes, nestedCandidate, distinctError) :
+					FSerializationArchive::Serialize(nestedSource, untouched, distinctError);
+				assert(!accepted && distinctError == "reentrant archive call" &&
+					untouched == std::vector<std::uint8_t>{83} && nestedCandidate.Number == -983);
+			};
+			auto observe = [&](std::string_view phase, bool accepted, bool preserved = true)
+			{
+				++cases;
+				const bool rejected = !accepted && preserved && hits == 1 && error == "reentrant archive call";
+				correct += rejected ? 1 : 0;
+				std::cout << "TRACE SERIAL-12 phase=" << phase << " nested-read=" << nestedRead << " hits=" << hits <<
+					" outer=" << accepted << " preserved=" << preserved << " error=" << error << '\n';
+			};
+			for (const bool outerRead : {false, true})
+			{
+				for (const bool query : {true, false})
+				{
+					SReentryProbe probe; std::vector<std::uint8_t> packet;
+					assert(FSerializationArchive::Serialize(probe, packet, error));
+					std::vector<std::uint8_t> output{91}; hits = 0;
+					if (query) probe.Query = reenter;
+					else if (outerRead) probe.After = reenter;
+					else probe.Before = reenter;
+					const bool accepted = outerRead ? FSerializationArchive::Deserialize(packet, probe, error) :
+						FSerializationArchive::Serialize(probe, output, error);
+					observe(query ? (outerRead ? "read-query" : "write-query") : (outerRead ? "after-hook" : "before-hook"),
+						accepted, outerRead || output == std::vector<std::uint8_t>{91});
+					probe.Query = {}; probe.Before = {}; probe.After = {};
+					assert(FSerializationArchive::Serialize(probe, output, error) && FSerializationArchive::Deserialize(output, probe, error));
+				}
+			}
+			SGraph source; source.Values.emplace_back(); std::vector<std::uint8_t> packet;
+			assert(FSerializationArchive::Serialize(source, packet, error));
+			FSerializableTypeRegistry registry;
+			assert(registry.Register<SScalar>(SScalar::kTypeName, [&]() -> std::unique_ptr<SScalar>
+			{ reenter(); return std::make_unique<SScalar>(); }, error));
+			SGraph candidate; hits = 0;
+			const bool factoryAccepted = FSerializationArchive::Deserialize(packet, candidate, error, 1, &registry);
+			observe("factory", factoryAccepted);
+			assert(registry.Replace<SScalar>(SScalar::kTypeName, []() -> std::unique_ptr<SScalar>
+			{ return std::make_unique<FReentryScalar>(); }, error));
+			FReentryScalar::Cleanup = reenter; hits = 0;
+			const bool temporaryAccepted = FSerializationArchive::Deserialize(packet, candidate, error, 1, &registry);
+			observe("value-temporary-destructor", temporaryAccepted);
+			FReentryScalar::Cleanup = {};
+			assert(FSerializationArchive::Deserialize(packet, candidate, error, 1, &registry));
+			SDiscardShared shared, restored; shared.Child = std::make_shared<SNode>();
+			assert(FSerializationArchive::Serialize(shared, packet, error));
+			assert(registry.Register<SNode>(SNode::kTypeName, []() -> std::unique_ptr<SNode>
+			{ return std::make_unique<FCustomNode>(); }, error));
+			FCustomNode::DestructorCallback = reenter; hits = 0;
+			const bool cleanupAccepted = FSerializationArchive::Deserialize(packet, restored, error, 1, &registry);
+			observe("context-destructor", cleanupAccepted);
+			FCustomNode::DestructorCallback = {};
+			assert(FSerializationArchive::Deserialize(packet, restored, error, 1, &registry) && !restored.Child);
+		}
+		std::cout << "TRACE SERIAL-12 exact rejected cases=" << correct << '/' << cases << '\n';
+		assert(cases == 14 && correct == cases);
+		std::cout << "PASS SERIAL-12 ignored Serialize Deserialize reentry poisons queries hooks factories temporary context cleanup recovery\n";
+	}
+
+	template<class E> struct SEnumWidth : ISerializable
+	{
+		static constexpr std::string_view kTypeName = "SEnumWidth";
+		E Value{};
+		std::map<E, std::vector<E>> Keys;
+		std::string_view GetSerializableTypeName() const noexcept override { return kTypeName; }
+		bool SerializeFields(FBinaryWriter& w, std::string& e) const override
+		{ return w.Field("Value", Value, e) && w.Field("Keys", Keys, e); }
+		bool DeserializeFields(FBinaryReader& r, std::string& e) override
+		{ return r.Field("Keys", Keys, e) && r.Field("Value", Value, e); }
+	};
+	struct SEnumWidthSkip : ISerializable
+	{
+		int Reads = 0;
+		std::string_view GetSerializableTypeName() const noexcept override { return "SEnumWidth"; }
+		bool SerializeFields(FBinaryWriter&, std::string&) const override { return true; }
+		bool DeserializeFields(FBinaryReader&, std::string&) override { ++Reads; return true; }
+	};
+	template<class E> void CheckEnumWidth(E low, E high, std::string_view signature,
+		const std::vector<std::uint8_t>& lowBytes, const std::vector<std::uint8_t>& highBytes)
+	{
+		SEnumWidth<E> source, candidate; source.Value = high; source.Keys.emplace(low, std::vector<E>{low, high});
+		std::string error; std::vector<std::uint8_t> bytes;
+		const bool written = FSerializationArchive::Serialize(source, bytes, error);
+		std::cout << "TRACE SERIAL-13 signature=" << SerializationDetail::TCodec<E>::Signature() <<
+			" written=" << written << " error=" << error << '\n';
+		assert(written && SerializationDetail::TCodec<E>::Signature() == signature);
+		assert(FSerializationArchive::Deserialize(bytes, candidate, error) && candidate.Value == high && candidate.Keys == source.Keys);
+		auto offset = FixtureFieldPayload(bytes, "Value");
+		assert(FixtureU32(bytes, offset - 4) == highBytes.size() &&
+			std::equal(highBytes.begin(), highBytes.end(), bytes.begin() + offset));
+		SEnumWidthSkip skipped;
+		assert(FSerializationArchive::Deserialize(bytes, skipped, error) && skipped.Reads == 1);
+		auto truncated = bytes;
+		FixtureSetU32(truncated, offset - 4, static_cast<std::uint32_t>(highBytes.size() - 1));
+		FixtureSetU32(truncated, 12, FixtureU32(truncated, 12) - 1);
+		truncated.erase(truncated.begin() + offset + highBytes.size() - 1);
+		skipped.Reads = 0;
+		assert(!FSerializationArchive::Deserialize(truncated, skipped, error) && skipped.Reads == 0 && error == "truncated framing");
+		const auto preserved = bytes;
+		const E invalid = static_cast<E>(1);
+		source.Value = invalid;
+		assert(!FSerializationArchive::Serialize(source, bytes, error) && bytes == preserved && error == "invalid enum value");
+		auto malformed = bytes;
+		std::fill(malformed.begin() + offset, malformed.begin() + offset + highBytes.size(), std::uint8_t{0});
+		malformed[offset] = 1;
+		assert(!FSerializationArchive::Deserialize(malformed, candidate, error) && error == "invalid enum value");
+		source.Value = low;
+		assert(FSerializationArchive::Serialize(source, bytes, error) && FSerializationArchive::Deserialize(bytes, candidate, error));
+		offset = FixtureFieldPayload(bytes, "Value");
+		assert(candidate.Value == low && FixtureU32(bytes, offset - 4) == lowBytes.size() &&
+			std::equal(lowBytes.begin(), lowBytes.end(), bytes.begin() + offset));
+	}
+	void TestSerializationEnumWidths()
+	{
+		CheckEnumWidth(EWidthI8::Low, EWidthI8::High, "enum<EWidthI8,i8>", {0x80}, {0x7f});
+		CheckEnumWidth(EWidthU8::Low, EWidthU8::High, "enum<EWidthU8,u8>", {0}, {0xff});
+		CheckEnumWidth(EWidthI16::Low, EWidthI16::High, "enum<EWidthI16,i16>", {0, 0x80}, {0xff, 0x7f});
+		CheckEnumWidth(EWidthU16::Low, EWidthU16::High, "enum<EWidthU16,u16>", {0, 0}, {0xff, 0xff});
+		CheckEnumWidth(EFixtureMood::Calm, EFixtureMood::Alert, "enum<EFixtureMood,i32>", {2, 0, 0, 0}, {7, 0, 0, 0});
+		CheckEnumWidth(EWidthU32::Low, EWidthU32::High, "enum<EWidthU32,u32>", {0, 0, 0, 0}, {0xff, 0xff, 0xff, 0xff});
+		CheckEnumWidth(EWidthI64::Low, EWidthI64::High, "enum<EWidthI64,i64>",
+			{0, 0, 0, 0, 0, 0, 0, 0x80}, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f});
+		CheckEnumWidth(EWidthU64::Low, EWidthU64::High, "enum<EWidthU64,u64>",
+			{0, 0, 0, 0, 0, 0, 0, 0}, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
+		std::cout << "PASS SERIAL-13 enum signed unsigned 8 16 32 64 exact little endian bounds map vector invalid skip truncation recovery\n";
+	}
+
 	class FFakeFrameClock final : public IFrameClock
 	{
 	public:
@@ -658,6 +1474,19 @@ int main()
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
 	std::cout << std::unitbuf;
+	TestSerializationScalar();
+	TestSerializationGraph();
+	TestSerializationEnum();
+	TestSerializationRegistry();
+	TestSerializationEvolutionFraming();
+	TestSerializationEntryBoundaries();
+	TestSerializationMalformedPrimitives();
+	TestSerializationCleanupAndGraphLimits();
+	TestSerializationAggregateBudget();
+	TestSerializationCompositionForwarding();
+	TestSerializationOrderIndependentBudgets();
+	TestSerializationArchivePoison();
+	TestSerializationEnumWidths();
 	TestFrameInheritance();
 	TestFrameLifecycle();
 	TestFrameOptions();

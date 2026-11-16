@@ -21,6 +21,12 @@ internal static class FOutputManager
     public static void Apply(string outputRoot, IReadOnlyList<SGeneratedFile> files, bool check) =>
         ApplyTransaction([(outputRoot, files)], check);
 
+    internal const string InGameMarkerName = ".ingamedata-output";
+    internal const string InGameMarkerContent = "GameDataGenerator InGameData owned output v1\n";
+
+    public static void ApplyInGame(string outputRoot, IReadOnlyList<SGeneratedFile> files, bool check) =>
+        ApplyTransaction([(outputRoot, files)], check, InGameMarkerName, InGameMarkerContent);
+
     internal static void ValidateRoots(IReadOnlyList<string> roots)
     {
         if (OperatingSystem.IsWindows() && roots.Any(root => root.Replace('/', '\\').StartsWith(@"\\", StringComparison.Ordinal)))
@@ -125,11 +131,12 @@ internal static class FOutputManager
         }
     }
 
-    private static void ValidateOwnership(string root)
+    private static void ValidateOwnership(string root, string markerName, string markerContent)
     {
         if (Directory.Exists(root) && Directory.EnumerateFileSystemEntries(root).Any() &&
-            (!File.Exists(Path.Combine(root, ".gamedata-output")) ||
-             File.ReadAllText(Path.Combine(root, ".gamedata-output")) != "GameDataGenerator owned output v1\n"))
+            (!File.Exists(Path.Combine(root, markerName)) ||
+             File.ReadAllText(Path.Combine(root, markerName)) != markerContent ||
+             File.Exists(Path.Combine(root, markerName == InGameMarkerName ? ".gamedata-output" : InGameMarkerName))))
             throw new InvalidOperationException($"Refusing to replace/check a nonempty directory not owned by GameDataGenerator: {root}");
     }
 
@@ -153,19 +160,24 @@ internal static class FOutputManager
         public bool Published { get; set; }
     }
 
-    private static void ApplyTransaction(IReadOnlyList<(string Root, IReadOnlyList<SGeneratedFile> Files)> outputs, bool check)
+    private static void ApplyTransaction(IReadOnlyList<(string Root, IReadOnlyList<SGeneratedFile> Files)> outputs, bool check,
+        string markerName = ".gamedata-output", string markerContent = "GameDataGenerator owned output v1\n")
     {
         ValidateRoots(outputs.Select(output => output.Root).ToArray());
         foreach (var output in outputs)
         {
             ValidateUniquePaths(output.Files);
-            ValidateOwnership(output.Root);
+            ValidateOwnership(output.Root, markerName, markerContent);
         }
         if (check)
         {
-            foreach (var output in outputs) Check(output.Root, output.Files);
+            foreach (var output in outputs) Check(output.Root, output.Files, ignoreBuildArtifacts: markerName != InGameMarkerName);
             return;
         }
+
+        // 내용이 같은 루트는 이동하지 않아 mtime과 증분 빌드 캐시를 보존한다.
+        outputs = outputs.Where(output => !IsCurrent(output.Root, output.Files)).ToArray();
+        if (outputs.Count == 0) return;
 
         var pending = outputs.Select(output => new FPendingOutput(output.Root, output.Files)).ToArray();
         Exception? applyFailure = null;
@@ -178,7 +190,7 @@ internal static class FOutputManager
                 string parent = Path.GetDirectoryName(output.Root)!;
                 Execute("output-parent-create", parent, null, () => Directory.CreateDirectory(parent));
                 Execute("staging-create", output.Staging, null, () => Directory.CreateDirectory(output.Staging));
-                WriteFiles(output.Staging, output.Files);
+                WriteFiles(output.Staging, output.Files, output.Root);
             }
             try
             {
@@ -316,7 +328,7 @@ internal static class FOutputManager
         }
     }
 
-    private static void Check(string outputRoot, IReadOnlyList<SGeneratedFile> files)
+    private static void Check(string outputRoot, IReadOnlyList<SGeneratedFile> files, bool ignoreBuildArtifacts)
     {
         if (!Directory.Exists(outputRoot))
         {
@@ -328,7 +340,7 @@ internal static class FOutputManager
             file => file.Content,
             StringComparer.Ordinal);
         string[] actualPaths = Directory.GetFiles(outputRoot, "*", SearchOption.AllDirectories)
-            .Where(path => !IsBuildArtifactPath(outputRoot, path))
+            .Where(path => !ignoreBuildArtifacts || !IsBuildArtifactPath(outputRoot, path))
             .ToArray();
         var failures = new List<string>();
 
@@ -340,8 +352,7 @@ internal static class FOutputManager
                 failures.Add($"missing: {relativePath}");
                 continue;
             }
-            string actualContent = File.ReadAllText(fullPath, Encoding.UTF8).Replace("\r\n", "\n", StringComparison.Ordinal);
-            if (!string.Equals(actualContent, content, StringComparison.Ordinal))
+            if (!File.ReadAllBytes(fullPath).AsSpan().SequenceEqual(Utf8WithoutBom.GetBytes(content)))
             {
                 failures.Add($"changed: {relativePath}");
             }
@@ -356,19 +367,53 @@ internal static class FOutputManager
             }
         }
 
+        if (!ignoreBuildArtifacts)
+            failures.AddRange(UnexpectedDirectories(outputRoot, files).Select(path => "unexpected directory: " + path));
+
         if (failures.Count != 0)
         {
             throw new InvalidOperationException("Generated game data is out of date:\n  " + string.Join("\n  ", failures.OrderBy(value => value, StringComparer.Ordinal)));
         }
     }
 
-    private static void WriteFiles(string root, IReadOnlyList<SGeneratedFile> files)
+    private static IEnumerable<string> UnexpectedDirectories(string root, IReadOnlyList<SGeneratedFile> files)
+    {
+        var expected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            string path = NormalizeRelativePath(file.RelativePath);
+            for (int slash = path.LastIndexOf('/'); slash >= 0; slash = path.LastIndexOf('/'))
+            {
+                path = path[..slash];
+                expected.Add(path);
+            }
+        }
+        return Directory.GetDirectories(root, "*", SearchOption.AllDirectories)
+            .Select(path => NormalizeRelativePath(Path.GetRelativePath(root, path)))
+            .Where(path => !expected.Contains(path));
+    }
+
+    private static bool IsCurrent(string root, IReadOnlyList<SGeneratedFile> files)
+    {
+        if (!Directory.Exists(root)) return false;
+        if (UnexpectedDirectories(root, files).Any()) return false;
+        string[] actual = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
+            .Select(path => NormalizeRelativePath(Path.GetRelativePath(root, path))).Order(StringComparer.Ordinal).ToArray();
+        if (!actual.SequenceEqual(files.Select(file => NormalizeRelativePath(file.RelativePath)).Order(StringComparer.Ordinal))) return false;
+        return files.All(file => File.ReadAllBytes(Path.Combine(root, file.RelativePath.Replace('/', Path.DirectorySeparatorChar)))
+            .AsSpan().SequenceEqual(Utf8WithoutBom.GetBytes(file.Content)));
+    }
+
+    private static void WriteFiles(string root, IReadOnlyList<SGeneratedFile> files, string previousRoot)
     {
         foreach (SGeneratedFile file in files.OrderBy(file => file.RelativePath, StringComparer.Ordinal))
         {
             string fullPath = Path.Combine(root, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
             Execute("parent-create", Path.GetDirectoryName(fullPath)!, null, () => Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!));
             Execute("file-write", fullPath, null, () => File.WriteAllText(fullPath, file.Content, Utf8WithoutBom));
+            string previous = Path.Combine(previousRoot, file.RelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(previous) && File.ReadAllBytes(previous).AsSpan().SequenceEqual(Utf8WithoutBom.GetBytes(file.Content)))
+                Execute("mtime-preserve", fullPath, null, () => File.SetLastWriteTimeUtc(fullPath, File.GetLastWriteTimeUtc(previous)));
         }
     }
 

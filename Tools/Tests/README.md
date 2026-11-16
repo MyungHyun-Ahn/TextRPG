@@ -1,6 +1,43 @@
-# Native runtime test runners
+# Native 런타임 테스트 runner
 
-## 상속형 Frame 개선 후의 현재 검사
+## 지정 불필요 코드 제거 후 현재 검사 — 2026-11-16
+
+- TextRPG의 진행·Custom·저장 CPP는 기본 `pch.h`를 사용한다. NativeTests의 Scene/InGameData/SaveData suite는 같은 원본을 위한 루트 PCH를 타깃별로 생성한다. GameData 구현·생성 fixture의 별도 `GameData.pch`는 유지하며, SaveData fault 매크로와 원본 직접 포함은 PCH 뒤에 둔다.
+- 폐기한 `ResolveGameDataRoot` 전용 `test_gamedata_paths_analysis.py`는 제거했다. exe 옆 `GameData.dat` 선택·다른 cwd·무효 loose-root 환경변수 무시 경로는 실제 앱 일반 회귀에서 유지한다. 새 runner나 복사 빌드는 추가하지 않았다.
+- 네 구성 각각 solution Build/제품 native 분석 경고0, Input168 checks, Save28·model137·Scene94 checkpoint groups 및 실제 앱 일반23·진행5 case를 확인했다. Core-only28 group은 Debug/x64, optional TextArt-부재1 group은 Debug x64/x86에서 새 실행했다. 기존 build 계약48·헤더 정책8과 Debug/x64 실제 PCH-off include 경계도 확인했다. group/case는 겹치므로 합산하지 않는다.
+- 근거 루트는 `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/textrpg-retire-d33f723a/`다. `execution-index.json`·`native/*/results.json`·`app/final-grid.json`을 따른다. independent source coverage는 변경 app/build/input29파일과 generator3파일이며 코드 차단 결함0이다. app canonical의 잘못된 부가 diff 해시/FAIL은 보존했고 `review/app-build-input-identity-erratum.json`과 `verified-review-composition.json`에 정체성 대조를 분리했다. 최종 로컬 수용 기록은 `final-acceptance.json`이다.
+- 아래의 '현재 검사'와 Frame/생성 최초 빌드/warm 수치는 각 이전 후보 당시의 기록이다. 이번 작업에서 무관한 전체 Store/Exceptions·추가 Frame 모드·수동 DPI/글꼴 검사를 반복한 것으로 해석하지 않는다.
+
+## 생성 InGameData 통합의 현재 검사 — 2026-11-16
+
+기존 진입점과 `native_build.py`/`NativeTests.vcxproj`를 사용한다. 아래는 제공된 최종 실행 기록이며 이번 문서 작업이 빌드·코드 감사·추가 재검토를 실행했다는 뜻은 아니다. 현재 근거 루트는 `C:/Users/ahn02/AppData/Local/hermes/cache/scratch/ingamedata-41751db1/`다.
+
+| 범위 | 실제 확인 결과 | 기록(근거 루트 기준) |
+|---|---|---|
+| 네 구성 제품 Build/분석 | Debug/Release × x64/x86(프로젝트 Win32) 각각 solution Build + native 분석 성공·경고0 | `build/current-final-grid.json` |
+| native checkpoint groups | 네 구성 각각 **Core28 / model137 / Scene94**. Scene94는 UI62/EndFrame25/진행7. model137은 고유64라벨의 반복 raw checkpoint occurrences이며 고유 단위 테스트137개가 아님 | 같은 grid의 coreResult/modelResult/sceneResult |
+| 실제 앱 | 네 구성 각각 일반23 / 명시 진행5 case PASS | 같은 grid의 fullAppResult/progressAppResult |
+| 추가 모드/화면 | Debug/x64 fixed-update·frame-skip 진행 각5 case. screen-oracle21은 게임 미실행 control | `app/Debug-x64-final-modes.json` |
+| optional 첫 빌드 | 기본 정적 출력 전체 누락→실제 생성→TextArt 헤더 제외 소비자 컴파일/실행1 group·경고0, 원본 생성물 bytes/mtime 복구 | `native/optional-first-missing-preservation.json` |
+| 동적 생성 CPP | 별도 schema/output의 missing→add→remove 실제 GameData Build 각각 경고0. 추가 타입 첫 컴파일/삭제 타입 lib 잔존 없음·안정 PCH bytes/mtime 보존 | `build/dynamic-types-first-add-remove.json` |
+| warm Build | model compiledObjects0/PCH 재생성0·생성물 bytes/mtime/EXE 불변. runtime은 동일 EXE 결과 승계이며 새 분석 실행 아님 | `native/model-warm-final/results.json` |
+
+- 일반23/명시 진행5/각 Frame 모드5에는 missing-package 등 같은 case가 반복된다. 이를 고유28개 또는 모드 합계로 부풀리지 않는다. native group·제품 case·screen control도 합산하지 않는다.
+- 생성 제품 CPP는 **GameData.lib만 컴파일·소유**하고 일반 Scene/model 소비자는 lib를 링크한다. 구조 원본은 `GameData/InGameDataSchema/InGameData.yaml`, 진행 생성물은 `GameData/Generated/InGameData`다. 정적 헤더 전체13파일은 바이트 그대로 `GameData/Generated/GameData`로 이동했다. optional/altered-generated/source-including fault fixture는 원본의 별도 캐시 variant를 유지한다. Custom CPP는 TextRPG 소유다.
+- 모델 검사는 생성 단일 가변 루트 직접 사용·shared_ptr null/반복 참조·재귀 vector/map/unordered_map·Custom hook/factory·추가/삭제 교차 버전·IGD1 read-only→CGSA 쓰기·미래 버전 Save/NewGame 거부를 포함한다. 기존 IGD1 독립 wire builder/정확 진단/prefix/출력 보존은 구형 입력에 유지하고 신형 framing/round-trip을 별도로 확인한다.
+- Core 예산은 **bytes1 MiB / depth64 / container4096 / shared-table4096 / object8192 / structural-value visits65536**다. 객체/구조 방문을 하나의 카운터로 합산하지 않는다. 모델 ID256 UTF-16 units와 저장 byte 서비스16 MiB, 생성기 YAML/AST 입력 제한은 별개다. aliasing/순환 소유는 지원 보장이 아니며 관측하지 못한 alias provenance의 완전 검출도 주장하지 않는다.
+- 독립 source coverage는 원본 검토 + core-v2 변경3/불변4, generator-v2 변경2/불변8, integration-v2 변경6/불변23의 집중 재검토 조합이다. `current-evidence-index.json` 및 `review/*-v2-independent/{coverage,verdict}.json`을 따르며 전체 신규 전수 재검토/원격 승인으로 표시하지 않는다. 초기 FAIL/BLOCKED와 아래 Frame/보고서/이전 실행 범위를 보존한다. 조정자의 최종 acceptance 집계는 별도이며 publication·커밋·푸시는 없다.
+
+### 현재 CLI로 모델·Core를 실행하기
+
+```text
+python Tools/Tests/test_gamedata_store_runtime.py --scratch-root <owned-log-root> --label model --suite InGameData --architecture x64 --configuration Debug
+python Tools/Tests/test_scene_ui_runtime.py --scratch-root <owned-log-root> --label core --core-only --architecture x64 --configuration Debug --analyze
+```
+
+전체/좁은 application 명령과 fixture 선행조건은 아래 사용법을 그대로 따른다. 기록의 실행 파일은 해당 `results.json`의 `executable`/`runCommand`로 선택하며 캐시 해시 경로를 추측하지 않는다. 모델/저장에 키 실값을 인자로 넣거나 문서에 기록하지 않는다. 자세한 제품 경계는 [012 §11](../../Docs/GameDesign/012_InGameDataYaml정의및자동생성설계안.md#11-구현검증-상태-관리)과 [Core 직렬화 README](../../ConsoleGameCore/Serialization/README.md)를 따른다.
+
+## 상속형 Frame 개선 당시 검사 — 이전 후보 이력
 
 - 기존 `--core-only`는 실제 lib의 FFrame 상속·선택적 훅·Basic/FixedUpdate/FrameSkip·시간 경계/과부하·실패/정리/재진입을 검사한다. 가짜 시계로 시간을 제어하며 실제 장시간 sleep이나 새 runner를 추가하지 않았다. 네 구성의 일반/분석 소비자에서 각각15 checkpoint group, 실제 분석 경고0을 확인했다.
 - 기존 Scene full은 각 네 구성93 group(UI62/EndFrame25/진행6)이다. 새로운 상속 Scene 프레임 검사는 세 모드의 입력 1회·전환 뒤 이전 Scene 추가 갱신 차단·렌더 생략 EndFrame을 포함한다. 과거90/86 등의 수치는 해당 이력이며 현재 group 수가 아니다. 묶음은 겹치므로 합산하지 않는다.
@@ -13,7 +50,7 @@ python Tools/Tests/test_game_data_application.py --game <absolute-TextRPG.exe> -
 
 `--only ingamedata`의 fixture 선행 검사·정확한 다섯 case·최종 출력/flush 뒤 성공 게시·실패 정제·소유 콘솔과 파일 감시 수명은 그대로다. Source-only review와 실제 실행은 별도 증거이며, 문서 수정 때문에 제품 검사를 반복하지 않는다.
 
-## 정적 라이브러리 분리 후의 현재 실행 범위
+## 정적 라이브러리 분리 당시 실행 범위 — 이전 후보 이력
 
 - 일반 SceneUiRuntime은 ConsoleGameCore.lib와 GameData.lib를 링크한다. optional/custom-generated 및 reader/Win32/crypto 매크로 주입 fixture는 원본 CPP 직접 참조를 유지한다. GameData 소스는 `GameData/Runtime/GameData`, 공통 코어는 `ConsoleGameCore`로 이동했다. 기존 네 진입점과 공유 MSBuild/backend를 확장하며 새 실행 runner는 없다.
 - 실제 네 구성 각 core4/full90/progress28/legacy77/optional1 group, Input168 checks, Save28/Model127/Store330 checkpoint occurrences, Exceptions10 command records를 확인했다. 실제 EXE는 각 default23/진행5 case다. 아래 분리 이전 수치는 당시 이력이며 현재 결과보다 우선하지 않는다.
@@ -23,7 +60,7 @@ python Tools/Tests/test_game_data_application.py --game <absolute-TextRPG.exe> -
 - 최신 실행·소스 검토·제한은 [010 §10](../../Docs/GameDesign/010_게임코어및콘텐츠라이브러리분리설계안.md)과 [로드맵](../../Docs/ROADMAP.md) 상단을 따른다. 수동 글꼴/DPI 인증이나 전체 콘텐츠 완료를 뜻하지 않는다.
 
 
-## 현재 InGameData·EndFrame·보고서 게시 검사 — 2026-11-15
+## InGameData·EndFrame·보고서 게시 사용법 — 2026-11-15 도입
 
 기존 진입점/공유 `native_build.py`/`NativeTests.vcxproj`를 확장한 기능이다. 새 runner나 실행 스크립트를 추가하지 않는다. 아래 옵션은 현재 argparse와 native fixture 분기를 확인한 사용법이며 이번 문서 작업에서는 빌드/제품/runner를 재실행하지 않았다. 실제 결과는 [009 §9](../../Docs/GameDesign/009_InGameData및저장복원설계안.md)와 [로드맵](../../Docs/ROADMAP.md)의 최신 항목을 따른다.
 
@@ -37,8 +74,8 @@ python Tools/Tests/test_scene_ui_runtime.py --scratch-root <log-root> --label ro
 
 | 선택 | 실제 범위/선행조건 |
 |---|---|
-| 기본 full | 완전한 기본 정의로 UI·EndFrame·진행을 모두 검사한다. 현재 full86 group = UI62/EndFrame18/progress6 |
-| `--progress-tests` | 앱 수명 진행/Scene 결합 게시·취소·참조·저장 회귀. 현재24 group = EndFrame18/progress6 |
+| 기본 full | 완전한 기본 정의로 UI·EndFrame·진행을 모두 검사한다. 현재 full94 group = UI62/EndFrame25/progress7 |
+| `--progress-tests` | 앱 수명 진행/Scene 결합 게시·취소·참조·저장 회귀의 좁은 모드. 전체 full과 겹치므로 별도 고유 합계로 세지 않음 |
 | `--boundary-tests 01` | 공통 Scene NVI busy 경계 |
 | `--boundary-tests 02` | 실제 FDataScene/direct root busy·최초 virtual/Find/incoming 정리·취소 안전점 |
 | `--boundary-tests 03` | 실제 OnExit UI 취소 callback throw의 bridge 복구와 shutdown 최종 detach |
@@ -46,7 +83,7 @@ python Tools/Tests/test_scene_ui_runtime.py --scratch-root <log-root> --label ro
 | `--root-entry-tests cancel-find` | 정상 capture/drag 준비 뒤 CancelInput의 첫 실제 Find |
 | `--root-entry-tests find` | 직접 공개 const Find의 첫 virtual 진입 |
 | `--root-entry-tests incoming` | 거부/AssignIds 예외의 incoming UI destructor 및 등록 할당 실패/복구 control |
-| `--yaml-root <legacy-client-yaml>` | 진행 정의 다섯 cohort 전체 없는 레거시도 기존 UI 회귀를 유지한다. 현재73 group = UI62/EndFrame11/progress0. 부분 cohort는 정상 레거시가 아니다 |
+| `--yaml-root <legacy-client-yaml>` | 진행 정의 다섯 cohort 전체 없는 레거시도 기존 UI 회귀를 유지한다. 이전 후보73 group = UI62/EndFrame11/progress0은 당시 실행 이력. 현재 slice 수는 해당 results.json을 따르며 부분 cohort는 정상 레거시가 아님 |
 | `--without-textart` | TextArt 생성 헤더를 제외한 별도 소비 fixture, 현재1 group(진행 전용 검사 제외). 원본 생성물을 수정하지 않음 |
 
 - `--root-entry-tests`는 `--progress-tests`/`--boundary-tests`/`--without-textart`/`--yaml-root`와 함께 사용할 수 없다. `--boundary-tests`도 progress/without-textart/yaml-root와 호환되지 않는다. `--progress-tests`는 without-textart/yaml-root와 호환되지 않는다. 모두 작업 로그 생성·빌드 전에 parser error다. `--generated-root`는 기존 옵션으로 유지하되 각 모드가 요구하는 완전한 타입/정의 계약을 충족해야 한다.
@@ -62,7 +99,7 @@ python Tools/Tests/test_gamedata_store_runtime.py --scratch-root <log-root> --la
 
 - `--suite GameDataStore|SaveData|InGameData`의 기본값은 GameDataStore다. 세 suite 모두 기본 분석이며 `--no-analyze`만 빠른 모드다. SaveData는 byte 서비스/DPAPI/쓰기 실패, InGameData는 실제 Store와 전체/하위 codec·정의 참조·오류 보존을 검사한다. SaveData의 `--data-root`는 native argv로 전달하지 않으며 자체 소유 service 디렉터리를 사용한다.
 - 모델 최대1 MiB와 byte 서비스 평문 최대16 MiB를 혼동하지 않는다. SaveData는 전용 키·세이브를 소유 service에 만들고 콘텐츠 키를 소비하지 않는 control을 둔다. 실제 키 파일의 값을 문서/로그에 복사하지 않는다.
-- 원본 CPP를 직접 빌드하고 SaveData source-including fault fixture도 안정 PCH 뒤에 둔다. suite별 compiled PCH/obj는 격리하며 원본 `TextRPG/pch.h` 및 `TextRPG/GameData/pch.h`를 재사용한다. source 해시 목록을 컴파일 목록으로 오인하거나 포함 CPP를 별도 obj로 중복 링크하지 않는다.
+- 제품 lib는 원본 CPP에서 빌드하고 SaveData source-including fault fixture도 안정 PCH 뒤에 둔다. suite별 compiled PCH/obj는 격리하며 콘텐츠 `TextRPG/pch.h` 및 `GameData/Runtime/GameData/pch.h`, Core의 안정 PCH 계약을 사용한다. source 해시 목록을 컴파일 목록으로 오인하거나 포함 CPP/제품 생성 CPP를 별도 obj로 중복 링크하지 않는다.
 
 ### 실제 application 검사: 전체·좁은 진행 모드
 
@@ -85,8 +122,8 @@ python Tools/Tests/test_game_data_application_cleanup_meta.py --scratch-root <lo
 - meta `--only cleanup|observer|acceptance`는 제어 그룹 선택이다. `--report-only`는 **`--only acceptance`에서만** 허용하며 보고서 게시 control13 record로 좁힌다. 선택적 `--game`/`--packer`는 둘을 함께 주어야 하고 감사 preflight에만 사용하며 해당 제품을 실행하지 않는다. 내부 `--worker-*`는 문서상 일반 제품 검사 진입점이 아니다.
 - 최신 전체 meta86 record, cleanup5, 화면21을 각각 확인했다. meta에는 fake child/console 경계·normal/-O 별도 프로세스·실제 main/CLI·원본 Path I/O control이 포함된다. actual truncate·양수 prefix write·실제 close 완료 후 합성 오류·replace 경계 오류와 pre-write 실패를 구분한다. exact fault stage/errno/hit/completion·canonical bytes/SHA·pending 정리·원문 비노출·동일 판정의 wrong-reason/unhit/uncompleted 음성을 요구한다. OS close 자연 실패나 C++ SAVE/실제 게임 실행으로 승격하지 않는다.
 - application 성공은 요구 case 전체/최종 결과 게시와 exit0이 함께 필요하다. 실제 게임 저장 실패 case의 기대 nonzero와 메타 음성 worker의 기대 nonzero/프리플라이트 exit2는 상위 오라클이 확인한 성공 조건이며 임의 nonzero가 PASS는 아니다. 빌드 실패/경고·timeout(exit124)·불완전 JSON·source drift는 실패다.
-- 최신 영향 matrix는 Debug/Release × x64/x86 각 Scene full86/legacy73/progress24·optional1·Input168, 게임 분석4구성 경고0, 실제 EXE 각 default23/진행5다. 기존 서비스는 같은 네 구성 각 SaveData28·InGameData127·Store330 checkpoint occurrences, Exceptions10 command record(compile2+fault execution8)를 승계 검증했다. 모델127은 고유 라벨54의 반복 검사를 포함하며 고유 테스트127개가 아니다. 초기 서비스 matrix와 최신 승계/최종 전체 수용은 구분하며 `entry-publication-repair/execution-gates.json`, `entry-publication-repair/inherited-service-evidence.json`의 실제 cells 경로/해시 및 조정자의 최종 수용 기록 경로 `entry-publication-repair/final-acceptance.json`을 따른다. 제품 case·native group·meta record·순수 화면 oracle를 합산하지 않는다.
-- 서비스 승계는 source/config 차이 검토를 포함한다. Save Debug/x64는 전체 XML 바이트가 아니라 제외 CPP PCH metadata·IDE header 차이를 제외한 활성 compilation projection 동일이다. 모델 private50파일 중49는 동일하고 Localization은 기존 bytes 뒤 앱 오류 두 행만 추가됐으며 현재 live UI/앱 matrix가 이를 검증한다. 전체 데이터 바이트 동일이나 서비스 재실행을 주장하지 않는다.
+- **이전 최소 모델 후보 이력:** Debug/Release × x64/x86 각 Scene full86/legacy73/progress24·optional1·Input168, 게임 분석4구성 경고0, 실제 EXE 각 default23/진행5였다. 당시 서비스는 같은 네 구성 각 SaveData28·InGameData127·Store330 checkpoint occurrences, Exceptions10 command record(compile2+fault execution8)를 승계 검증했다. 모델127은 고유 라벨54의 반복 검사다. `ingamedata-implementation-20261115/entry-publication-repair/`의 `execution-gates.json`, `inherited-service-evidence.json` 및 `final-acceptance.json` 목적 경로는 이력으로 보존하며 현재 생성 모델137/Scene94의 새 실행 근거로 승격하지 않는다. 현재 결과는 이 README 상단을 따른다. 제품 case·native group·meta record·순수 화면 oracle를 합산하지 않는다.
+- 위 이전 서비스 승계는 source/config 차이 검토를 포함한다. Save Debug/x64는 전체 XML 바이트가 아니라 제외 CPP PCH metadata·IDE header 차이를 제외한 활성 compilation projection 동일이다. 당시 모델 private50파일 중49는 동일하고 Localization은 기존 bytes 뒤 앱 오류 두 행만 추가됐으며 당시 live UI/앱 matrix가 이를 검증했다. 전체 데이터 바이트 동일이나 서비스 재실행을 주장하지 않는다.
 
 ## 실제 EXE 화면·파일 수명 검사
 
@@ -125,7 +162,7 @@ Scene/Store/Exceptions의 `--architecture x86`과 Input의 `--arch x86`은 프�
 
 ## 빌드와 분석
 
-- 원본 CPP·헤더와 `TextRPG/pch.h` / `TextRPG/GameData/pch.h`를 직접 참조한다. 소스 복사, include 치환, 일반 테스트의 PCH 비활성화는 하지 않는다.
+- 원본 CPP·헤더와 `TextRPG/pch.h` / `GameData/Runtime/GameData/pch.h`, Core의 PCH를 사용한다. 일반 제품 라이브러리 링크와 특수 fixture의 원본 별도 컴파일을 구분한다. 소스 복사, include 치환, 일반 테스트의 PCH 비활성화는 하지 않는다.
 - MSBuild `Build`를 사용한다. 빌드 산출물은 `Out/Tests/NativeRuntime/<suite>/<variant>/<configuration>/<platform>/`에 유지한다. 로그/실행 fixture는 별도 log-root/label 아래에 둔다.
 - suite, 구성/아키텍처, generated-root/헤더 집합, 선택 카탈로그 여부, 분석 모드를 분리한다. MSBuild가 실제 소스/헤더/옵션 의존성을 추적한다. 변경 없는 재실행은 obj/PCH를 재사용한다.
 - 동일 캐시의 빌드와 테스트 실행은 프로세스 간 잠금으로 직렬화한다. 서로 다른 suite/구성/플랫폼은 별도 캐시를 사용한다.
@@ -136,7 +173,7 @@ python Tools/Tests/test_input_manager.py --scratch-root <log-root> --label input
 python Tools/Tests/test_scene_ui_runtime.py --scratch-root <log-root> --label scene-analysis --architecture x64 --configuration Release --analyze
 ```
 
-공유 GameData CPP, Store/Yaml 드라이버 및 reader 예외 주입 타깃은 안정 std/Windows SDK만 담은 `GameData/pch.h`를 사용한다. 타깃/variant/config/platform별 `GameData.pch`와 `GameDataPch.obj`를 생성한다. 게임/Input/Scene의 루트 PCH도 유지하며 Scene의 GameData CPP는 shared PCH를 사용한다. 치환 reader·매크로·직접 포함 구현은 PCH 뒤에 둔다. 게임의 compiled obj/PCH를 테스트와 임의 공유하지 않는다. PCH-off/include 경계 검사는 별도 `test_pch_header_resolution.py`의 목적이며 일상 회귀의 기본 빌드 방식이 아니다.
+공유 GameData CPP, Store/Yaml 드라이버 및 reader 예외 주입 타깃은 안정 std/Windows SDK를 모은 `GameData/Runtime/GameData/pch.h`(include spelling `GameData/pch.h`)를 사용한다. 타깃/variant/config/platform별 `GameData.pch`와 `GameDataPch.obj`를 생성한다. 게임/Input/Scene의 루트 PCH와 일반 Scene의 제품 lib 링크를 유지하고 특수 variant의 GameData CPP는 별도 PCH를 사용한다. 치환 reader·매크로·직접 포함 구현은 PCH 뒤에 둔다. 게임의 compiled obj/PCH를 테스트와 임의 공유하지 않는다. 생성 타입/umbrella는 PCH에 넣지 않는다. PCH-off/include 경계 검사는 별도 `test_pch_header_resolution.py`의 목적이며 일상 회귀의 기본 빌드 방식이 아니다.
 
 ## 선택 카탈로그·출력
 

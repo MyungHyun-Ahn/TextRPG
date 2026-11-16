@@ -15,16 +15,14 @@ namespace TextRPG
 		~FSceneManager();
 		[[nodiscard]] bool LoadStartupScene(
 			FGameUiBridge& uiManager,
-			const std::filesystem::path& gameDataRoot,
 			std::wstring& errorMessage);
 		[[nodiscard]] bool LoadSceneById(
 			const std::wstring& sceneId,
 			FGameUiBridge& uiManager,
-			const std::filesystem::path& gameDataRoot,
 			std::wstring& errorMessage);
 		[[nodiscard]] bool SetScene(std::unique_ptr<IScene> nextScene);
 		[[nodiscard]] bool PrepareSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager,
-			const std::filesystem::path& gameDataRoot, const InGameData* progress,
+			const InGameData* progress,
 			std::unique_ptr<FDataScene>& output, std::wstring& errorMessage) const;
 		// 후보 Scene과 진행을 함께 게시한다. 진입/퇴장 실패는 활성 핸들을 보존한다.
 		// old destructor의 종료는 이미 해제한 Scene을 복원하지 않으며 활성 root/저장 파일을 보존한다.

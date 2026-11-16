@@ -9,6 +9,7 @@
 #include "Rendering/FFrameBuffer.h"
 #include "Scene/SceneData.g.h"
 #include "GameData/FGameDataStore.h"
+#include "InGameDataAll.h"
 #include "InGameData/InGameData.h"
 #include "Localization/Localization.h"
 
@@ -61,7 +62,6 @@ namespace TextRPG
 
 	bool FSceneManager::LoadStartupScene(
 		FGameUiBridge& uiManager,
-		const std::filesystem::path& gameDataRoot,
 		std::wstring& errorMessage)
 	{
 		const GameData::Scene::SSceneData* startupScene = nullptr;
@@ -86,13 +86,12 @@ namespace TextRPG
 			return false;
 		}
 
-		return LoadSceneById(startupScene->sceneId, uiManager, gameDataRoot, errorMessage);
+		return LoadSceneById(startupScene->sceneId, uiManager, errorMessage);
 	}
 
 	bool FSceneManager::LoadSceneById(
 		const std::wstring& sceneId,
 		FGameUiBridge& uiManager,
-		const std::filesystem::path& gameDataRoot,
 		std::wstring& errorMessage)
 	{
 		// 진행 게시의 옛 Scene 콜백은 곧 해제될 root로 다음 Scene을 준비할 수 없다.
@@ -102,7 +101,7 @@ namespace TextRPG
 			return false;
 		}
 		std::unique_ptr<FDataScene> nextScene;
-		if (!PrepareSceneById(sceneId, uiManager, gameDataRoot, m_progress, nextScene, errorMessage))
+		if (!PrepareSceneById(sceneId, uiManager, m_progress, nextScene, errorMessage))
 		{
 			return false;
 		}
@@ -117,12 +116,12 @@ namespace TextRPG
 	}
 
 	bool FSceneManager::PrepareSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager,
-		const std::filesystem::path& gameDataRoot, const InGameData* progress,
+		const InGameData* progress,
 		std::unique_ptr<FDataScene>& output, std::wstring& errorMessage) const
 	{
 		try
 		{
-			auto nextScene = std::make_unique<FDataScene>(m_store, uiManager, gameDataRoot, progress, m_canContinue);
+			auto nextScene = std::make_unique<FDataScene>(m_store, uiManager, progress, m_canContinue);
 			if (!nextScene->LoadFromGameData(sceneId, errorMessage)) return false;
 			output = std::move(nextScene);
 			errorMessage.clear();

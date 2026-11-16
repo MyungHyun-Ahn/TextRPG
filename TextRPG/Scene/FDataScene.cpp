@@ -40,7 +40,7 @@ namespace TextRPG
 			bool Previous;
 		};
 	}
-	FDataScene::FDataScene(const GameData::FGameDataStore& store, FGameUiBridge& uiManager, std::filesystem::path,
+	FDataScene::FDataScene(const GameData::FGameDataStore& store, FGameUiBridge& uiManager,
 		const InGameData* progress, bool canContinue)
 		: m_progress(progress)
 		, m_canContinue(canContinue)
@@ -234,7 +234,6 @@ namespace TextRPG
 		m_uiTopLayer = 0;
 		m_baseLayer = baseLayer;
 		m_uiLayers.swap(preparedLayers);
-		m_options = std::move(options);
 		m_sceneId = std::move(preparedId);
 		RefreshUiTopLayer();
 		if (wasBound)

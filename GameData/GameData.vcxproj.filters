@@ -1,23 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Generated" />
+    <Filter Include="Generated\InGameData" />
+    <Filter Include="InGameDataSchema" />
     <Filter Include="Asset"><UniqueIdentifier>{FAF905FD-021F-59A9-83E1-E64117C151ED}</UniqueIdentifier></Filter>
     <Filter Include="Asset\Character"><UniqueIdentifier>{47EE3915-41D6-5459-B4CD-E7ABB690220C}</UniqueIdentifier></Filter>
     <Filter Include="Asset\Logo"><UniqueIdentifier>{C065A033-A935-5BF4-B0F5-85427A0E3205}</UniqueIdentifier></Filter>
     <Filter Include="Asset\Monster"><UniqueIdentifier>{0ABBA0A8-591D-509B-88F4-6E0FB792006D}</UniqueIdentifier></Filter>
     <Filter Include="Asset\Town"><UniqueIdentifier>{29A74581-DE87-5975-A6BB-E250320C7C35}</UniqueIdentifier></Filter>
-    <Filter Include="Class"><UniqueIdentifier>{CB158177-7628-5B0A-9254-D85010B705C4}</UniqueIdentifier></Filter>
-    <Filter Include="Class\AchievementDefinition"><UniqueIdentifier>{5F47C27A-821E-57D2-9C80-1ACEC476AB60}</UniqueIdentifier></Filter>
-    <Filter Include="Class\CharacterDefinition"><UniqueIdentifier>{9DE0ECDA-FF17-5247-9B27-5D0C84C1D7A1}</UniqueIdentifier></Filter>
-    <Filter Include="Class\Common"><UniqueIdentifier>{4E30C59D-00DD-5FE8-9646-6EEC25E91CB4}</UniqueIdentifier></Filter>
-    <Filter Include="Class\ItemDefinition"><UniqueIdentifier>{FD1F52CE-D9C7-54DD-AB13-7D22B5DF1EDB}</UniqueIdentifier></Filter>
-    <Filter Include="Class\LevelDefinition"><UniqueIdentifier>{B8C1E334-B1DC-529C-A4A5-A6411EF9C602}</UniqueIdentifier></Filter>
-    <Filter Include="Class\Localization"><UniqueIdentifier>{57587CBC-76BC-5A61-B229-F8C4F1D47066}</UniqueIdentifier></Filter>
-    <Filter Include="Class\NewGameProfile"><UniqueIdentifier>{C088C7B1-5129-5CE7-99C6-2B5242DCE30F}</UniqueIdentifier></Filter>
-    <Filter Include="Class\Scene"><UniqueIdentifier>{A55A95CC-F777-550D-9414-3C3E65B18EEE}</UniqueIdentifier></Filter>
-    <Filter Include="Class\SceneOption"><UniqueIdentifier>{AAAA760D-4319-5BCF-A79D-8ECFD0942BB6}</UniqueIdentifier></Filter>
-    <Filter Include="Class\SceneTypeConfig"><UniqueIdentifier>{6D120D47-0206-56CA-814D-B113FE15A10E}</UniqueIdentifier></Filter>
-    <Filter Include="Class\TextArt"><UniqueIdentifier>{CE57D54E-19E9-5078-8F30-041DAAAB23BA}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData"><UniqueIdentifier>{CB158177-7628-5B0A-9254-D85010B705C4}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\AchievementDefinition"><UniqueIdentifier>{5F47C27A-821E-57D2-9C80-1ACEC476AB60}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\CharacterDefinition"><UniqueIdentifier>{9DE0ECDA-FF17-5247-9B27-5D0C84C1D7A1}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\Common"><UniqueIdentifier>{4E30C59D-00DD-5FE8-9646-6EEC25E91CB4}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\ItemDefinition"><UniqueIdentifier>{FD1F52CE-D9C7-54DD-AB13-7D22B5DF1EDB}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\LevelDefinition"><UniqueIdentifier>{B8C1E334-B1DC-529C-A4A5-A6411EF9C602}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\Localization"><UniqueIdentifier>{57587CBC-76BC-5A61-B229-F8C4F1D47066}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\NewGameProfile"><UniqueIdentifier>{C088C7B1-5129-5CE7-99C6-2B5242DCE30F}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\Scene"><UniqueIdentifier>{A55A95CC-F777-550D-9414-3C3E65B18EEE}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\SceneOption"><UniqueIdentifier>{AAAA760D-4319-5BCF-A79D-8ECFD0942BB6}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\SceneTypeConfig"><UniqueIdentifier>{6D120D47-0206-56CA-814D-B113FE15A10E}</UniqueIdentifier></Filter>
+    <Filter Include="Generated\GameData\TextArt"><UniqueIdentifier>{CE57D54E-19E9-5078-8F30-041DAAAB23BA}</UniqueIdentifier></Filter>
     <Filter Include="Data"><UniqueIdentifier>{C0FE8695-1492-5E98-B7CF-5962680A2F02}</UniqueIdentifier></Filter>
     <Filter Include="Data\Client"><UniqueIdentifier>{D660066B-37C7-5AAC-94DD-92A44EB52A4D}</UniqueIdentifier></Filter>
     <Filter Include="Excel"><UniqueIdentifier>{057F0CA5-6265-5326-9D3E-5E46BE9B08D4}</UniqueIdentifier></Filter>
@@ -31,20 +34,22 @@
     <ClCompile Include="Runtime\GameData\FGameDataStore.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Runtime\GameData\FGeneratedYaml.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Runtime\GameData\pch.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
+    <ClCompile Include="Generated\InGameData\*.g.cpp"><Filter>Generated\InGameData</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Class\AchievementDefinition\AchievementDefinitionData.g.h"><Filter>Class\AchievementDefinition</Filter></ClInclude>
-    <ClInclude Include="Class\CharacterDefinition\CharacterDefinitionData.g.h"><Filter>Class\CharacterDefinition</Filter></ClInclude>
-    <ClInclude Include="Class\Common\GameDataEnums.g.h"><Filter>Class\Common</Filter></ClInclude>
-    <ClInclude Include="Class\GameDataAll.h"><Filter>Class</Filter></ClInclude>
-    <ClInclude Include="Class\ItemDefinition\ItemDefinitionData.g.h"><Filter>Class\ItemDefinition</Filter></ClInclude>
-    <ClInclude Include="Class\LevelDefinition\LevelDefinitionData.g.h"><Filter>Class\LevelDefinition</Filter></ClInclude>
-    <ClInclude Include="Class\Localization\LocalizationData.g.h"><Filter>Class\Localization</Filter></ClInclude>
-    <ClInclude Include="Class\NewGameProfile\NewGameProfileData.g.h"><Filter>Class\NewGameProfile</Filter></ClInclude>
-    <ClInclude Include="Class\SceneOption\SceneOptionData.g.h"><Filter>Class\SceneOption</Filter></ClInclude>
-    <ClInclude Include="Class\SceneTypeConfig\SceneTypeConfigData.g.h"><Filter>Class\SceneTypeConfig</Filter></ClInclude>
-    <ClInclude Include="Class\Scene\SceneData.g.h"><Filter>Class\Scene</Filter></ClInclude>
-    <ClInclude Include="Class\TextArt\TextArtData.g.h"><Filter>Class\TextArt</Filter></ClInclude>
+    <ClInclude Include="Generated\InGameData\*.h"><Filter>Generated\InGameData</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\AchievementDefinition\AchievementDefinitionData.g.h"><Filter>Generated\GameData\AchievementDefinition</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\CharacterDefinition\CharacterDefinitionData.g.h"><Filter>Generated\GameData\CharacterDefinition</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\Common\GameDataEnums.g.h"><Filter>Generated\GameData\Common</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\GameDataAll.h"><Filter>Generated\GameData</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\ItemDefinition\ItemDefinitionData.g.h"><Filter>Generated\GameData\ItemDefinition</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\LevelDefinition\LevelDefinitionData.g.h"><Filter>Generated\GameData\LevelDefinition</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\Localization\LocalizationData.g.h"><Filter>Generated\GameData\Localization</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\NewGameProfile\NewGameProfileData.g.h"><Filter>Generated\GameData\NewGameProfile</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\SceneOption\SceneOptionData.g.h"><Filter>Generated\GameData\SceneOption</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\SceneTypeConfig\SceneTypeConfigData.g.h"><Filter>Generated\GameData\SceneTypeConfig</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\Scene\SceneData.g.h"><Filter>Generated\GameData\Scene</Filter></ClInclude>
+    <ClInclude Include="Generated\GameData\TextArt\TextArtData.g.h"><Filter>Generated\GameData\TextArt</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\FGameDataKey.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\FGameDataPackage.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\FGameDataStore.h"><Filter>Runtime\GameData</Filter></ClInclude>
@@ -81,7 +86,7 @@
     <None Include="Asset\Monster\Monster_Stone_Golem_Hammer.txt"><Filter>Asset\Monster</Filter></None>
     <None Include="Asset\Monster\Monster_Wyvern.txt"><Filter>Asset\Monster</Filter></None>
     <None Include="Asset\Town\Town_Windwood.txt"><Filter>Asset\Town</Filter></None>
-    <None Include="Class\.gamedata-output"><Filter>Class</Filter></None>
+    <None Include="Generated\GameData\.gamedata-output"><Filter>Generated\GameData</Filter></None>
     <None Include="Data\.gamedata-output"><Filter>Data</Filter></None>
     <None Include="Data\Client\AchievementDefinition.yaml"><Filter>Data\Client</Filter></None>
     <None Include="Data\Client\CharacterDefinition.yaml"><Filter>Data\Client</Filter></None>
@@ -97,5 +102,7 @@
     <None Include="Excel\Scene.xlsx"><Filter>Excel</Filter></None>
     <None Include="Excel\Templates\GameDataTableTemplate.xlsx"><Filter>Excel\Templates</Filter></None>
     <None Include="README.md" />
+    <None Include="Generated\InGameData\.ingamedata-output"><Filter>Generated\InGameData</Filter></None>
+    <None Include="InGameDataSchema\InGameData.yaml"><Filter>InGameDataSchema</Filter></None>
   </ItemGroup>
 </Project>

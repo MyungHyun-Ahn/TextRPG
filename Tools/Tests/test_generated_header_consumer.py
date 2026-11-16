@@ -97,7 +97,7 @@ def main():
     input_root = work / "Excel"
     input_root.mkdir()
     write_fixture(input_root / "Fixture.xlsx")
-    cpp_root, yaml_root = work / "Class", work / "Data"
+    cpp_root, yaml_root = work / "Generated/GameData", work / "Data"
     command = ["dotnet", str(generator), "--input-root", str(input_root), "--output-root", str(cpp_root), "--yaml-output-root", str(yaml_root)]
     run(command, work, "generate")
     run(command + ["--check"], work, "check")
@@ -199,7 +199,7 @@ int main()
         vcvars = Path(installation) / "VC/Auxiliary/Build/vcvarsall.bat"
     vcvars = vcvars.resolve(strict=True)
     batch = work / "compile.cmd"
-    batch.write_text(f'@echo off\ncall "{vcvars}" x64\nif errorlevel 1 exit /b %errorlevel%\ncl /nologo /std:c++20 /permissive- /utf-8 /EHsc /Y- /W4 /WX /analyze /I Class Consumer.cpp EnumOnly.cpp PlainOnly.cpp /Fe:Consumer.exe\nif errorlevel 1 exit /b %errorlevel%\ncl /nologo /std:c++20 /permissive- /utf-8 /EHsc /Y- /W4 /WX /analyze /I Class UmbrellaOnly.cpp /Fe:UmbrellaOnly.exe\nexit /b %errorlevel%\n', encoding="utf-8")
+    batch.write_text(f'@echo off\ncall "{vcvars}" x64\nif errorlevel 1 exit /b %errorlevel%\ncl /nologo /std:c++20 /permissive- /utf-8 /EHsc /Y- /W4 /WX /analyze /I Generated/GameData Consumer.cpp EnumOnly.cpp PlainOnly.cpp /Fe:Consumer.exe\nif errorlevel 1 exit /b %errorlevel%\ncl /nologo /std:c++20 /permissive- /utf-8 /EHsc /Y- /W4 /WX /analyze /I Generated/GameData UmbrellaOnly.cpp /Fe:UmbrellaOnly.exe\nexit /b %errorlevel%\n', encoding="utf-8")
     run([os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(batch)], work, "compile")
     run([str(work / "Consumer.exe")], work, "consumer")
     run([str(work / "UmbrellaOnly.exe")], work, "umbrella-consumer")

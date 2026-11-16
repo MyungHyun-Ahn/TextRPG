@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 	GameData::FGameDataStore store;
 	LoadRuntimeFixture(store, std::filesystem::path(argv[1]), std::filesystem::path(argv[2]), false, argc == 4 ? std::filesystem::path(argv[3]) : std::filesystem::path{});
 	TextRPG::FGameUiBridge bridge;
-	TextRPG::FDataScene scene(store, bridge, std::filesystem::path(argv[1]));
+	TextRPG::FDataScene scene(store, bridge);
 	std::wstring error;
 	assert(scene.LoadFromGameData(L"MainMenu", error));
 	scene.OnEnter();

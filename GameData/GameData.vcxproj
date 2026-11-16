@@ -31,6 +31,10 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <InGameDataSchema>$(MSBuildThisFileDirectory)InGameDataSchema\InGameData.yaml</InGameDataSchema>
+    <InGameDataGeneratedRoot>Generated\InGameData</InGameDataGeneratedRoot>
+  </PropertyGroup>
   <PropertyGroup Label="BuildOutputPaths">
     <OutDir>$(MSBuildThisFileDirectory)..\Out\GameData\$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(MSBuildThisFileDirectory)..\Out\GameData\obj\$(Platform)\$(Configuration)\</IntDir>
@@ -48,7 +52,7 @@
       <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)Runtime;$(MSBuildThisFileDirectory)Class;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)Runtime;$(MSBuildThisFileDirectory)..\ConsoleGameCore;$(MSBuildThisFileDirectory)Generated\GameData;$(InGameDataGeneratedRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
@@ -115,19 +119,19 @@
     <None Include="Asset\Monster\Monster_Stone_Golem_Hammer.txt" />
     <None Include="Asset\Monster\Monster_Wyvern.txt" />
     <None Include="Asset\Town\Town_Windwood.txt" />
-    <None Include="Class\.gamedata-output" />
-    <ClInclude Include="Class\AchievementDefinition\AchievementDefinitionData.g.h" />
-    <ClInclude Include="Class\CharacterDefinition\CharacterDefinitionData.g.h" />
-    <ClInclude Include="Class\Common\GameDataEnums.g.h" />
-    <ClInclude Include="Class\GameDataAll.h" />
-    <ClInclude Include="Class\ItemDefinition\ItemDefinitionData.g.h" />
-    <ClInclude Include="Class\LevelDefinition\LevelDefinitionData.g.h" />
-    <ClInclude Include="Class\Localization\LocalizationData.g.h" />
-    <ClInclude Include="Class\NewGameProfile\NewGameProfileData.g.h" />
-    <ClInclude Include="Class\Scene\SceneData.g.h" />
-    <ClInclude Include="Class\SceneOption\SceneOptionData.g.h" />
-    <ClInclude Include="Class\SceneTypeConfig\SceneTypeConfigData.g.h" />
-    <ClInclude Include="Class\TextArt\TextArtData.g.h" />
+    <None Include="Generated\GameData\.gamedata-output" />
+    <ClInclude Include="Generated\GameData\AchievementDefinition\AchievementDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\CharacterDefinition\CharacterDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\Common\GameDataEnums.g.h" />
+    <ClInclude Include="Generated\GameData\GameDataAll.h" />
+    <ClInclude Include="Generated\GameData\ItemDefinition\ItemDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\LevelDefinition\LevelDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\Localization\LocalizationData.g.h" />
+    <ClInclude Include="Generated\GameData\NewGameProfile\NewGameProfileData.g.h" />
+    <ClInclude Include="Generated\GameData\Scene\SceneData.g.h" />
+    <ClInclude Include="Generated\GameData\SceneOption\SceneOptionData.g.h" />
+    <ClInclude Include="Generated\GameData\SceneTypeConfig\SceneTypeConfigData.g.h" />
+    <ClInclude Include="Generated\GameData\TextArt\TextArtData.g.h" />
     <None Include="Data\.gamedata-output" />
     <None Include="Data\Client\AchievementDefinition.yaml" />
     <None Include="Data\Client\CharacterDefinition.yaml" />
@@ -146,12 +150,40 @@
     <ClInclude Include="Runtime\GameData\GameDataPch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ProjectReference Include="..\ConsoleGameCore\ConsoleGameCore.vcxproj">
+      <Project>{99FC8F07-316A-425E-8325-FCE918FB7E0F}</Project>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <GlobalPropertiesToRemove>OutDir;IntDir;TargetName;NativeTestSuite;NativeGeneratedRoot;NativeInGameGeneratedRoot;NativeWithoutTextArt;NativeUseGameDataLibrary;NativeCoreDependencyNegative</GlobalPropertiesToRemove>
+    </ProjectReference>
+    <ClCompile Include="Generated\InGameData\*.g.cpp">
+      <InGameDataGenerated>true</InGameDataGenerated>
+    </ClCompile>
+    <ClInclude Include="Generated\InGameData\*.h" />
+    <None Include="Generated\InGameData\.ingamedata-output" />
+    <None Include="InGameDataSchema\InGameData.yaml" />
+  </ItemGroup>
   <Target Name="GenerateGameDataBeforeCompile" BeforeTargets="ClCompile" Condition="'$(DesignTimeBuild)' != 'true'">
     <!-- 변경 없는 출력은 검사만 하여 기존 PCH/obj 의존 시간과 생성 트리를 보존한다. -->
-    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Class&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot; --check">
+    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Generated\GameData&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot; --check">
       <Output TaskParameter="ExitCode" PropertyName="GameDataGenerationCheckExitCode" />
     </Exec>
     <!-- 검사 실패는 기존 생성 명령으로 처리하며, 검증/게시 실패는 빌드 실패로 전달한다. -->
-    <Exec Condition="'$(GameDataGenerationCheckExitCode)' != '0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Class&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot;" />
+    <Exec Condition="'$(GameDataGenerationCheckExitCode)' != '0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --input-root &quot;$(MSBuildThisFileDirectory)Excel&quot; --output-root &quot;$(MSBuildThisFileDirectory)Generated\GameData&quot; --yaml-output-root &quot;$(MSBuildThisFileDirectory)Data&quot;" />
+  </Target>
+  <Target Name="GenerateInGameDataBeforeCompile" DependsOnTargets="GenerateGameDataBeforeCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec EnvironmentVariables="LIB=" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(InGameDataSchema)&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)$(InGameDataGeneratedRoot)&quot; --check">
+      <Output TaskParameter="ExitCode" PropertyName="InGameDataGenerationCheckExitCode" />
+    </Exec>
+    <Exec Condition="'$(InGameDataGenerationCheckExitCode)' != '0'" EnvironmentVariables="LIB=" Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\Tools\GameDataGenerator\GameDataGenerator.csproj&quot; --configuration $(Configuration) --no-launch-profile -- --ingame-schema &quot;$(InGameDataSchema)&quot; --ingame-output-root &quot;$(MSBuildThisFileDirectory)$(InGameDataGeneratedRoot)&quot;" />
+  </Target>
+  <!-- 평가 때 출력이 없거나 타입이 삭제되어도 실제 컴파일 입력 계산 전에 다시 수집한다. -->
+  <Target Name="RefreshInGameDataCompileItems" BeforeTargets="BeforeClCompile;SelectClCompile" DependsOnTargets="GenerateInGameDataBeforeCompile">
+    <ItemGroup>
+      <ClCompile Remove="@(ClCompile)" Condition="'%(ClCompile.InGameDataGenerated)'=='true'" />
+      <ClCompile Include="$(InGameDataGeneratedRoot)\*.g.cpp">
+        <InGameDataGenerated>true</InGameDataGenerated>
+      </ClCompile>
+    </ItemGroup>
   </Target>
 </Project>

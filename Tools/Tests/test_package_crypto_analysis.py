@@ -191,6 +191,7 @@ def main():
         directory.mkdir()
         (directory / "Crypto.cpp").write_text(HARNESS, encoding="utf-8")
         flags = '/nologo /std:c++20 /permissive- /utf-8 /EHsc /W4 /WX /sdl /Od /MDd /D_DEBUG /D_CONSOLE /DUNICODE /D_UNICODE /DNOMINMAX /DWIN32_LEAN_AND_MEAN'
+        flags += f' /I"{root / "ConsoleGameCore"}"'
         commands = {
             "analyze": f'cl {flags} /I"{root / "GameData/Runtime"}" /analyze /c "{root / "GameData/Runtime/GameData/FGameDataPackage.cpp"}" /Fo:Package.obj /Fd:Package.pdb',
             "compile-crypto": f'cl {flags} /I"{root / "GameData/Runtime"}" Crypto.cpp /Fe:Crypto.exe',

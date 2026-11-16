@@ -132,7 +132,7 @@ def main():
     scratch.mkdir(parents=True, exist_ok=False)
     source_workbook = (options.workbook or ROOT / 'GameData/Excel/Scene.xlsx').resolve(strict=True)
     source_hash = hashlib.sha256(source_workbook.read_bytes()).hexdigest()
-    outputs = [scratch / 'output' / 'Class', scratch / 'output' / 'Data']
+    outputs = [scratch / 'output' / 'Generated/GameData', scratch / 'output' / 'Data']
     env = os.environ.copy()
     for name in ('TMP', 'TEMP', 'TMPDIR'):
         env[name] = str(scratch)
