@@ -39,6 +39,8 @@ namespace TextRPG
 		// 저장 여부는 앱이 결정한다. 파괴 중 종료는 추가 쓰기 없이 루프를 종료한다.
 		void CancelPendingTransitions() noexcept;
 		[[nodiscard]] bool IsQuitting() const noexcept { return m_isQuitting; }
+		// 읽기 전용: Fixed catch-up을 중단하되 실제 소유권 교체는 EndFrame에 남긴다.
+		[[nodiscard]] bool HasPendingTransition() const noexcept { return m_pendingScene != nullptr; }
 		void SetContinueAvailable(bool available) noexcept;
 		void ShowMessage(std::wstring textKey);
 		[[nodiscard]] SSceneAction HandleInput(const SInputEvent& inputEvent);

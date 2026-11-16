@@ -80,7 +80,7 @@ class HeaderIncludePolicyTests(unittest.TestCase):
                          'ConsoleGameCore/ConsoleGameCorePch.h',
                          'GameData/Runtime/GameData/pch.h', 'GameData/Runtime/GameData/GameDataPch.h'):
             self.assertNotIn('GameDataAll.h', (ROOT / relative).read_text(encoding='utf-8-sig'))
-        self.assertIn('#include "GameDataAll.h"', (ROOT / 'TextRPG/Main.cpp').read_text(encoding='utf-8-sig'))
+        self.assertIn('#include "GameDataAll.h"', (ROOT / 'TextRPG/Frame/FTextRpgFrame.cpp').read_text(encoding='utf-8-sig'))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

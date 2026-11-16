@@ -175,7 +175,7 @@ def progress_matches(value, expected, labels):
 
 
 def progress_acceptance(fixture, game, dat, cwd, env, work, options, app, runtime_temp,
-                        save_root, results, save_watch, assert_no_extraction):
+                        save_root, results, save_watch, assert_no_extraction, game_arguments=()):
     """별도 프로세스의 실제 저장/복원과 기존 정밀 Scene 오라클을 함께 검사한다."""
     localized = {row["TextKey"]: row["KoKR"] for row in
                  generated_rows((ROOT / "GameData/Data/Client/Localization.yaml").read_bytes())}
@@ -203,7 +203,8 @@ def progress_acceptance(fixture, game, dat, cwd, env, work, options, app, runtim
         watch = FileActivityWatch([app, cwd, runtime_temp])
         try:
             with watch:
-                console_smoke(game, cwd, env, directory, expected_options=options, **kwargs)
+                console_smoke(game, cwd, env, directory, expected_options=options,
+                              game_arguments=game_arguments, **kwargs)
         finally:
             report = save_watch(name, watch)
         watch.assert_clean()
@@ -323,7 +324,8 @@ def screen_oracle_controls(work):
 
 
 def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, expected_options=None,
-                  verify_newgame_save=False, scenario="newgame", expected_progress=None, progress_labels=None, expected_error=None):
+                  verify_newgame_save=False, scenario="newgame", expected_progress=None, progress_labels=None, expected_error=None,
+                  game_arguments=()):
     """사용자 콘솔에 붙지 않고 새로 만든 소유 최소화 콘솔만 제어한다."""
     env = env.copy()
     env.setdefault("TEXT_RPG_SAVE_ROOT", str(directory.resolve() / "save-root"))
@@ -340,7 +342,7 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
     startup = subprocess.STARTUPINFO()
     startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
     startup.wShowWindow = 7
-    process = subprocess.Popen([str(game)], cwd=cwd, env=env, startupinfo=startup,
+    process = subprocess.Popen([str(game), *game_arguments], cwd=cwd, env=env, startupinfo=startup,
                                creationflags=subprocess.CREATE_NEW_CONSOLE)
     handles = []
     read_only_save = None
@@ -491,6 +493,8 @@ def main():
     parser.add_argument("--scratch-root", required=True, type=Path)
     parser.add_argument("--only", choices=["missing-package", "screen-oracle", "ingamedata-newgame", "ingamedata"])
     parser.add_argument("--progress-fixture", type=Path, help="existing SceneUiRuntime native test executable")
+    parser.add_argument("--frame-mode", choices=["basic", "fixed-update", "frame-skip"],
+                        help="select the game's immutable startup Frame mode")
     args = parser.parse_args()
     if args.only == "ingamedata" and not (args.progress_fixture and args.progress_fixture.is_file()):
         # 패킹/게임 실행과 작업 디렉터리 생성보다 먼저 검사하며 -O에서도 생략하지 않는다.
@@ -531,6 +535,8 @@ def run_application(args, work, results):
     game = app / "TextRPG.exe"
     shutil.copy2(args.game, game)
     identity = hashlib.sha256(game.read_bytes()).hexdigest()
+    frame_mode = getattr(args, "frame_mode", None)
+    game_arguments = ("--frame-mode", frame_mode) if frame_mode is not None else ()
     env = os.environ.copy()
     save_root = work / "save-root"
     env["TEXT_RPG_SAVE_ROOT"] = str(save_root)
@@ -562,7 +568,7 @@ def run_application(args, work, results):
             with watch:
                 # console_smoke의 finally가 자식을 완전히 회수한 뒤 health/drain한다.
                 console_smoke(game, unrelated, env, directory, changed, expected_logo, expected_options,
-                              verify_newgame_save, scenario=scenario)
+                              verify_newgame_save, scenario=scenario, game_arguments=game_arguments)
         finally:
             report = save_watch(name, watch)
         watch.assert_clean()
@@ -574,7 +580,7 @@ def run_application(args, work, results):
         try:
             with watch:
                 # subprocess.run은 timeout 시에도 자식을 kill/wait한 뒤 예외를 던진다.
-                result = subprocess.run([str(game)], cwd=unrelated, env=selected_env or env,
+                result = subprocess.run([str(game), *game_arguments], cwd=unrelated, env=selected_env or env,
                                         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
         finally:
             report = save_watch(name, watch)
@@ -636,7 +642,7 @@ def run_application(args, work, results):
         results.append({"name": "ingamedata-newgame-autosave", "passed": True, "fileActivityReport": report})
         if args.only == "ingamedata":
             progress_acceptance(args.progress_fixture, game, dat, unrelated, env, work, baseline_options,
-                                app, runtime_temp, save_root, results, save_watch, assert_no_extraction)
+                                app, runtime_temp, save_root, results, save_watch, assert_no_extraction, game_arguments)
         required = ["missing-package", "ingamedata-newgame-autosave"]
         if args.only == "ingamedata":
             required += ["restart-continue-restores-changed-progress-and-quit-roundtrip",
@@ -647,7 +653,7 @@ def run_application(args, work, results):
             raise RuntimeError("required InGameData acceptance cases incomplete or failed")
         # 전체 요청 범위가 반환한 뒤에만 성공을 게시한다. NewGame 단독 CLI는 작은 범위를 유지한다.
         summary = {"passed": True, "status": "complete", "cases": len(results),
-                   "results": results, "exeSha256": identity}
+                   "results": results, "exeSha256": identity, "frameMode": frame_mode or "basic"}
         return summary, summary
     expected_options = baseline_options
     for name, changed in (("baseline-console", False), ("changed-console", True)):
@@ -740,6 +746,7 @@ def run_application(args, work, results):
                     "scope": "legacy Scene-only menu" if has_progress_catalog else "legacy Scene transition"})
     assert hashlib.sha256(game.read_bytes()).hexdigest() == identity
     summary = {"passed": all(x["passed"] for x in results), "cases": len(results), "exeSha256": identity,
+               "frameMode": frame_mode or "basic",
                "sourceExecutable": str(args.game), "directory": str(work), "results": results,
                "scope": "actual EXE, isolated minimized console; text-buffer/input behavior, not manual visual certification"}
     return summary, {k: v for k, v in summary.items() if k != "results"}

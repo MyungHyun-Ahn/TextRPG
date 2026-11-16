@@ -173,6 +173,7 @@
       <ObjectFileName>$(IntDir)GameDataPch.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Frame\FTextRpgFrame.cpp" />
     <ClCompile Include="InGameData\FGameSession.cpp" />
     <ClCompile Include="UI\InGameData\FInGameStatusUi.cpp" />
     <ClCompile Include="InGameData\InGameData.cpp">
@@ -194,6 +195,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Frame\FTextRpgFrame.h" />
     <ClInclude Include="InGameData\InGameData.h" />
     <ClInclude Include="InGameData\FGameSession.h" />
     <ClInclude Include="UI\InGameData\FInGameStatusUi.h" />

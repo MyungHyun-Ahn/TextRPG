@@ -775,44 +775,74 @@ class InputBuildContract(unittest.TestCase):
                 self.assertEqual(entries[0].findtext("m:Filter", namespaces=NS), "Input")
 
 
-    def test_main_collects_one_input_frame_before_scene_dispatch(self):
-        text = (ROOT / "TextRPG/Main.cpp").read_text(encoding="utf-8-sig")
-        self.assertIn('FInputManager inputManager(consoleInput)', text)
-        self.assertNotIn('consoleInput.ReadEvent(', text)
-        self.assertEqual(text.count('inputManager.Update()'), 1)
-        dispatch = text.index('sceneManager.HandleInputFrame(inputManager.GetEvents())')
-        terminal = text.index('EInputReadResult::Error', text.index('inputManager.Update()'))
-        self.assertLess(terminal, dispatch, "failed partial frames must not reach UI")
-        self.assertIn('inputResult == TextRPG::EInputReadResult::Event', text[terminal:dispatch])
-        self.assertNotIn('inputManager.Reset()', text)
-        update = text.index('sceneManager.Update(deltaSeconds)', dispatch)
-        render = text.index('sceneManager.Render(renderer.GetBackBuffer())', update)
-        present = text.index('renderer.Present()', render)
-        end_frame = text.index('sceneManager.EndFrame(errorMessage)', present)
-        result = text.index('session.TakeStartResult(sceneManager, dataError)', end_frame)
-        self.assertLess(dispatch, update)
-        self.assertLess(update, render)
-        self.assertLess(render, present)
-        self.assertLess(present, end_frame, "Scene ownership changes only after Render/Present")
-        self.assertLess(end_frame, result, "queued progress is not reported Started or saved before publication")
-        self.assertIn('!sceneManager.LoadStartupScene(uiManager, {}, errorMessage) || !sceneManager.EndFrame(errorMessage)', text)
-        quit_branch = text[text.index('if (!isRunning)'):update]
-        self.assertLess(quit_branch.index('CancelPendingTransitions()'), quit_branch.index('session.Save(dataError)'))
+    def test_inherited_frame_keeps_main_as_composition_only(self):
+        header = ROOT / 'TextRPG/Frame/FTextRpgFrame.h'
+        self.assertTrue(header.is_file(), 'TextRPG must supply a real FFrame subclass')
+        self.assertIn('class FTextRpgFrame final : public FFrame', header.read_text(encoding='utf-8-sig'))
+        main = (ROOT / 'TextRPG/Main.cpp').read_text(encoding='utf-8-sig')
+        self.assertIn('game.Run()', main)
+        self.assertNotIn('while (', main)
+        self.assertNotIn('[&]', main)
+        self.assertNotIn('FFramePipeline', main)
+        self.assertNotIn('steady_clock', main)
 
+    def test_main_collects_one_input_frame_before_scene_dispatch(self):
+        text = (ROOT / "TextRPG/Frame/FTextRpgFrame.cpp").read_text(encoding="utf-8-sig")
+        self.assertIn('InputManager(ConsoleInput)', text)
+        input_body = text[text.index('void FTextRpgFrame::OnInput()'):text.index('void FTextRpgFrame::OnUpdate(')]
+        self.assertNotIn('consoleInput.ReadEvent(', input_body)
+        self.assertEqual(input_body.count('inputManager.Update()'), 1)
+        dispatch = input_body.index('sceneManager.HandleInputFrame(inputManager.GetEvents())')
+        terminal = input_body.index('EInputReadResult::Error', input_body.index('inputManager.Update()'))
+        self.assertLess(terminal, dispatch, "failed partial frames must not reach UI")
+        self.assertIn('inputResult == EInputReadResult::Event', input_body[terminal:dispatch])
+        self.assertIn('RequestExit(1);', input_body[terminal:dispatch])
+        self.assertNotIn('inputManager.Reset()', text)
+        update = text[text.index('void FTextRpgFrame::OnUpdate('):text.index('void FTextRpgFrame::OnRender()')]
+        self.assertEqual(update.count('sceneManager.Update(deltaSeconds)'), 1)
+        self.assertIn('HasPendingTransition()', update)
+        self.assertIn('SkipRemainingUpdates()', update)
+        self.assertNotIn('inputManager.Update()', update)
+        render = text[text.index('void FTextRpgFrame::OnRender()'):text.index('void FTextRpgFrame::OnEndFrame()')]
+        self.assertLess(render.index('SceneManager.Render('), render.index('renderer.Present()'))
+        self.assertIn('RequestExit(1);', render)
+        end_body = text[text.index('void FTextRpgFrame::OnEndFrame()'):text.index('void FTextRpgFrame::OnStop()')]
+        self.assertLess(end_body.index('sceneManager.EndFrame(errorMessage)'),
+                        end_body.index('session.TakeStartResult(sceneManager, dataError)'),
+                        "queued progress is not reported Started or saved before publication")
+        self.assertIn('!sceneManager.LoadStartupScene(uiManager, {}, errorMessage) || !sceneManager.EndFrame(errorMessage)', text)
+        quit_branch = input_body[input_body.index('action.Type == ESceneAction::Quit'):input_body.index('action.Type == ESceneAction::StartGame')]
+        self.assertLess(quit_branch.index('CancelPendingTransitions()'), quit_branch.index('session.Save(dataError)'))
+        self.assertIn('RequestExit();', quit_branch)
 
     def test_main_honors_callback_shutdown_after_endframe_without_autosave(self):
-        text = (ROOT / "TextRPG/Main.cpp").read_text(encoding="utf-8-sig")
+        text = (ROOT / "TextRPG/Frame/FTextRpgFrame.cpp").read_text(encoding="utf-8-sig")
         end_frame = text.index('const bool published = sceneManager.EndFrame(errorMessage)')
         result = text.index('session.TakeStartResult(sceneManager, dataError)', end_frame)
-        shutdown = text.find('if (sceneManager.IsQuitting())', result)
-        self.assertGreater(shutdown, result, 'QUIT-01 Main must observe destructor shutdown after the publication result')
+        shutdown = text.index('if (sceneManager.IsQuitting())', result)
+        self.assertGreater(shutdown, result)
         branch_end = text.index('}', shutdown)
         branch = text[shutdown:branch_end]
-        self.assertIn('isRunning = false;', branch, 'late destructor Quit stops the outer app loop')
-        self.assertIn('return;', branch, 'late Quit returns from the EndFrame hook before further policy')
-        self.assertIn('if (!frameCompleted || !isRunning) break;', text[branch_end:], 'hook shutdown must leave the real loop')
-        self.assertNotIn('session.Save(', branch, 'a canceled publication must not cause another save write')
-        self.assertLess(branch_end, text.index('std::this_thread::sleep_for', end_frame))
+        self.assertIn('RequestExit();', branch, 'late destructor Quit stops the Core loop')
+        self.assertIn('return;', branch)
+        self.assertNotIn('session.Save(', branch)
+        self.assertNotIn('.Render(', branch)
+        stop = text[text.index('void FTextRpgFrame::OnStop()'):]
+        self.assertIn('m_state.reset()', stop)
+        self.assertNotIn('.Save(', stop, 'cleanup must not autosave failed/late shutdown')
+        main = (ROOT / "TextRPG/Main.cpp").read_text(encoding="utf-8-sig")
+        self.assertIn('const int exitCode = game.Run()', main)
+        self.assertNotIn('sleep_for', main)
+
+    def test_game_frame_has_matching_physical_frame_registration(self):
+        project = ET.parse(ROOT / 'TextRPG/TextRPG.vcxproj').getroot()
+        filters = ET.parse(ROOT / 'TextRPG/TextRPG.vcxproj.filters').getroot()
+        for kind, name in [('ClCompile', 'Frame\\FTextRpgFrame.cpp'), ('ClInclude', 'Frame\\FTextRpgFrame.h')]:
+            with self.subTest(path=name):
+                self.assertEqual(len([x for x in project.findall(f'.//m:{kind}', NS) if x.get('Include') == name]), 1)
+                entries = [x for x in filters.findall(f'.//m:{kind}', NS) if x.get('Include') == name]
+                self.assertEqual(len(entries), 1)
+                self.assertEqual(entries[0].findtext('m:Filter', namespaces=NS), 'Frame')
 
 
 if __name__ == "__main__":

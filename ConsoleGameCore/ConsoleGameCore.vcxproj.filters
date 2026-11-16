@@ -63,7 +63,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Frame\FFramePipeline.h">
+    <ClCompile Include="Frame\FFrame.cpp">
+      <Filter>Frame</Filter>
+    </ClCompile>
+    <ClInclude Include="Frame\FrameTypes.h">
+      <Filter>Frame</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame\IFrameClock.h">
+      <Filter>Frame</Filter>
+    </ClInclude>
+    <ClInclude Include="Frame\FFrame.h">
       <Filter>Frame</Filter>
     </ClInclude>
     <ClInclude Include="Input\FConsoleInput.h">

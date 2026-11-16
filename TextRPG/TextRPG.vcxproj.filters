@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
+    <Filter Include="Frame" />
     <Filter Include="InGameData">
       <UniqueIdentifier>{61391DCD-261B-5D02-B3B2-D5CF2FF02FBC}</UniqueIdentifier>
     </Filter>
@@ -30,6 +31,9 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="GameDataPch.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Frame\FTextRpgFrame.cpp">
+      <Filter>Frame</Filter>
+    </ClCompile>
     <ClCompile Include="InGameData\FGameSession.cpp">
       <Filter>InGameData</Filter>
     </ClCompile>
@@ -66,6 +70,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Frame\FTextRpgFrame.h">
+      <Filter>Frame</Filter>
+    </ClInclude>
     <ClInclude Include="InGameData\InGameData.h">
       <Filter>InGameData</Filter>
     </ClInclude>

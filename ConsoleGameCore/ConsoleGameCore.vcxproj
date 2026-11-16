@@ -75,7 +75,10 @@
     <ClCompile Include="UI\Common\FUiPanel.cpp" />
     <ClCompile Include="UI\Common\FUiTextArtView.cpp" />
     <ClCompile Include="UI\FUIManager.cpp" />
-    <ClInclude Include="Frame\FFramePipeline.h" />
+    <ClCompile Include="Frame\FFrame.cpp" />
+    <ClInclude Include="Frame\FrameTypes.h" />
+    <ClInclude Include="Frame\IFrameClock.h" />
+    <ClInclude Include="Frame\FFrame.h" />
     <ClInclude Include="Input\FConsoleInput.h" />
     <ClInclude Include="Input\FInputManager.h" />
     <ClInclude Include="Input\IInputSource.h" />

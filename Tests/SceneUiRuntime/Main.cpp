@@ -1,4 +1,7 @@
 #include "pch.h"
+#include "Frame/FrameTypes.h"
+#include "Frame/IFrameClock.h"
+#include "Frame/FFrame.h"
 #include "Rendering/FFrameBuffer.h"
 #include "UI/Common/FUiElement.h"
 #include "UI/Common/FUiPanel.h"
@@ -1095,17 +1098,113 @@ private:
 	SEndFrameProbeState& State;
 };
 
+class FSceneFrameClock final : public IFrameClock
+{
+public:
+	double Current = 0;
+	double NowSeconds() override { return Current; }
+	void WaitUntil(double deadlineSeconds) override { Current = (std::max)(Current, deadlineSeconds); }
+};
+
+class FSceneLoopProbe final : public FFrame
+{
+public:
+	FSceneLoopProbe(const SFrameOptions& options, FSceneFrameClock& clock, FSceneManager& scenes)
+		: FFrame(options, clock)
+		, Clock(clock)
+		, Scenes(scenes)
+	{
+	}
+	int Inputs = 0;
+	int Ends = 0;
+	int SkippedEnds = 0;
+private:
+	void OnInput() override { ++Inputs; }
+	void OnUpdate(float deltaSeconds) override
+	{
+		if (!Scenes.HasPendingTransition()) Scenes.Update(deltaSeconds);
+		if (Scenes.HasPendingTransition()) SkipRemainingUpdates();
+	}
+	void OnRender() override
+	{
+		Scenes.Render(Buffer);
+		if (!Stalled)
+		{
+			Clock.Current += 1.0;
+			Stalled = true;
+		}
+	}
+	void OnEndFrame() override
+	{
+		const auto skipped = GetStatistics().SkippedRenders;
+		if (skipped > SeenSkips) ++SkippedEnds;
+		SeenSkips = skipped;
+		std::wstring error;
+		assert(Scenes.EndFrame(error));
+		if (++Ends == 4) RequestExit();
+	}
+	FSceneFrameClock& Clock;
+	FSceneManager& Scenes;
+	FFrameBuffer Buffer{132, 43};
+	bool Stalled = false;
+	std::uint64_t SeenSkips = 0;
+};
+
+static void TestInheritedSceneFrameModes()
+{
+	for (const auto mode : {EFrameMode::Basic, EFrameMode::FixedUpdate, EFrameMode::FrameSkip})
+	{
+		SEndFrameProbeState old, next;
+		GameData::FGameDataStore store;
+		FSceneManager scenes(store);
+		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
+		PublishTestFrame(scenes);
+		SFrameOptions options;
+		options.Mode = mode;
+		options.TargetFps = 8;
+		options.MaxAccumulatedElapsedSeconds = 2;
+		options.MaxConsecutiveRenderSkips = 2;
+		FSceneFrameClock clock;
+		FSceneLoopProbe loop(options, clock, scenes);
+		int requests = 0;
+		int updatesAtRequest = 0;
+		old.Update = [&]
+		{
+			if (loop.Ends < 2) return;
+			++requests;
+			updatesAtRequest = old.UpdateHits;
+			assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(next)));
+			assert(scenes.HasPendingTransition());
+			std::wstring error;
+			assert(!scenes.EndFrame(error));
+			assert(old.Lifetime.Destroyed == 0 && next.Lifetime.Entered == 0);
+		};
+		assert(loop.Run() == 0);
+		assert(loop.Inputs == 4 && loop.Ends == 4 && loop.GetStatistics().CompletedFrames == 4);
+		assert(requests == 1 && old.UpdateHits == updatesAtRequest);
+		assert(old.Lifetime.Destroyed == 1 && next.Lifetime.Entered == 1 && next.UpdateHits > 0);
+		assert(!scenes.HasPendingTransition());
+		if (mode == EFrameMode::FrameSkip) assert(loop.SkippedEnds > 0);
+		std::cout << "PASS APP01 inherited frame mode=" << static_cast<int>(mode)
+			<< " input once old-scene catchup stopped safe-point once skipped-end=" << loop.SkippedEnds << '\n';
+	}
+}
+
 static void TestEndFrameGenericStages()
 {
+	TestInheritedSceneFrameModes();
 	for (int stage = 0; stage != 3; ++stage)
 	{
 		SEndFrameProbeState old, next, follow, final, rejected;
 		GameData::FGameDataStore store;
 		FSceneManager scenes(store);
 		std::wstring error;
+		assert(!scenes.HasPendingTransition());
 		assert(scenes.SetScene(std::make_unique<FEndFrameProbe>(old)));
+		assert(scenes.HasPendingTransition());
 		assert(old.Lifetime.Entered == 0);
 		PublishTestFrame(scenes);
+		assert(!scenes.HasPendingTransition());
 		assert(old.Lifetime.Entered == 1);
 		int hits = 0;
 		const auto request = [&]()
