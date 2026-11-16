@@ -2,6 +2,10 @@
 
 Excel을 유일한 **정적 콘텐츠 값/초기 규칙** 원본으로 사용하는 Client 전용 생성기다. 별도 InGameData YAML 모드는 진행 객체의 구조와 필드 codec을 생성한다. Windows, .NET 9와 프로젝트에 지정한 ClosedXML/YamlDotNet을 사용한다. 아래 명령은 **TextRPG.sln이 있는 솔루션 루트**에서 실행한다.
 
+## Excel 키 작성 규칙
+
+모든 테이블의 PK/FK는 숫자 정수다. 현재 원본은 양수 uint32 PK와 같은 타입의 FK를 사용하며 문자열 PK/참조키는 금지한다. Localization.TextKey와 TextArt.ArtId도 예외가 아니다. SceneTypeConfig.ConfigId 및 Enums.EnumId가 숫자 PK이고 SceneType/EnumName은 비키 분류/이름이다. 선택 TargetSceneId는 명시적 Default0으로 미지정을 표현한다. [Excel 작성 규칙](../../GameData/Excel/README.md)을 원본·템플릿·검증·생성·소비자 전체에 적용한다. 이번 숫자 이관의 실제 검증 상태는 로드맵을 따른다.
+
 ## 게임 빌드로 사용하기
 
 Visual Studio 2026에서 TextRPG를 빌드하면 GameData가 생성의 단일 소유자다. Excel 검증/정적 생성과 InGameData 구조 생성 → 동적 CPP 항목 갱신/라이브러리 컴파일 → 소비자 링크/패킹 의존 순서를 사용한다. `GameData.dat`에는 정적 Client YAML과 Asset을 넣으며 InGameData 구조 입력/CPP는 패킹하지 않는다. 솔루션과 TextRPG 개별 프로젝트 빌드 모두 지원한다.
@@ -98,7 +102,7 @@ schema_version: 2
 types:
   - name: SCharacter
     fields:
-      - {name: m_id, type: string, missing: reject, since: 1}
+      - {name: m_label, type: string, missing: reject, since: 1}
   - name: SRoot
     fields:
       - name: m_characters

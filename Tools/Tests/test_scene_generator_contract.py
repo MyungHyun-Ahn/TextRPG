@@ -39,7 +39,7 @@ def change_config(workbook, field, value):
 def fifth_option(workbook, _):
     sheet = workbook['SceneOption']
     sheet.cell(9, column(sheet, 'OptionOrder')).value = 8
-    sheet.append([None, 999, 'MainMenu', 5, 'MainMenu.Credits', 'Credits', None, False])
+    sheet.append([None, 999, 'MainMenu', 5, 4, 'Credits', 0, False])
 
 
 def no_battle_options(workbook, _):
@@ -67,6 +67,32 @@ def edit_art(transform):
     return mutate
 
 
+def generic_key(workbook, kind, value):
+    sheet = workbook.copy_worksheet(workbook['Localization'])
+    sheet.title = 'FutureSkill'
+    sheet['B1'] = 'FutureSkill'
+    sheet.delete_rows(15, sheet.max_row - 14)
+    sheet['B13'] = 'SkillId'
+    sheet['B6'] = kind
+    sheet['B14'] = value
+
+
+def numeric_cases():
+    for kind in ('string', 'bool', 'float', 'double', 'enum<SceneType>'):
+        yield ('numeric_pk_type_' + kind.replace('<', '_').replace('>', '_'), 'FutureSkill',
+               lambda wb, _, kind=kind: generic_key(wb, kind, 1))
+    for name, value in [('text_integer', '001'), ('legacy_name', 'Fireball'), ('bool', True),
+                        ('fraction', 1.5), ('zero', 0), ('negative', -1), ('overflow', 4294967296),
+                        ('nan_text', 'NaN')]:
+        yield ('numeric_pk_' + name, 'FutureSkill', lambda wb, _, value=value: generic_key(wb, 'uint32', value))
+    yield ('numeric_target_text', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, '002'))
+    yield ('numeric_target_bool', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, True))
+    yield ('numeric_target_fraction', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, 2.5))
+    yield ('numeric_target_default_missing', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 10, None))
+    yield ('numeric_duplicate_config_type', 'SceneTypeConfig', lambda wb, _: set_value(wb, 'SceneTypeConfig', 'SceneType', 15, 'MainMenu'))
+    yield ('numeric_enum_name_duplicate', 'Enums', lambda wb, _: set_value(wb, 'Enums', 'EnumName', 15, 'SceneType'))
+
+
 def cases():
     return [
         ('enum_allowed_redefinition', 'Scene', lambda wb, _: set_value(wb, 'Scene', 'SceneType', 11, 'MainMenu=0|Town=1|BattleField=2')),
@@ -87,8 +113,11 @@ def cases():
         ('forbidden_content_binding', 'Scene', lambda wb, _: add_forbidden_scene_binding(wb, 'ContentArtId')),
         ('forbidden_title_binding', 'Scene', lambda wb, _: add_forbidden_scene_binding(wb, 'TitleTextKey')),
         ('missing_active_target', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, None)),
-        ('unknown_active_target', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, 'MissingScene')),
-        ('unknown_localization_key', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'OptionTextKey', 14, 'Missing.String.Key')),
+        ('unknown_active_target', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, 999)),
+        ('unknown_localization_key', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'OptionTextKey', 14, 999)),
+        ('legacy_string_target', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 14, 'MissingScene')),
+        ('legacy_string_text_key', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'OptionTextKey', 14, 'Missing.String.Key')),
+        ('disabled_unknown_target', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 15, 999)),
         ('ignored_required_localization', 'Localization', lambda wb, _: set_value(wb, 'Localization', 'KoKR', 5, 'Ignore')),
         ('three_options', 'SceneTypeConfig', lambda wb, _: wb['SceneOption'].delete_rows(15)),
         ('five_options', 'SceneTypeConfig', fifth_option),
@@ -97,7 +126,7 @@ def cases():
         ('scroll_enabled', 'SceneTypeConfig', lambda wb, _: change_config(wb, 'OptionOverflowPolicy', 'Scroll')),
         ('forbidden_region_binding', 'Scene', lambda wb, _: add_forbidden_scene_binding(wb, 'RegionTextKey')),
         ('missing_static_scene_type', 'Scene', lambda wb, _: wb['Scene'].delete_cols(column(wb['Scene'], 'SceneType'))),
-        ('wrong_target_reference_type', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 6, 'uint32')),
+        ('wrong_target_reference_type', 'SceneOption', lambda wb, _: set_value(wb, 'SceneOption', 'TargetSceneId', 6, 'string')),
         ('missing_art_file', 'TextArt', lambda wb, _: set_value(wb, 'TextArt', 'AssetPath', 15, 'Asset/Character/missing.txt')),
         ('rooted_art_path', 'TextArt', lambda wb, _: set_value(wb, 'TextArt', 'AssetPath', 15, '/Asset/outside.txt')),
         ('escaping_art_path', 'TextArt', lambda wb, _: set_value(wb, 'TextArt', 'AssetPath', 15, '../outside.txt')),
@@ -180,11 +209,12 @@ def main():
     for yaml in (outputs[1] / 'Client').glob('*.yaml'):
         assert yaml.read_bytes().startswith(b'# TextRPG.GameData 1\n'), f'missing exact version marker: {yaml}'
     option_yaml = (outputs[1] / 'Client/SceneOption.yaml').read_text(encoding='utf-8')
-    assert '  "TargetSceneId": null\n' in option_yaml, 'nullable reference must remain null in YAML'
+    assert '  "TargetSceneId": 0\n' in option_yaml, 'absent optional reference must emit numeric zero in YAML'
+    assert '  "TargetSceneId": null\n' not in option_yaml
     assert not any(path.name == 'Schema' or path.name.endswith('.schema.yaml')
                    for root in outputs for path in root.rglob('*')), 'schema output must be absent'
     baseline = [snapshot(path) for path in outputs]
-    for name, expected_sheet, mutate in cases():
+    for name, expected_sheet, mutate in cases() + list(numeric_cases()):
         data_root = fixture(name)
         path = data_root / 'Excel/Scene.xlsx'
         wb = load_workbook(path)
@@ -198,17 +228,26 @@ def main():
         located = 'Scene.xlsx' in text and re.search(r'\[[^\]]+\]\s+[A-Z]+\d+', text) is not None
         expected_code = ('GD2132' if name.startswith('forbidden_') else
                          'GD2133' if name.startswith('unexpected_scene_') else None)
+        if name.startswith('numeric_pk_type_'):
+            expected_code = 'GD0307'
+        elif name.startswith('numeric_'):
+            expected_code = {'numeric_pk_zero': 'GD0331', 'numeric_pk_negative': 'GD0202',
+                             'numeric_pk_overflow': 'GD0202', 'numeric_target_default_missing': 'GD0324',
+                             'numeric_duplicate_config_type': 'GD2116', 'numeric_enum_name_duplicate': 'GD0903'}.get(name, 'GD0210')
         enum_code = {'enum_allowed_redefinition': 'GD0909', 'undefined_enum': 'GD0908',
                      'invalid_enum_value': 'GD0911', 'missing_enum_definitions': 'GD0901'}.get(name)
         if enum_code is not None:
             located = located and f'error {enum_code}:' in text
-        if expected_code is not None:
+        if expected_code in ('GD2132', 'GD2133'):
             located = any(line.startswith(f'{path} [Scene] E13: error {expected_code}:')
                           for line in text.splitlines())
+        elif expected_code is not None:
+            located = any(re.match(re.escape(f'{path} [{expected_sheet}] ') +
+                                  rf'[A-Z]+\d+: error {expected_code}:', line) for line in text.splitlines())
         passed = code != 0 and unchanged and preserved and located
         results.append({'case': name, 'exit': code, 'passed': passed, 'outputPreserved': unchanged,
                         'inputPreserved': preserved, 'locatedDiagnostic': located, 'expectedDomain': expected_sheet,
-                        'expectedCode': expected_code, 'expectedCell': 'E13' if expected_code else None})
+                        'expectedCode': expected_code, 'expectedCell': 'E13' if expected_code in ('GD2132', 'GD2133') else None})
         persist()
         if not passed:
             raise AssertionError(f'{name}: invalid workbook accepted, output/input changed or unlocated diagnostic\n{text}')
@@ -246,9 +285,9 @@ def main():
         elif name == 'independent_catalog_ids':
             sheet = wb['TextArt']
             for row in range(14, sheet.max_row + 1):
-                sheet.cell(row, column(sheet, 'ArtId')).value += '_OtherEntity'
+                sheet.cell(row, column(sheet, 'ArtId')).value += 100
         elif name == 'additional_entity_name_key':
-            wb['Localization'].append([None, 'Monster.Other.Name', '다른 몬스터', 'Other Monster'])
+            wb['Localization'].append([None, 1001, '다른 몬스터', 'Other Monster'])
         else:
             sheet = wb.copy_worksheet(wb['Localization'])
             sheet.title = 'Independent'

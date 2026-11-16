@@ -20,6 +20,7 @@
 
 namespace TextRPG
 {
+	using ETextKey = GameData::Common::ETextKey;
 	namespace
 	{
 		// 사용자 virtual callback이 예외로 빠져도 framework 작업 상태는 원래 값으로 돌아간다.
@@ -86,7 +87,7 @@ namespace TextRPG
 		m_progress = nullptr;
 	}
 
-	bool FDataScene::LoadFromGameData(const std::wstring& sceneId, std::wstring& errorMessage)
+	bool FDataScene::LoadFromGameData(std::uint32_t sceneId, std::wstring& errorMessage)
 	{
 		const bool wasOperating = IsOperating();
 		const SOperation operation(*this);
@@ -105,7 +106,7 @@ namespace TextRPG
 		if (scene == nullptr)
 		{
 			errorMessage = L"Scene ID is not registered in GameData: ";
-			errorMessage += sceneId;
+			errorMessage += std::to_wstring(sceneId);
 			return false;
 		}
 
@@ -113,7 +114,7 @@ namespace TextRPG
 		if (config == nullptr)
 		{
 			errorMessage = L"SceneType configuration is missing for scene: ";
-			errorMessage += sceneId;
+			errorMessage += std::to_wstring(sceneId);
 			return false;
 		}
 
@@ -130,7 +131,7 @@ namespace TextRPG
 			if (localization == nullptr)
 			{
 				errorMessage = L"Scene option localization key is not registered: ";
-				errorMessage += dataOption.optionTextKey;
+				errorMessage += std::to_wstring(dataOption.optionTextKey);
 				return false;
 			}
 
@@ -181,7 +182,7 @@ namespace TextRPG
 		auto optionPanel = std::make_unique<FUiPanel>(SCellRect{86, isMainMenu ? 0 : 11, 46, isMainMenu ? 43 : 32});
 		if (isMainMenu)
 		{
-			optionPanel->SetTitle(GetLocalizedText(m_store, L"Scene.MainMenu.Title"));
+			optionPanel->SetTitle(GetLocalizedText(m_store, static_cast<std::uint32_t>(ETextKey::Scene_MainMenu_Title)));
 		}
 		for (std::size_t index = 0; index < options.size(); ++index)
 		{
@@ -221,8 +222,8 @@ namespace TextRPG
 			optionPanel->AddChild(std::move(button));
 		}
 		uiRoot->AddBase(std::move(optionPanel));
-		// 성공 게시 전에 문자열 할당을 완료한다.
-		std::wstring preparedId = sceneId;
+		// 준비된 UI와 숫자 식별자를 함께 게시한다.
+		const auto preparedId = sceneId;
 		const auto baseLayer = m_nextUiId++;
 		std::vector<SUiLayer> preparedLayers;
 		preparedLayers.push_back({baseLayer, 1, true, std::move(uiRoot)});
@@ -239,7 +240,7 @@ namespace TextRPG
 		m_uiTopLayer = 0;
 		m_baseLayer = baseLayer;
 		m_uiLayers.swap(preparedLayers);
-		m_sceneId = std::move(preparedId);
+		m_sceneId = preparedId;
 		RefreshUiTopLayer();
 		if (wasBound)
 		{
@@ -382,7 +383,8 @@ namespace TextRPG
 		if (frameBuffer.GetWidth() < 132 || frameBuffer.GetHeight() < 43)
 		{
 			frameBuffer.Clear();
-			frameBuffer.DrawText(0, frameBuffer.GetHeight() / 2, GetLocalizedText(m_store, L"System.ScreenTooSmall"));
+			frameBuffer.DrawText(0, frameBuffer.GetHeight() / 2,
+				GetLocalizedText(m_store, static_cast<std::uint32_t>(ETextKey::System_ScreenTooSmall)));
 			return;
 		}
 		if (m_isRendering)

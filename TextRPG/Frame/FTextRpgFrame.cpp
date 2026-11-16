@@ -20,6 +20,7 @@
 
 namespace TextRPG
 {
+	using ETextKey = GameData::Common::ETextKey;
 	namespace
 	{
 		struct SScopedGameDataKey final
@@ -106,7 +107,7 @@ namespace TextRPG
 			RequestExit(1);
 			return;
 		}
-		if (!canContinue) sceneManager.ShowMessage(L"InGameData.Ui.LoadFailed");
+		if (!canContinue) sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::InGameData_Ui_LoadFailed));
 		if (!m_state->ConsoleInput.Initialize(errorMessage))
 		{
 			std::wcerr << errorMessage << L'\n';
@@ -152,10 +153,10 @@ namespace TextRPG
 				sceneManager.CancelPendingTransitions();
 				if (!session.Save(dataError))
 				{
-					sceneManager.ShowMessage(L"InGameData.Ui.SaveFailed");
+					sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::InGameData_Ui_SaveFailed));
 					sceneManager.Render(renderer.GetBackBuffer());
 					const bool presented = renderer.Present();
-					std::wcerr << GetLocalizedText(store, L"InGameData.Ui.SaveFailed") << L'\n';
+					std::wcerr << GetLocalizedText(store, static_cast<std::uint32_t>(ETextKey::InGameData_Ui_SaveFailed)) << L'\n';
 					std::cerr << "Save on exit failed: " << dataError << '\n';
 					if (!presented) std::wcerr << L"Unable to present the save failure.\n";
 					RequestExit(1);
@@ -164,13 +165,13 @@ namespace TextRPG
 				RequestExit();
 				return;
 			}
-			if (action.Type == ESceneAction::StartGame && !action.TargetSceneId.empty())
+			if (action.Type == ESceneAction::StartGame && action.TargetSceneId != 0)
 			{
 				const auto result = session.NewGame(action.TargetSceneId, sceneManager, m_state->UiManager, dataError);
 				m_state->StartingNewGame = result == EGameStartResult::Queued;
 				if (result == EGameStartResult::Failed)
 				{
-					sceneManager.ShowMessage(L"InGameData.Ui.NewGameFailed");
+					sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::InGameData_Ui_NewGameFailed));
 					std::cerr << "New-game operation: " << dataError << '\n';
 				}
 			}
@@ -179,7 +180,7 @@ namespace TextRPG
 				m_state->StartingNewGame = false;
 				if (!session.Continue(sceneManager, m_state->UiManager, dataError))
 				{
-					sceneManager.ShowMessage(L"InGameData.Ui.LoadFailed");
+					sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::InGameData_Ui_LoadFailed));
 					std::cerr << "Continue operation: " << dataError << '\n';
 				}
 			}
@@ -227,8 +228,9 @@ namespace TextRPG
 		}
 		if (startResult == EGameStartResult::Failed || startResult == EGameStartResult::StartedSaveFailed)
 		{
-			sceneManager.ShowMessage(startResult == EGameStartResult::StartedSaveFailed ?
-				L"InGameData.Ui.NewGameSaveFailed" : (m_state->StartingNewGame ? L"InGameData.Ui.NewGameFailed" : L"InGameData.Ui.LoadFailed"));
+			const auto key = startResult == EGameStartResult::StartedSaveFailed ? ETextKey::InGameData_Ui_NewGameSaveFailed :
+				(m_state->StartingNewGame ? ETextKey::InGameData_Ui_NewGameFailed : ETextKey::InGameData_Ui_LoadFailed);
+			sceneManager.ShowMessage(static_cast<std::uint32_t>(key));
 			std::cerr << "Progress publication: " << dataError << '\n';
 		}
 		if (!published) std::wcerr << L"Scene publication: " << errorMessage << L'\n';

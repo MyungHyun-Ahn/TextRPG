@@ -1,5 +1,7 @@
 # Excel 게임 데이터 및 파일 경로 관리 설계안
 
+> **사용자 정정 — 모든 데이터 키는 숫자:** [Excel 작성 규칙](../../GameData/Excel/README.md)이 PK/FK의 최신 계약이다. 문자열 PK/FK는 금지하며 현재 원본·생성물·런타임은 uint32를 사용한다. SceneTypeConfig는 ConfigId, Enums는 EnumId를 숫자 PK로 추가하고 분류/타입 이름은 비키 필드로 구분한다. 과거 문자열 ID 보존·nullable 문자열 설명은 이 계약을 대체하지 않는다. 실제 검증과 최종 마감 상태는 로드맵을 따른다.
+
 > **정적 정의·진행 데이터 소유권:** 게임 내 모든 정적 정의/고정 수치/초기값(레벨별 필요 경험치·Monster·ArtId와 경로 매칭 등)은 Excel 원본에서 관리한다. 플레이로 변하는 HP·Stats·인벤토리·업적 등은 단일 루트 `InGameData`와 직렬화/역직렬화 가능한 내부 객체가 소유하며, 화면에 표시돼도 Scene/UI의 게임 데이터가 아니다. Scene/UI는 비소유 조회·표현만 하고 선택·스크롤·포커스 등 UI 조작 상태만 소유한다. 최소 모델·FGameSession 앱 수명 소유·InGameData.xlsx 초기 정의·v1 저장/Continue와 EndFrame 게시의 현재 구현/실행 범위는 [009 §9](009_InGameData및저장복원설계안.md)를 따른다. 전체 콘텐츠/수동 호스트 인증 완료는 아니다.
 
 > **현재 Asset/PCH 계약 — 2026-11-15:** `GameData.dat` TGDP v2는 `Data/Client/<YAML 경로>`와 `Asset/<자산 경로>`의 원시 바이트를 함께 인증 암호화한다. 런타임은 저장소 소유 메모리에서 아트를 읽으며 txt/YAML 재생성·loose Asset 루트 탐색/fallback은 하지 않는다. 원본 디렉터리는 유지하고 파일명은 `Category_Title_Words.ext`로 통일했다. 아트28개 바이트·ID·규격은 그대로다. 아래 과거의 Asset 별도 배포/미구현·v1 컨테이너·GameDataRoot 설명보다 이 계약과 [Packer 사용법](../../Tools/GameDataPacker/README.md)이 우선한다. 최종 수용/검토 상태는 [로드맵](../ROADMAP.md) 상단을 따른다.
@@ -54,7 +56,7 @@ Workbook parser는 입력 루트 아래의 `.xlsx`를 재귀 검색하되 경로
 
 | 필드 | 템플릿 형식 | 용도와 규칙 |
 |---|---|---|
-| `SceneId` | `string`, Primary key, Required | 안정적인 Scene 키. 기존 키를 보존 |
+| `SceneId` | `uint32`, Primary key, Required, Min `1` | 배정 후 고정하는 숫자 Scene 키 |
 | `SceneType` | `enum<SceneType>`, Required | 해당 종류의 정확히 네 선택지 집합을 지정 |
 | `IsStartupScene` | `bool`, Required | 전체에서 정확히 하나만 true |
 
@@ -68,7 +70,7 @@ Scene 데이터 필드는 위 **`SceneId`/`SceneType`/`IsStartupScene` 세 정�
 
 | 필드 | 템플릿 형식 | 용도와 규칙 |
 |---|---|---|
-| `ArtId` | `string`, Primary key, Required | 아트의 안정적인 식별자 |
+| `ArtId` | `uint32`, Primary key, Required, Min `1` | 아트의 고정 숫자 식별자 |
 | `AssetPath` | `string`, Required | GameData 기준 상대 txt 경로; Scene에는 자산 경로를 두지 않음 |
 | `Width` | `uint32`, Required | 정확한 셀 너비 |
 | `Height` | `uint32`, Required | 정확한 행 수 |
@@ -79,10 +81,10 @@ Scene 데이터 필드는 위 **`SceneId`/`SceneType`/`IsStartupScene` 세 정�
 
 | ArtId | 원본 literal / crop rect | GameData 기준 AssetPath | 크기 |
 |---|---|---|---|
-| `MainLogo` | `kLayout3` / `(1,1,83,41)` | `Asset/Logo/Logo_Text_Rpg.txt` | 83×41 |
-| `PlayerSwordswoman` | `kLayout` / `(3,6,36,36)` | `Asset/Character/Character_Swordswoman.txt` | 36×36 |
-| `MonsterDragon` | `kLayout` / `(46,6,36,36)` | `Asset/Monster/Monster_Dragon.txt` | 36×36 |
-| `TownWindwood` | `kLayout2` / `(46,6,36,36)` | `Asset/Town/Town_Windwood.txt` | 36×36 |
+| `1` (기호 `MainLogo`) | `kLayout3` / `(1,1,83,41)` | `Asset/Logo/Logo_Text_Rpg.txt` | 83×41 |
+| `2` (기호 `PlayerSwordswoman`) | `kLayout` / `(3,6,36,36)` | `Asset/Character/Character_Swordswoman.txt` | 36×36 |
+| `3` (기호 `MonsterDragon`) | `kLayout` / `(46,6,36,36)` | `Asset/Monster/Monster_Dragon.txt` | 36×36 |
+| `4` (기호 `TownWindwood`) | `kLayout2` / `(46,6,36,36)` | `Asset/Town/Town_Windwood.txt` | 36×36 |
 
 로고는 원본의 브랜딩을 포함해 충실히 추출한다. 그 브랜딩을 메뉴·버튼·오류 안내 등 UI 조작 문구의 데이터 원본으로 전용하지 않는다. 운영 문구는 모두 Localization의 `ko-KR`/`en-US`에서 관리한다.
 
@@ -97,9 +99,9 @@ Scene은 UI 루트를 인스턴스별로 소유하지만 선택지 데이터는 
 | `OptionId` | `uint32`, Primary key, Required | 재정렬해도 보존하는 고유 키 |
 | `SceneType` | `enum<SceneType>`, Required | 같은 종류의 Scene이 공유하는 선택지 집합 |
 | `OptionOrder` | `uint32`, Required, Min `1`, Max `4` | 같은 SceneType 내 중복 불가, 반드시 1~4 모두 존재 |
-| `OptionTextKey` | `string`, Required | `Localization.TextKey` 필수 참조 |
+| `OptionTextKey` | `uint32`, Required | 숫자 `Localization.TextKey` 필수 참조 |
 | `ActionType` | `enum<SceneActionType>`, Required | 허용 행동 종류. 구현되지 않은 행동은 비활성 |
-| `TargetSceneId` | `string`, Optional, `#Default` 빈 값 허용 | `Scene.SceneId` 참조. 값/기본값이 모두 없으면 YAML null/C++ 빈 wstring. 지정 값은 비활성이어도 유효해야 하고 활성 StartGame의 유효 목적지는 필수 |
+| `TargetSceneId` | `uint32`, Optional, `#Default=0`, Min `0` | 숫자 `Scene.SceneId` 참조. 0은 미지정이며 0이 아닌 값은 비활성이어도 유효해야 한다. 활성 StartGame은 0이 아닌 목적지가 필수 |
 | `IsEnabled` | `bool`, Required | false도 보이는 네 행에 포함. 회색 표시하며 선택/확정 불가 |
 
 | SceneType | Order 1 | Order 2 | Order 3 | Order 4 |
@@ -116,7 +118,8 @@ MainMenu의 StartGame은 `TargetSceneId=Town`을 사용한다. 현재 Continue�
 
 | 필드 | 템플릿 형식 | 현재 계약 |
 |---|---|---|
-| `SceneType` | `enum<SceneType>`, Primary key, Required | 모든 정의된 SceneType에 정확히 한 행 |
+| `ConfigId` | `uint32`, Primary key, Required, Min `1` | 설정 행의 고정 숫자 ID |
+| `SceneType` | `enum<SceneType>`, Required | 비키 분류 필드. 모든 정의된 SceneType에 정확히 한 행 |
 | `MaxVisibleOptions` | `uint32`, Required, Min `4`, Max `4` | 반드시 4 |
 | `OptionOverflowPolicy` | `enum<OptionOverflowPolicy>`, Required | 반드시 `NoScroll` |
 
@@ -144,7 +147,7 @@ dotnet run --project Tools/GameDataGenerator/GameDataGenerator.csproj --
 dotnet run --project Tools/GameDataGenerator/GameDataGenerator.csproj -- --check
 ```
 
-**빈 선택적 참조:** `SceneOption.TargetSceneId`만 문자열 optional 참조로서 값과 `#Default`를 모두 비울 수 있는 제한적 예외다. YAML은 null, C++는 빈 wstring이다. 값이 있으면 비활성이어도 유효해야 하고 활성 StartGame 목적지는 필수다. 일반 optional/default 규칙은 완화하지 않는다. 제거한 Scene 컬럼에 nullable 예외를 남기지 않는다.
+**선택적 숫자 참조:** `SceneOption.TargetSceneId`는 uint32 Optional과 명시적 `#Default=0`으로 미지정을 표현한다. 빈 원본 셀은 기본값 0이며 YAML/C++도 숫자 0이다. 값이 있으면 비활성이어도 유효해야 하고 활성 StartGame 목적지는 필수다. 일반 optional/default 규칙은 완화하지 않는다. 제거한 Scene 컬럼에 nullable 예외를 남기지 않는다.
 
 **Enum 단일 원본:****Enum 단일 원본:** `OptionOverflowPolicy`의 정의는 Enums 시트에만 두고 필드 `#Allowed`는 비운다. Config 값 `NoScroll`과 `MaxVisibleOptions=4`는 생성기 도메인 검증으로 강제한다.
 

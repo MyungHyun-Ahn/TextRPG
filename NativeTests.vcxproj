@@ -184,6 +184,8 @@
     <ClInclude Include="TextRPG\Scene\FTextRPGSceneManager.h" />
     <ClInclude Include="ConsoleGameCore\Scene\TSceneManager.h" />
     <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h" />
+    <ClInclude Include="Tests\InGameData\LegacyProgressFixture.h" />
+    <None Include="Tests\InGameData\test_numeric_schema.py" />
     <None Include="Tests\InGameData\Schema\SharedGraph.yaml" />
     <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml" />
   </ItemGroup>

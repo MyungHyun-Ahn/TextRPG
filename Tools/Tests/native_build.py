@@ -31,6 +31,8 @@ def native_contract_sources(suite, generated_root=None):
     if suite in ('SceneUiRuntime', 'InGameData', 'SaveData'):
         paths += [ROOT / 'TextRPG' / name for name in
                   ('pch.h', 'pch.cpp', 'Scene/IScene.h')]
+    if suite in ('InGameData', 'SceneUiRuntime'):
+        paths += [ROOT / 'Tests/InGameData/LegacyProgressFixture.h']
     if suite == 'InGameData':
         paths += list((ROOT / 'Tests/InGameData/Schema').glob('*.yaml'))
         paths += list((ROOT / 'TextRPG/CustomInGameData').glob('*.cpp'))

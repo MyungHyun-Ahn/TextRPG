@@ -6,9 +6,9 @@ namespace GameData::ItemDefinition
 {
 	struct SItemDefinitionData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring itemId{};
-		::std::wstring nameTextKey{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t itemId{};
+		::std::uint32_t nameTextKey{};
 		::std::uint32_t maxStack{};
 	};
 }

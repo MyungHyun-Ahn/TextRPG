@@ -4,6 +4,18 @@ internal static class FSceneContractSelfTest
 {
     public static void Run(string testRoot)
     {
+        Check(testRoot, "NumericKey_FutureSkillStringRejected", workbook =>
+            Add(workbook, "FutureSkill", ["SkillId"], ["string"], [["Fireball"]]), "GD0307");
+        Check(testRoot, "NumericKey_TextCellRejected", workbook =>
+            Add(workbook, "FutureSkill", ["SkillId"], ["uint32"], [["001"]]), "GD0210");
+        Check(testRoot, "NumericKey_ItemDefinitionPositive", workbook =>
+        {
+            Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"], ["uint32", "uint32", "uint32"], [[1, 1, 99]]);
+            workbook.Worksheet("ItemDefinition").Cell("C12").Value = "Localization.TextKey";
+        }, null);
+        Check(testRoot, "NumericKey_RemovedItemNameReference", workbook =>
+            Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"], ["uint32", "uint32", "uint32"], [[1, 1, 99]]), "GD2120");
+        CheckNumericKeys(testRoot);
         Check(testRoot, "StaticSceneThreeFieldsWithoutLegacyAssets", _ => { }, null);
         foreach (string field in new[] { "PlayerArtId", "ContentArtId", "TitleTextKey", "RegionTextKey" })
             Check(testRoot, "Scene_ForbiddenPresentation_" + field, workbook =>
@@ -48,15 +60,15 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "GEN03_InvalidStartTargetWithoutMetadata", workbook =>
         {
             workbook.Worksheet("SceneOption").Cell("G12").Value = "";
-            workbook.Worksheet("SceneOption").Cell("G14").Value = "Missing";
+            workbook.Worksheet("SceneOption").Cell("G14").Value = 999;
         }, "GD2121");
         Check(testRoot, "SceneWithoutTextArt", workbook => workbook.Worksheet("TextArt").Delete(), null);
         Check(testRoot, "Art_RenamedIndependentIdsAndFiles", workbook =>
         {
             var sheet = workbook.Worksheet("TextArt");
-            sheet.Cell("B14").Value = "AlternateBanner";
+            sheet.Cell("B14").Value = 101;
             sheet.Cell("C14").Value = "Asset/banner.txt";
-            sheet.Cell("B15").Value = "AlternatePortrait";
+            sheet.Cell("B15").Value = 102;
             sheet.Cell("C15").Value = "Asset/portrait.txt";
         }, null, mutateAssets: root =>
         {
@@ -66,7 +78,7 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "Art_NewIndependentIdAndFile", workbook =>
         {
             var sheet = workbook.Worksheet("TextArt");
-            sheet.Cell("B16").Value = "NewEncounter";
+            sheet.Cell("B16").Value = 103;
             sheet.Cell("C16").Value = "Asset/encounter.txt";
             sheet.Cell("D16").Value = 36;
             sheet.Cell("E16").Value = 36;
@@ -76,7 +88,7 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "UI_UnknownTextWithoutReference", workbook =>
         {
             workbook.Worksheet("SceneOption").Cell("E12").Value = "";
-            workbook.Worksheet("SceneOption").Cell("E14").Value = "Unknown";
+            workbook.Worksheet("SceneOption").Cell("E14").Value = 999;
         }, "GD2122");
         Check(testRoot, "UI_FourSlotsIncludesDisabled", workbook => workbook.Worksheet("SceneOption").Row(25).Delete(), "GD2105");
         Check(testRoot, "UI_MaximumFixedFour", workbook => workbook.Worksheet("SceneTypeConfig").Cell("C14").Value = 8, "GD2102");
@@ -103,7 +115,7 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "Art_UnsupportedDimensionsEvenUnused", workbook =>
         {
             var sheet = workbook.Worksheet("TextArt");
-            sheet.Cell("B16").Value = "Unused";
+            sheet.Cell("B16").Value = 104;
             sheet.Cell("C16").Value = "Asset/square.txt";
             sheet.Cell("D16").Value = 1;
             sheet.Cell("E16").Value = 1;
@@ -142,9 +154,75 @@ internal static class FSceneContractSelfTest
         CheckCppQualification(testRoot);
     }
 
+    private static void CheckNumericKeys(string testRoot)
+    {
+        foreach (string type in new[] { "string", "bool", "float", "double", "enum<SceneType>" })
+            Check(testRoot, "NumericKey_RejectPk_" + type.Replace('<', '_').Replace('>', '_'), workbook =>
+                Add(workbook, "FutureItem", ["ItemId"], [type], [[1]]), "GD0307");
+        foreach ((object value, string code) in new (object, string)[]
+        {
+            (0, "GD0331"), (-1, "GD0202"), (4294967296d, "GD0202"),
+            (1.5, "GD0210"), (true, "GD0210"), ("1", "GD0210"), ("001", "GD0210"),
+            ("MainMenu", "GD0210"), ("NaN", "GD0210"), ("Infinity", "GD0210"),
+        })
+            Check(testRoot, "NumericKey_InvalidCell_" + value.ToString()!.Replace('.', '_'), workbook =>
+                Add(workbook, "FutureSkill", ["SkillId"], ["uint32"], [[value]]), code);
+        Check(testRoot, "NumericKey_Duplicate", workbook =>
+            Add(workbook, "FutureSkill", ["SkillId"], ["uint32"], [[1], [1]]), "GD0330");
+        Check(testRoot, "NumericKey_Missing", workbook =>
+            Add(workbook, "FutureSkill", ["SkillId", "Name"], ["uint32", "string"], [["", "Present"]]), "GD0201");
+        Check(testRoot, "NumericKey_NoDefaultIdentity", workbook =>
+        {
+            Add(workbook, "FutureSkill", ["SkillId", "Name"], ["uint32", "string"], [["", "Present"]]);
+            workbook.Worksheet("FutureSkill").Cell("B10").Value = 1;
+        }, "GD0210");
+        foreach (string type in new[] { "int32", "uint32", "int64", "uint64" })
+            Check(testRoot, "NumericKey_GenericInteger_" + type, workbook =>
+                Add(workbook, "FutureSkill", ["SkillId"], [type], [[1], [2147483647]]), null);
+        Check(testRoot, "NumericKey_UInt32Maximum", workbook =>
+            Add(workbook, "FutureSkill", ["SkillId"], ["uint32"], [[4294967295d]]), null);
+        foreach ((string name, string reference, string type, object value, string code) in new[]
+        {
+            ("NonPkTarget", "Independent.Label", "uint32", (object)1, "GD0342"),
+            ("StringTarget", "Independent.Label", "string", (object)"Label", "GD0343"),
+            ("Mismatched", "Independent.Id", "int32", (object)1, "GD0343"),
+            ("MissingTarget", "Absent.Id", "uint32", (object)1, "GD0340"),
+            ("MissingField", "Independent.Missing", "uint32", (object)1, "GD0341"),
+            ("Unknown", "Independent.Id", "uint32", (object)999, "GD0344"),
+            ("TextFk", "Independent.Id", "uint32", (object)"001", "GD0210"),
+        })
+            Check(testRoot, "NumericKey_Reference_" + name, workbook =>
+            {
+                Add(workbook, "Independent", ["Id", "Label"], ["uint32", "string"], [[1, "Label"]]);
+                Add(workbook, "FutureSkill", ["SkillId", "Ref"], ["uint32", type], [[1, value]]);
+                workbook.Worksheet("FutureSkill").Cell("C12").Value = reference;
+            }, code);
+        Check(testRoot, "NumericKey_DisabledNonzeroTarget", workbook =>
+        {
+            workbook.Worksheet("SceneOption").Cell("G15").Value = 999;
+            workbook.Worksheet("SceneOption").Cell("G12").Value = "";
+        }, "GD2122");
+        Check(testRoot, "NumericKey_DefaultZeroRequired", workbook =>
+            workbook.Worksheet("SceneOption").Cell("G10").Value = "", "GD0324");
+        Check(testRoot, "NumericKey_DuplicateConfigType", workbook =>
+            workbook.Worksheet("SceneTypeConfig").Cell("B15").Value = "MainMenu", "GD2116");
+        Check(testRoot, "NumericKey_EnumNameUnique", workbook =>
+            workbook.Worksheet("Enums").Cell("B15").Value = "SceneType", "GD0903");
+        foreach ((string table, string key, string field, string target) in new[]
+        {
+            ("CharacterDefinition", "CharacterId", "NameTextKey", "Localization.TextKey"),
+            ("CharacterDefinition", "CharacterId", "ArtId", "TextArt.ArtId"),
+            ("NewGameProfile", "ProfileId", "CharacterId", "CharacterDefinition.CharacterId"),
+            ("NewGameProfile", "ProfileId", "InitialLevel", "LevelDefinition.Level"),
+            ("AchievementDefinition", "AchievementId", "NameTextKey", "Localization.TextKey"),
+        })
+            Check(testRoot, "NumericKey_RequiredReference_" + table + field, workbook =>
+                Add(workbook, table, [key, field], ["uint32", "uint32"], [[1, 1]]), "GD2120");
+    }
+
     private static void CheckExistingBoundaries(string testRoot)
     {
-        foreach ((string table, int fields) in new[] { ("Scene", 3), ("SceneOption", 7), ("SceneTypeConfig", 3), ("TextArt", 4), ("Localization", 3) })
+        foreach ((string table, int fields) in new[] { ("Scene", 3), ("SceneOption", 7), ("SceneTypeConfig", 4), ("TextArt", 4), ("Localization", 3) })
         {
             for (int column = 2; column <= fields + 1; column++)
             {
@@ -153,7 +231,7 @@ internal static class FSceneContractSelfTest
                 Check(testRoot, $"Metadata_Required_{table}_{column}", workbook =>
                 {
                     var cell = workbook.Worksheet(table).Cell(7, fieldColumn);
-                    cell.Value = cell.GetString() != "true";
+                    cell.Value = !cell.GetValue<bool>();
                 }, "GD2101");
             }
             Check(testRoot, "Metadata_Target_" + table, workbook => workbook.Worksheet(table).Cell("B2").Value = "Server", "GD2101");
@@ -173,7 +251,7 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "UI_FifthDisabledSlot", workbook =>
         {
             var sheet = workbook.Worksheet("SceneOption");
-            object[] values = [999, "BattleField", 5, "UI_START", "None", "", false];
+            object[] values = [999, "BattleField", 5, 1, "None", 0, false];
             for (int column = 0; column < values.Length; column++) sheet.Cell(26, column + 2).Value = XLCellValue.FromObject(values[column]);
         }, "GD2105");
         Check(testRoot, "UI_DuplicateOrder", workbook => workbook.Worksheet("SceneOption").Cell("D15").Value = 1, "GD2106");
@@ -236,15 +314,24 @@ internal static class FSceneContractSelfTest
         }
         var diagnostics = new FDiagnosticBag();
         var tables = FWorkbookParser.ParseDirectory(input, diagnostics);
-        _ = FGameDataValidator.Validate(tables, diagnostics);
+        var enums = FGameDataValidator.Validate(tables, diagnostics);
+        if (expectedCode == null && !diagnostics.HasErrors && tables.Any(table => table.Name == "SceneOption"))
+        {
+            string yaml = FGameDataGenerators.Generate(tables, enums).Single(file => file.RelativePath == "Data/Client/SceneOption.yaml").Content;
+            if (!yaml.Contains("  \"TargetSceneId\": 0\n", StringComparison.Ordinal) ||
+                yaml.Contains("  \"TargetSceneId\": null\n", StringComparison.Ordinal))
+                throw new InvalidOperationException("Optional numeric targets must emit zero, never null: " + name);
+        }
         string messages = string.Join('\n', diagnostics.GetSorted());
         string fixtureLink = Path.Combine(root, "Asset", "link");
         if (Directory.Exists(fixtureLink)) Directory.Delete(fixtureLink);
         bool success = expectedCode == null ? !diagnostics.HasErrors : diagnostics.GetSorted().Any(item => item.Code == expectedCode &&
             (expectedCell == null || (item.Location.FilePath == path && item.Location.SheetName == "Scene" && item.Location.CellAddress == expectedCell)));
         if (!success) throw new InvalidOperationException($"Scene self-test {name}: expected {expectedCode ?? "valid"}{(expectedCell == null ? "" : " [Scene] " + expectedCell)}; actual:\n{messages}");
-        if (name is "GEN01_ClientFields" or "GEN02_NoOptionConfig" or "UI_UnknownTextWithoutReference" or "Art_MissingFile" or "Art_ExactCellWidth")
+        if (diagnostics.HasErrors && (name.StartsWith("NumericKey_", StringComparison.Ordinal) ||
+            name is "GEN01_ClientFields" or "GEN02_NoOptionConfig" or "UI_UnknownTextWithoutReference" or "Art_MissingFile" or "Art_ExactCellWidth"))
         {
+            byte[] inputBefore = File.ReadAllBytes(path);
             string cpp = Path.Combine(root, "PreviousCpp");
             string yaml = Path.Combine(root, "PreviousYaml");
             foreach (string output in new[] { cpp, yaml })
@@ -254,6 +341,7 @@ internal static class FSceneContractSelfTest
                 File.WriteAllText(Path.Combine(output, "sentinel.txt"), "previous output must survive");
             }
             if (Program.Main(["--input-root", input, "--output-root", cpp, "--yaml-output-root", yaml]) != 1 ||
+                !File.ReadAllBytes(path).SequenceEqual(inputBefore) ||
                 new[] { cpp, yaml }.Any(output => Directory.GetFiles(output, "*", SearchOption.AllDirectories).Length != 2 ||
                     File.ReadAllText(Path.Combine(output, "sentinel.txt")) != "previous output must survive" ||
                     File.ReadAllText(Path.Combine(output, ".gamedata-output")) != "GameDataGenerator owned output v1\n"))
@@ -273,36 +361,52 @@ internal static class FSceneContractSelfTest
              ["SceneActionType", "Client", "uint8", "None=0|StartGame=1|Quit=2"],
              ["OptionOverflowPolicy", "Client", "uint8", "NoScroll=1|Scroll=2"]]);
         workbook.Worksheet("Enums").Cell("B2").Value = "Shared";
-        for (int column = 2; column <= 5; column++) workbook.Worksheet("Enums").Cell(5, column).Value = "Shared";
+        for (int column = 2; column <= 6; column++) workbook.Worksheet("Enums").Cell(5, column).Value = "Shared";
+        var enumSheet = workbook.Worksheet("Enums");
+        enumSheet.Cell("B4").Value = "";
+        enumSheet.Cell("F4").Value = "Primary";
+        enumSheet.Cell("F6").Value = "uint32";
+        enumSheet.Cell("F7").Value = true;
+        enumSheet.Cell("F13").Value = "EnumId";
+        for (int row = 14; row <= 16; row++) enumSheet.Cell(row, 6).Value = row - 13;
         Add(workbook, "Scene", ["SceneId", "SceneType", "IsStartupScene"],
-            ["string", "enum<SceneType>", "bool"],
-            [["Main", "MainMenu", true],
-             ["Town", "Town", false],
-             ["Battle", "BattleField", false]]);
-        Add(workbook, "TextArt", ["ArtId", "AssetPath", "Width", "Height"], ["string", "string", "uint32", "uint32"],
-            [["Logo", "Asset/logo.txt", 83, 41], ["Square", "Asset/square.txt", 36, 36]]);
+            ["uint32", "enum<SceneType>", "bool"],
+            [[1, "MainMenu", true],
+             [2, "Town", false],
+             [3, "BattleField", false]]);
+        Add(workbook, "TextArt", ["ArtId", "AssetPath", "Width", "Height"], ["uint32", "string", "uint32", "uint32"],
+            [[1, "Asset/logo.txt", 83, 41], [2, "Asset/square.txt", 36, 36]]);
         Add(workbook, "SceneOption", ["OptionId", "SceneType", "OptionOrder", "OptionTextKey", "ActionType", "TargetSceneId", "IsEnabled"],
-            ["uint32", "enum<SceneType>", "uint32", "string", "enum<SceneActionType>", "string", "bool"],
-            [[1, "MainMenu", 1, "UI_START", "StartGame", "Main", true],
-             [2, "MainMenu", 2, "UI_START", "None", "Main", false],
-             [3, "MainMenu", 3, "UI_START", "None", "Main", false],
-             [4, "MainMenu", 4, "UI_START", "Quit", "Main", true]]);
+            ["uint32", "enum<SceneType>", "uint32", "uint32", "enum<SceneActionType>", "uint32", "bool"],
+            [[1, "MainMenu", 1, 1, "StartGame", 1, true],
+             [2, "MainMenu", 2, 1, "None", 0, false],
+             [3, "MainMenu", 3, 1, "None", 0, false],
+             [4, "MainMenu", 4, 1, "Quit", 0, true]]);
         for (int type = 1; type <= 2; type++)
             for (int order = 1; order <= 4; order++)
             {
-                object[] values = [type * 100 + order, type == 1 ? "Town" : "BattleField", order, "UI_START", "None", "Main", false];
+                object[] values = [type * 100 + order, type == 1 ? "Town" : "BattleField", order, 1, "None", 0, false];
                 for (int column = 0; column < values.Length; column++)
                     workbook.Worksheet("SceneOption").Cell(13 + type * 4 + order, column + 2).Value = XLCellValue.FromObject(values[column]);
             }
         Add(workbook, "SceneTypeConfig", ["SceneType", "MaxVisibleOptions", "OptionOverflowPolicy"],
             ["enum<SceneType>", "uint32", "enum<OptionOverflowPolicy>"], [["MainMenu", 4, "NoScroll"], ["Town", 4, "NoScroll"], ["BattleField", 4, "NoScroll"]]);
-        Add(workbook, "Localization", ["TextKey", "ko-KR", "en-US"], ["string", "string", "string"], [["UI_START", "시작", "Start"]]);
+        var config = workbook.Worksheet("SceneTypeConfig");
+        config.Cell("B4").Value = "";
+        config.Cell("E4").Value = "Primary";
+        config.Cell("E5").Value = "Shared";
+        config.Cell("E6").Value = "uint32";
+        config.Cell("E7").Value = true;
+        config.Cell("E13").Value = "ConfigId";
+        for (int row = 14; row <= 16; row++) config.Cell(row, 5).Value = row - 13;
+        Add(workbook, "Localization", ["TextKey", "ko-KR", "en-US"], ["uint32", "string", "string"], [[1, "시작", "Start"]]);
         // 실제 프로젝트 현지화 필드명은 식별자여야 하므로 언어 열의 정식 이름을 쓴다.
         workbook.Worksheet("Localization").Cell("C13").Value = "KoKR";
         workbook.Worksheet("Localization").Cell("D13").Value = "EnUS";
         workbook.Worksheet("SceneOption").Cell("E12").Value = "Localization.TextKey";
         workbook.Worksheet("SceneOption").Cell("G12").Value = "Scene.SceneId";
         workbook.Worksheet("SceneOption").Cell("G7").Value = false;
+        workbook.Worksheet("SceneOption").Cell("G10").Value = 0;
         return workbook;
     }
 

@@ -1,21 +1,21 @@
 # TextRPG.GameData 1
-"TextArtMainLogo":
-  "ArtId": "MainLogo"
+"TextArt1":
+  "ArtId": 1
   "AssetPath": "Asset/Logo/Logo_Text_Rpg.txt"
   "Width": 83
   "Height": 41
-"TextArtPlayerSwordswoman":
-  "ArtId": "PlayerSwordswoman"
+"TextArt2":
+  "ArtId": 2
   "AssetPath": "Asset/Character/Character_Swordswoman.txt"
   "Width": 36
   "Height": 36
-"TextArtMonsterDragon":
-  "ArtId": "MonsterDragon"
+"TextArt3":
+  "ArtId": 3
   "AssetPath": "Asset/Monster/Monster_Dragon.txt"
   "Width": 36
   "Height": 36
-"TextArtTownWindwood":
-  "ArtId": "TownWindwood"
+"TextArt4":
+  "ArtId": 4
   "AssetPath": "Asset/Town/Town_Windwood.txt"
   "Width": 36
   "Height": 36

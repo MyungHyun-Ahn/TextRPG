@@ -8,9 +8,9 @@ namespace TextRPG
 	bool FCharacterInGameData::OnAfterDeserialize(std::string& error)
 	{
 		// 정의 조회·전체 관계 검증은 루트가 수행한다. 여기서는 객체 자체의 필수 식별자만 검사한다.
-		if (CharacterId.empty())
+		if (CharacterId == 0)
 		{
-			error = "ID length is invalid";
+			error = "CharacterId must be positive";
 			return false;
 		}
 		error.clear();

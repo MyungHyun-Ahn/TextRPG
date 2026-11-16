@@ -4,7 +4,7 @@ internal static class FGameDataEnumCatalog
 {
     public const string TableName = "Enums";
 
-    private static readonly string[] RequiredFields = ["EnumName", "Target", "UnderlyingType", "Values"];
+    private static readonly string[] RequiredFields = ["EnumId", "EnumName", "Target", "UnderlyingType", "Values"];
 
     public static bool IsDefinitionTable(FGameDataTable table) =>
         string.Equals(table.Name, TableName, StringComparison.OrdinalIgnoreCase);
@@ -69,7 +69,8 @@ internal static class FGameDataEnumCatalog
             diagnostics.Add("GD0902", "Enums table #Target must be Shared.", table.Locate(2, 2));
         }
 
-        ValidateField(table, fields["EnumName"], mustBePrimaryKey: true, diagnostics);
+        ValidateField(table, fields["EnumId"], mustBePrimaryKey: true, diagnostics);
+        ValidateField(table, fields["EnumName"], mustBePrimaryKey: false, diagnostics);
         ValidateField(table, fields["Target"], mustBePrimaryKey: false, diagnostics);
         ValidateField(table, fields["UnderlyingType"], mustBePrimaryKey: false, diagnostics);
         ValidateField(table, fields["Values"], mustBePrimaryKey: false, diagnostics);
@@ -204,14 +205,15 @@ internal static class FGameDataEnumCatalog
         bool mustBePrimaryKey,
         FDiagnosticBag diagnostics)
     {
-        if (field.Type?.Kind != EGameDataScalarKind.String ||
+        EGameDataScalarKind kind = mustBePrimaryKey ? EGameDataScalarKind.UInt32 : EGameDataScalarKind.String;
+        if (field.Type?.Kind != kind ||
             field.Scope != EGameDataScope.Shared ||
             !field.Required ||
             field.IsPrimaryKey != mustBePrimaryKey)
         {
             diagnostics.Add(
                 "GD0902",
-                $"Enums.{field.Name} must be required Shared string{(mustBePrimaryKey ? " primary key" : string.Empty)}.",
+                $"Enums.{field.Name} must be required Shared {(mustBePrimaryKey ? "uint32 primary key" : "string non-key")}.",
                 field.Location);
         }
     }

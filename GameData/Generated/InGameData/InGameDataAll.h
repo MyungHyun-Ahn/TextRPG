@@ -22,7 +22,7 @@
 
 namespace GameData::InGameData
 {
-	inline constexpr ::std::uint32_t kSchemaVersion = 1u;
+	inline constexpr ::std::uint32_t kSchemaVersion = 2u;
 	struct SAchievementProgress;
 	struct SCharacterStats;
 	struct SCharacterProgress;

@@ -1,5 +1,7 @@
 # InGameData YAML 정의·ISerializable 코드 자동 생성 설계안
 
+> **현재 정적 데이터 참조 타입:** [Excel 작성 규칙](../../GameData/Excel/README.md)에 따라 제품 InGameData의 CharacterId/ItemId/AchievementId/m_sceneId는 uint32이며 schema_version은 2다. 이전 IGD1/CGSA schema1 문자열 ID 읽기는 콘텐츠 계층에서 이관하고 새 저장에는 숫자만 쓴다. 일반 Core 아카이브의 string·string-map 지원과 구조/필드 이름 메타데이터는 유지한다. 아래 범용 codec 예제의 문자열을 Excel 데이터 PK/FK 허용으로 해석하지 않는다. 현재 실제 검증과 최종 소스 검토는 로드맵을 따른다.
+
 > 상태 — 2026-11-16: **생성기·Core·생성 모델 직접 사용·저장/Continue 통합을 구현했고, 네 구성 실제 실행과 독립 소스 검토의 조합을 확인했다.** 타입과 멤버의 원본은 InGameData YAML이며, 여기서 C++ 구조체와 직렬화·역직렬화 코드를 생성한다. 현재 실행/검토 근거와 범위는 §11을 따른다. 로컬 작업만 완료했으며 스테이징·커밋·푸시·원격 승인은 없다.
 > YAML은 개발용 **구조 정의 입력**이다. 실제 세이브는 byte payload와 기존 인증 암호화·파일 저장 경로를 사용한다. 기존 진행 소유권·Continue/EndFrame 게시 계약과 현재 실행 상태는 [009](009_InGameData및저장복원설계안.md)를 따른다.
 

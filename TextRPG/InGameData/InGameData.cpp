@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Common/GameDataEnums.g.h"
 #include "CharacterDefinition/CharacterDefinitionData.g.h"
 #include "LevelDefinition/LevelDefinitionData.g.h"
 #include "NewGameProfile/NewGameProfileData.g.h"
@@ -32,25 +33,38 @@ namespace
 			else if (unit >= 0xDC00 && unit <= 0xDFFF) throw std::runtime_error("ID contains invalid UTF-16");
 		}
 	}
-	void CheckBounds(const std::wstring& sceneId, const TextRPG::SCharacterProgress& character,
+	void CheckBounds(std::uint32_t, const TextRPG::SCharacterProgress&,
 		const std::vector<TextRPG::SInventoryItemProgress>& inventory, const std::vector<TextRPG::SAchievementProgress>& achievements)
 	{
-		CheckId(sceneId);
-		CheckId(character.CharacterId);
 		if (inventory.size() > kMaxEntries || achievements.size() > kMaxEntries)
 			throw std::runtime_error("Progress collection count exceeds limit");
-		std::size_t bytes = 56 + 2 * (sceneId.size() + character.CharacterId.size());
-		for (const auto& item : inventory)
-		{
-			CheckId(item.ItemId);
-			bytes += 16 + 2 * item.ItemId.size();
-		}
-		for (const auto& achievement : achievements)
-		{
-			CheckId(achievement.AchievementId);
-			bytes += 9 + 2 * achievement.AchievementId.size();
-		}
-		if (bytes > kMaxBytes) throw std::runtime_error("Total progress bytes exceed limit");
+	}
+	// 과거 콘텐츠 이름은 이 읽기 전용 경계에서만 해석한다. 새 저장에는 숫자만 쓴다.
+	std::uint32_t LegacySceneId(const std::wstring& value)
+	{
+		CheckId(value);
+		if (value == L"MainMenu") return static_cast<std::uint32_t>(GameData::Common::ESceneId::MainMenu);
+		if (value == L"Town") return static_cast<std::uint32_t>(GameData::Common::ESceneId::Town);
+		if (value == L"BattleField") return static_cast<std::uint32_t>(GameData::Common::ESceneId::BattleField);
+		throw std::runtime_error("SceneId definition is missing");
+	}
+	std::uint32_t LegacyCharacterId(const std::wstring& value)
+	{
+		CheckId(value);
+		if (value == L"Swordswoman") return static_cast<std::uint32_t>(GameData::Common::ECharacterId::Swordswoman);
+		throw std::runtime_error("CharacterId or Level definition is missing");
+	}
+	std::uint32_t LegacyItemId(const std::wstring& value)
+	{
+		CheckId(value);
+		if (value == L"Token") return static_cast<std::uint32_t>(GameData::Common::EItemId::Token);
+		throw std::runtime_error("ItemId definition is missing");
+	}
+	std::uint32_t LegacyAchievementId(const std::wstring& value)
+	{
+		CheckId(value);
+		if (value == L"Journey") return static_cast<std::uint32_t>(GameData::Common::EAchievementId::Journey);
+		throw std::runtime_error("AchievementId definition is missing");
 	}
 	// 프로토콜 정수는 모두 little-endian이며 wchar_t/객체 메모리를 덤프하지 않는다.
 	constexpr std::uint32_t kMagic = 0x31444749; // IGD1
@@ -108,7 +122,7 @@ namespace
 	{
 		// 순차 wire 읽기를 생성 타입의 생성자 인수 평가 순서에 맡기지 않는다.
 		TextRPG::SCharacterProgress result;
-		result.CharacterId = reader.Id();
+		result.CharacterId = LegacyCharacterId(reader.Id());
 		result.Level = reader.UInt32();
 		result.Experience = reader.UInt32();
 		result.CurrentHp = reader.UInt32();
@@ -119,18 +133,100 @@ namespace
 	{
 		TextRPG::SInventoryItemProgress result;
 		result.InstanceId = reader.Number(8);
-		result.ItemId = reader.Id();
+		result.ItemId = LegacyItemId(reader.Id());
 		result.Count = reader.UInt32();
 		return result;
 	}
 	TextRPG::SAchievementProgress ReadAchievement(FReader& reader)
 	{
 		TextRPG::SAchievementProgress result;
-		result.AchievementId = reader.Id();
+		result.AchievementId = LegacyAchievementId(reader.Id());
 		result.Progress = reader.UInt32();
 		result.IsCompleted = reader.Boolean();
 		return result;
 	}
+	// schema1 문자열 signature는 콘텐츠 전용 reader로 읽고 Core의 타입 계약은 그대로 둔다.
+	class FLegacyReadOnly : public TextRPG::ISerializable
+	{
+	protected:
+		bool SerializeFields(TextRPG::FBinaryWriter&, std::string& error) const override
+		{
+			error = "Legacy progress is read only";
+			return false;
+		}
+	};
+	struct SLegacyCharacter final : public FLegacyReadOnly
+	{
+		static constexpr std::string_view kTypeName = "SCharacterProgress";
+		std::wstring CharacterId;
+		std::uint32_t Level{}, Experience{}, CurrentHp{};
+		TextRPG::SCharacterStats StatBonuses;
+		std::string_view GetSerializableTypeName() const noexcept override
+		{
+			return kTypeName;
+		}
+	protected:
+		bool DeserializeFields(TextRPG::FBinaryReader& reader, std::string& error) override
+		{
+			return reader.Field("CharacterId", CharacterId, error) && reader.Field("Level", Level, error) &&
+				reader.Field("Experience", Experience, error) && reader.Field("CurrentHp", CurrentHp, error) &&
+				reader.Field("StatBonuses", StatBonuses, error);
+		}
+	};
+	struct SLegacyItem final : public FLegacyReadOnly
+	{
+		static constexpr std::string_view kTypeName = "SInventoryItemProgress";
+		std::uint64_t InstanceId{};
+		std::wstring ItemId;
+		std::uint32_t Count{};
+		std::string_view GetSerializableTypeName() const noexcept override
+		{
+			return kTypeName;
+		}
+	protected:
+		bool DeserializeFields(TextRPG::FBinaryReader& reader, std::string& error) override
+		{
+			return reader.Field("InstanceId", InstanceId, error) && reader.Field("ItemId", ItemId, error) &&
+				reader.Field("Count", Count, error);
+		}
+	};
+	struct SLegacyAchievement final : public FLegacyReadOnly
+	{
+		static constexpr std::string_view kTypeName = "SAchievementProgress";
+		std::wstring AchievementId;
+		std::uint32_t Progress{};
+		bool IsCompleted{};
+		std::string_view GetSerializableTypeName() const noexcept override
+		{
+			return kTypeName;
+		}
+	protected:
+		bool DeserializeFields(TextRPG::FBinaryReader& reader, std::string& error) override
+		{
+			return reader.Field("AchievementId", AchievementId, error) && reader.Field("Progress", Progress, error) &&
+				reader.Field("IsCompleted", IsCompleted, error);
+		}
+	};
+	struct SLegacyRoot final : public FLegacyReadOnly
+	{
+		static constexpr std::string_view kTypeName = "SRootInGameData";
+		std::uint32_t ContentVersion{}, Gold{};
+		std::wstring SceneId;
+		std::shared_ptr<SLegacyCharacter> Character;
+		std::vector<SLegacyItem> Inventory;
+		std::vector<SLegacyAchievement> Achievements;
+		std::string_view GetSerializableTypeName() const noexcept override
+		{
+			return kTypeName;
+		}
+	protected:
+		bool DeserializeFields(TextRPG::FBinaryReader& reader, std::string& error) override
+		{
+			return reader.Field("m_contentVersion", ContentVersion, error) && reader.Field("m_sceneId", SceneId, error) &&
+				reader.Field("m_character", Character, error) && reader.Field("m_gold", Gold, error) &&
+				reader.Field("m_inventory", Inventory, error) && reader.Field("m_achievements", Achievements, error);
+		}
+	};
 	void CheckInventory(const GameData::FGameDataStore& store, const std::vector<TextRPG::SInventoryItemProgress>& inventory)
 	{
 		std::set<std::uint64_t> instances;
@@ -145,7 +241,7 @@ namespace
 	}
 	void CheckAchievements(const GameData::FGameDataStore& store, const std::vector<TextRPG::SAchievementProgress>& achievements)
 	{
-		std::set<std::wstring> ids;
+		std::set<std::uint32_t> ids;
 		for (const auto& achievement : achievements)
 		{
 			const auto* definition = store.FindAchievementDefinition(achievement.AchievementId);
@@ -179,7 +275,7 @@ namespace TextRPG
 	{
 		return ForwardDeserializeFields(m_data, reader, error);
 	}
-	bool InGameData::CreateNew(const GameData::FGameDataStore& store, const std::wstring& sceneId,
+	bool InGameData::CreateNew(const GameData::FGameDataStore& store, std::uint32_t sceneId,
 		std::unique_ptr<InGameData>& output, std::string& error)
 	{
 		try
@@ -213,7 +309,7 @@ namespace TextRPG
 		return *m_data.m_character;
 	}
 	std::uint32_t InGameData::GetGold() const noexcept { return m_data.m_gold; }
-	const std::wstring& InGameData::GetSceneId() const noexcept { return m_data.m_sceneId; }
+	std::uint32_t InGameData::GetSceneId() const noexcept { return m_data.m_sceneId; }
 	const std::vector<SInventoryItemProgress>& InGameData::GetInventory() const noexcept { return m_data.m_inventory; }
 	const std::vector<SAchievementProgress>& InGameData::GetAchievements() const noexcept { return m_data.m_achievements; }
 	bool InGameData::GetStats(const GameData::FGameDataStore& store, SCharacterStats& output, std::string& error) const
@@ -257,7 +353,29 @@ namespace TextRPG
 			if (bytes.size() > kMaxBytes) throw std::runtime_error("Total progress bytes exceed limit");
 			const bool isFramed = bytes.size() >= 4 && bytes[0] == 'C' && bytes[1] == 'G' && bytes[2] == 'S' && bytes[3] == 'A';
 			std::unique_ptr<InGameData> candidate;
-			if (isFramed)
+			const bool isLegacyFramed = isFramed && bytes.size() >= 12 &&
+				bytes[8] == 1 && bytes[9] == 0 && bytes[10] == 0 && bytes[11] == 0;
+			if (isLegacyFramed)
+			{
+				SLegacyRoot legacyRoot;
+				if (!FSerializationArchive::Deserialize(bytes, legacyRoot, error, 1)) return false;
+				if (!legacyRoot.Character) throw std::runtime_error("Character progress is missing");
+				candidate.reset(new InGameData());
+				candidate->m_data.m_contentVersion = legacyRoot.ContentVersion;
+				candidate->m_data.m_sceneId = LegacySceneId(legacyRoot.SceneId);
+				const auto& character = *legacyRoot.Character;
+				*candidate->m_data.m_character = {LegacyCharacterId(character.CharacterId), character.Level,
+					character.Experience, character.CurrentHp, character.StatBonuses};
+				candidate->m_data.m_gold = legacyRoot.Gold;
+				candidate->m_data.m_inventory.reserve(legacyRoot.Inventory.size());
+				for (const auto& item : legacyRoot.Inventory)
+					candidate->m_data.m_inventory.push_back({item.InstanceId, LegacyItemId(item.ItemId), item.Count});
+				candidate->m_data.m_achievements.reserve(legacyRoot.Achievements.size());
+				for (const auto& award : legacyRoot.Achievements)
+					candidate->m_data.m_achievements.push_back({LegacyAchievementId(award.AchievementId),
+						award.Progress, award.IsCompleted});
+			}
+			else if (isFramed)
 			{
 				candidate.reset(new InGameData());
 				FSerializableTypeRegistry registry;
@@ -274,7 +392,7 @@ namespace TextRPG
 				if (reader.UInt32() != kFormatVersion) throw std::runtime_error("Unsupported progress format version");
 				candidate.reset(new InGameData());
 				candidate->m_data.m_contentVersion = reader.UInt32();
-				candidate->m_data.m_sceneId = reader.Id();
+				candidate->m_data.m_sceneId = LegacySceneId(reader.Id());
 				*candidate->m_data.m_character = ReadCharacter(reader);
 				candidate->m_data.m_gold = reader.UInt32();
 				const auto inventoryCount = reader.Count(18);
@@ -309,15 +427,14 @@ namespace TextRPG
 		error.clear();
 		return true;
 	}
-	bool InGameData::SetSceneId(const GameData::FGameDataStore& store, const std::wstring& sceneId, std::string& error)
+	bool InGameData::SetSceneId(const GameData::FGameDataStore& store, std::uint32_t sceneId, std::string& error)
 	{
 		try
 		{
 			if (!Validate(store, error)) return false;
 			CheckBounds(sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
 			if (!store.FindScene(sceneId)) throw std::runtime_error("SceneId definition is missing");
-			auto candidate = sceneId;
-			m_data.m_sceneId.swap(candidate);
+			m_data.m_sceneId = sceneId;
 			error.clear();
 			return true;
 		}

@@ -5,7 +5,7 @@ namespace TextRPG
 	struct SSceneAction final
 	{
 		ESceneAction Type = ESceneAction::None;
-		std::wstring TargetSceneId;
+		std::uint32_t TargetSceneId{};
 		explicit operator bool() const noexcept { return Type != ESceneAction::None; }
 	};
 	// 게임 입력 정책만 연결한다. Scene은 Manager의 private 소유권/전환 상태를 직접 보지 않는다.

@@ -7,7 +7,8 @@ namespace GameData::SceneTypeConfig
 {
 	struct SSceneTypeConfigData final
 	{
-		using KeyType = ::GameData::Common::ESceneType;
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t configId{};
 		::GameData::Common::ESceneType sceneType{};
 		::std::uint32_t maxVisibleOptions{};
 		::GameData::Common::EOptionOverflowPolicy optionOverflowPolicy{};

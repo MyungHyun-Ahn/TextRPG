@@ -16,10 +16,10 @@ namespace GameData::InGameData
 		SInventoryItemProgress& operator=(const SInventoryItemProgress& _other) = default;
 		SInventoryItemProgress(
 			::std::uint64_t _field0,
-			::std::wstring _field1,
+			::std::uint32_t _field1,
 			::std::uint32_t _field2);
 		::std::uint64_t InstanceId{};
-		::std::wstring ItemId{};
+		::std::uint32_t ItemId{};
 		::std::uint32_t Count{};
 		bool operator==(const SInventoryItemProgress& _other) const;
 		::std::string_view GetSerializableTypeName() const noexcept final;

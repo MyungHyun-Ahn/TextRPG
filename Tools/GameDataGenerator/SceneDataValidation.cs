@@ -5,7 +5,7 @@ internal static class FSceneDataValidation
     private static readonly IReadOnlyDictionary<string, (EGameDataScalarKind Kind, string? EnumName, bool Primary)> SceneFields =
         new Dictionary<string, (EGameDataScalarKind, string?, bool)>(StringComparer.Ordinal)
         {
-            ["SceneId"] = (EGameDataScalarKind.String, null, true),
+            ["SceneId"] = (EGameDataScalarKind.UInt32, null, true),
             ["SceneType"] = (EGameDataScalarKind.Enum, "SceneType", false),
             ["IsStartupScene"] = (EGameDataScalarKind.Bool, null, false),
         };
@@ -16,28 +16,29 @@ internal static class FSceneDataValidation
             ["OptionId"] = (EGameDataScalarKind.UInt32, null, true),
             ["SceneType"] = (EGameDataScalarKind.Enum, "SceneType", false),
             ["OptionOrder"] = (EGameDataScalarKind.UInt32, null, false),
-            ["OptionTextKey"] = (EGameDataScalarKind.String, null, false),
+            ["OptionTextKey"] = (EGameDataScalarKind.UInt32, null, false),
             ["ActionType"] = (EGameDataScalarKind.Enum, "SceneActionType", false),
-            ["TargetSceneId"] = (EGameDataScalarKind.String, null, false),
+            ["TargetSceneId"] = (EGameDataScalarKind.UInt32, null, false),
             ["IsEnabled"] = (EGameDataScalarKind.Bool, null, false),
         };
 
     private static readonly IReadOnlyDictionary<string, (EGameDataScalarKind Kind, string? EnumName, bool Primary)> SceneTypeConfigFields =
         new Dictionary<string, (EGameDataScalarKind, string?, bool)>(StringComparer.Ordinal)
         {
-            ["SceneType"] = (EGameDataScalarKind.Enum, "SceneType", true),
+            ["ConfigId"] = (EGameDataScalarKind.UInt32, null, true),
+            ["SceneType"] = (EGameDataScalarKind.Enum, "SceneType", false),
             ["MaxVisibleOptions"] = (EGameDataScalarKind.UInt32, null, false),
             ["OptionOverflowPolicy"] = (EGameDataScalarKind.Enum, "OptionOverflowPolicy", false),
         };
 
     public static bool IsNullableReference(string tableName, FGameDataField field) =>
-        field.Type?.Kind == EGameDataScalarKind.String &&
+        field.Type?.Kind == EGameDataScalarKind.UInt32 &&
         tableName == "SceneOption" && field.Name == "TargetSceneId";
 
     private static readonly IReadOnlyDictionary<string, (EGameDataScalarKind Kind, string? EnumName, bool Primary)> TextArtFields =
         new Dictionary<string, (EGameDataScalarKind, string?, bool)>(StringComparer.Ordinal)
         {
-            ["ArtId"] = (EGameDataScalarKind.String, null, true),
+            ["ArtId"] = (EGameDataScalarKind.UInt32, null, true),
             ["AssetPath"] = (EGameDataScalarKind.String, null, false),
             ["Width"] = (EGameDataScalarKind.UInt32, null, false),
             ["Height"] = (EGameDataScalarKind.UInt32, null, false),
@@ -46,7 +47,7 @@ internal static class FSceneDataValidation
     private static readonly IReadOnlyDictionary<string, (EGameDataScalarKind Kind, string? EnumName, bool Primary)> LocalizationFields =
         new Dictionary<string, (EGameDataScalarKind, string?, bool)>(StringComparer.Ordinal)
         {
-            ["TextKey"] = (EGameDataScalarKind.String, null, true),
+            ["TextKey"] = (EGameDataScalarKind.UInt32, null, true),
             ["KoKR"] = (EGameDataScalarKind.String, null, false),
             ["EnUS"] = (EGameDataScalarKind.String, null, false),
         };
@@ -99,12 +100,12 @@ internal static class FSceneDataValidation
         RequireReference(optionsTable, "TargetSceneId", sceneTable, "SceneId", diagnostics);
         RequireReference(optionsTable, "OptionTextKey", localizationTable, "TextKey", diagnostics);
 
-        var sceneIds = sceneTable.Rows.Select(row => GetString(row, "SceneId")).ToHashSet(StringComparer.Ordinal);
+        var sceneIds = sceneTable.Rows.Select(row => GetKey(row, "SceneId")).ToHashSet();
         foreach (FGameDataRow row in optionsTable.Rows)
         {
             if (row.Values.TryGetValue("IsEnabled", out object? enabled) && enabled is true && GetString(row, "ActionType") == "StartGame" &&
-                (string.IsNullOrWhiteSpace(GetString(row, "TargetSceneId")) || !sceneIds.Contains(GetString(row, "TargetSceneId"))))
-                diagnostics.Add("GD2121", "Enabled StartGame requires a nonempty existing Scene.SceneId target, independently of #Reference.",
+                (GetKey(row, "TargetSceneId") == 0 || !sceneIds.Contains(GetKey(row, "TargetSceneId"))))
+                diagnostics.Add("GD2121", "Enabled StartGame requires a nonzero existing Scene.SceneId target, independently of #Reference.",
                     optionsTable.Locate(row.SourceRowNumber, optionsTable.Fields.First(field => field.Name == "TargetSceneId").ColumnNumber));
         }
 
@@ -140,7 +141,9 @@ internal static class FSceneDataValidation
             string policy = GetString(row, overflowPolicy.Name);
             if (policy != "NoScroll")
                 diagnostics.Add("GD2109", "OptionOverflowPolicy must be NoScroll; four slots never paginate.", configTable.Locate(row.SourceRowNumber, overflowPolicy.ColumnNumber));
-            configurations.TryAdd(sceneType, row);
+            if (!configurations.TryAdd(sceneType, row))
+                diagnostics.Add("GD2116", $"SceneTypeConfig must contain exactly one configuration for '{sceneType}'.",
+                    configTable.Locate(row.SourceRowNumber, configType.ColumnNumber));
         }
 
         var usedTypes = sceneTable.Rows.Select(row => GetString(row, "SceneType")).ToHashSet(StringComparer.Ordinal);
@@ -227,6 +230,7 @@ internal static class FSceneDataValidation
             if (!field.IsIncludedOnClient || (table.Name == "TextArt" && field.Scope != (primary ? EGameDataScope.Shared : EGameDataScope.Client)) || field.Type?.Kind != kind ||
                 (kind == EGameDataScalarKind.Enum && !string.Equals(field.Type.EnumName, enumName, StringComparison.Ordinal)) ||
                 field.IsPrimaryKey != primary || field.Required == IsNullableReference(table.Name, field) ||
+                (IsNullableReference(table.Name, field) && field.DefaultText != "0") ||
                 table.Fields.Count(candidate => candidate.Name == name) != 1)
             {
                 diagnostics.Add("GD2101", $"{table.Name}.{name} has an incompatible Client scope, type, required or primary-key setting.", field.Location);
@@ -261,11 +265,11 @@ internal static class FSceneDataValidation
         FGameDataField field = table.Fields.First(field => field.Name == name);
         if (!string.Equals(field.Reference, reference, StringComparison.Ordinal))
             diagnostics.Add("GD2120", $"{table.Name}.{name} must reference exactly '{reference}'.", table.Locate(12, field.ColumnNumber));
-        var keys = target.Rows.Select(row => GetString(row, key)).ToHashSet(StringComparer.Ordinal);
+        var keys = target.Rows.Select(row => GetKey(row, key)).ToHashSet();
         foreach (FGameDataRow row in table.Rows)
         {
-            string value = GetString(row, name);
-            if ((!string.IsNullOrWhiteSpace(value) && !keys.Contains(value)) || (field.Required && string.IsNullOrWhiteSpace(value)))
+            uint value = GetKey(row, name);
+            if ((value != 0 && !keys.Contains(value)) || (field.Required && value == 0))
                 diagnostics.Add("GD2122", $"Value '{value}' must exist in '{reference}', independently of #Reference metadata.", table.Locate(row.SourceRowNumber, field.ColumnNumber));
         }
     }
@@ -275,6 +279,9 @@ internal static class FSceneDataValidation
 
     private static string GetString(FGameDataRow row, string fieldName) =>
         row.Values.TryGetValue(fieldName, out object? value) ? value as string ?? string.Empty : string.Empty;
+
+    private static uint GetKey(FGameDataRow row, string fieldName) =>
+        row.Values.TryGetValue(fieldName, out object? value) && value is uint key ? key : 0;
 
     private static bool TryGetUInt32(FGameDataRow row, string fieldName, out uint value)
     {

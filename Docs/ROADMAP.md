@@ -1,5 +1,16 @@
 # TextRPG 작업 로드맵
 
+### Excel 데이터 키 숫자 통일 — 로컬 구현·검증·소스 검토 완료
+
+- 사용자 정정: item_id/skill_id를 포함한 모든 Excel 데이터 PK/FK는 숫자 정수다. 이름·문구·경로와 숫자 ID를 분리하며 문자열 ID를 운영 키로 쓰지 않는다. [작성 규칙](../GameData/Excel/README.md)을 단일 기준으로 원본·템플릿·생성기·런타임·검사를 함께 이관한다.
+- 현재 uint32 ID, 양수 PK 및 선택 참조 0, 기존 숫자 OptionId/Level 보존과 고정 매핑을 사용한다. SceneTypeConfig는 ConfigId, Enums는 EnumId를 PK로 추가하며 SceneType/EnumName은 비키 필드다. Scene 세 필드·네 옵션·아트·Core 독립성/소유권 정책은 바꾸지 않는다.
+- [x] NUMKEY-01 문자열 PK/FK 전수 조사, 숫자 매핑·범위·원본/저장 보호 계약과 작성 규칙 확정.
+- [x] NUMKEY-02 원본 Excel/템플릿과 생성기 검증·출력 이관 및 실제 생성 소비자 확인.
+- [x] NUMKEY-03 런타임·진행/저장과 기존 테스트 이관, IGD1/과거 CGSA 문자열 ID 읽기 호환 보존.
+- [x] NUMKEY-04 최종 검증·독립 소스 검토·문서 마감. 네 구성 Build/분석 경고0, Scene99·model198·Store429, 실제 앱 일반23·진행5. 최초 검토의 테스트 진단 기대값·들여쓰기를 보완하고 두 파일/네 hunk 집중 검토를 조합했다. 이전 canonical FAIL은 보존하며 현재 차단 결함은 없다.
+
+원본 Excel은 별도 후보에서 먼저 검사하며 열린 파일을 강제 교체하지 않는다. 기존 세이브/전용 키·아트 바이트와 과거 FAIL을 보존한다. `APP-D32-EMPTY-OUTPUT`은 이전 사용자 승인 보류를 유지하며 필수 실행에서 같은 현상이 재발할 때만 추적한다. 이번 새 변경의 커밋·푸시는 별도 요청 전까지 하지 않는다.
+
 ### SceneManager 공통 기능·TextRPG 로직 분리 — 로컬 마감, 빈 출력 이슈는 사용자 보류
 
 - [013 §12 실제 구현/검증](GameDesign/013_SceneManager공통기능및TextRPG로직분리계획.md#12-실제-로컬-구현과-검증-상태)에 사용자 승인으로 구현한 **TSceneManager<TAction> → FTextRPGSceneManager 상속**과 사용자 승인 보류 항목을 기록했다. 로컬 작업 마감과 전체 검사 PASS를 구분한다.

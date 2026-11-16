@@ -1,141 +1,141 @@
 # TextRPG.GameData 1
-"LocalizationMainMenu.NewGame":
-  "TextKey": "MainMenu.NewGame"
+"Localization1":
+  "TextKey": 1
   "KoKR": "새 게임"
   "EnUS": "New Game"
-"LocalizationMainMenu.Continue":
-  "TextKey": "MainMenu.Continue"
+"Localization2":
+  "TextKey": 2
   "KoKR": "불러오기"
   "EnUS": "Load Game"
-"LocalizationMainMenu.Settings":
-  "TextKey": "MainMenu.Settings"
+"Localization3":
+  "TextKey": 3
   "KoKR": "옵션"
   "EnUS": "Options"
-"LocalizationMainMenu.Credits":
-  "TextKey": "MainMenu.Credits"
+"Localization4":
+  "TextKey": 4
   "KoKR": "제작진"
   "EnUS": "Credits"
-"LocalizationMainMenu.Exit":
-  "TextKey": "MainMenu.Exit"
+"Localization5":
+  "TextKey": 5
   "KoKR": "나가기"
   "EnUS": "Exit"
-"LocalizationTown.Move":
-  "TextKey": "Town.Move"
+"Localization6":
+  "TextKey": 6
   "KoKR": "이동"
   "EnUS": "Move"
-"LocalizationTown.Inventory":
-  "TextKey": "Town.Inventory"
+"Localization7":
+  "TextKey": 7
   "KoKR": "가방"
   "EnUS": "Inventory"
-"LocalizationTown.Shop":
-  "TextKey": "Town.Shop"
+"Localization8":
+  "TextKey": 8
   "KoKR": "상점"
   "EnUS": "Shop"
-"LocalizationTown.Rest":
-  "TextKey": "Town.Rest"
+"Localization9":
+  "TextKey": 9
   "KoKR": "휴식"
   "EnUS": "Rest"
-"LocalizationSystem.ScreenTooSmall":
-  "TextKey": "System.ScreenTooSmall"
+"Localization10":
+  "TextKey": 10
   "KoKR": "화면 크기가 작습니다."
   "EnUS": "The console window is too small."
-"LocalizationTown.Talk":
-  "TextKey": "Town.Talk"
+"Localization11":
+  "TextKey": 11
   "KoKR": "대화"
   "EnUS": "Talk"
-"LocalizationTown.Inn":
-  "TextKey": "Town.Inn"
+"Localization12":
+  "TextKey": 12
   "KoKR": "여관"
   "EnUS": "Inn"
-"LocalizationBattle.Attack":
-  "TextKey": "Battle.Attack"
+"Localization13":
+  "TextKey": 13
   "KoKR": "공격"
   "EnUS": "Attack"
-"LocalizationBattle.Skill":
-  "TextKey": "Battle.Skill"
+"Localization14":
+  "TextKey": 14
   "KoKR": "스킬"
   "EnUS": "Skill"
-"LocalizationBattle.Item":
-  "TextKey": "Battle.Item"
+"Localization15":
+  "TextKey": 15
   "KoKR": "아이템"
   "EnUS": "Item"
-"LocalizationBattle.Defend":
-  "TextKey": "Battle.Defend"
+"Localization16":
+  "TextKey": 16
   "KoKR": "방어"
   "EnUS": "Defend"
-"LocalizationScene.MainMenu.Title":
-  "TextKey": "Scene.MainMenu.Title"
+"Localization17":
+  "TextKey": 17
   "KoKR": "메인 메뉴"
   "EnUS": "Main Menu"
-"LocalizationScene.Town.Title":
-  "TextKey": "Scene.Town.Title"
+"Localization18":
+  "TextKey": 18
   "KoKR": "바람숲 마을"
   "EnUS": "Windwood Village"
-"LocalizationScene.Town.Region":
-  "TextKey": "Scene.Town.Region"
+"Localization19":
+  "TextKey": 19
   "KoKR": "에르덴 숲"
   "EnUS": "Erden Forest"
-"LocalizationScene.BattleField.Title":
-  "TextKey": "Scene.BattleField.Title"
+"Localization20":
+  "TextKey": 20
   "KoKR": "고대 드래곤"
   "EnUS": "Ancient Dragon"
-"LocalizationInGameData.Ui.Level":
-  "TextKey": "InGameData.Ui.Level"
+"Localization21":
+  "TextKey": 21
   "KoKR": "레벨"
   "EnUS": "Level"
-"LocalizationInGameData.Ui.Hp":
-  "TextKey": "InGameData.Ui.Hp"
+"Localization22":
+  "TextKey": 22
   "KoKR": "체력"
   "EnUS": "HP"
-"LocalizationInGameData.Ui.Attack":
-  "TextKey": "InGameData.Ui.Attack"
+"Localization23":
+  "TextKey": 23
   "KoKR": "공격"
   "EnUS": "Attack"
-"LocalizationInGameData.Ui.Defense":
-  "TextKey": "InGameData.Ui.Defense"
+"Localization24":
+  "TextKey": 24
   "KoKR": "방어"
   "EnUS": "Defense"
-"LocalizationInGameData.Ui.Gold":
-  "TextKey": "InGameData.Ui.Gold"
+"Localization25":
+  "TextKey": 25
   "KoKR": "골드"
   "EnUS": "Gold"
-"LocalizationInGameData.Ui.Inventory":
-  "TextKey": "InGameData.Ui.Inventory"
+"Localization26":
+  "TextKey": 26
   "KoKR": "소지품"
   "EnUS": "Inventory"
-"LocalizationInGameData.Ui.Achievements":
-  "TextKey": "InGameData.Ui.Achievements"
+"Localization27":
+  "TextKey": 27
   "KoKR": "업적"
   "EnUS": "Achievements"
-"LocalizationInGameData.Ui.LoadFailed":
-  "TextKey": "InGameData.Ui.LoadFailed"
+"Localization28":
+  "TextKey": 28
   "KoKR": "저장 데이터를 불러오지 못했습니다."
   "EnUS": "Could not load saved progress."
-"LocalizationInGameData.Ui.SaveFailed":
-  "TextKey": "InGameData.Ui.SaveFailed"
+"Localization29":
+  "TextKey": 29
   "KoKR": "게임 진행을 저장하지 못했습니다."
   "EnUS": "Could not save game progress."
-"LocalizationInGameData.Ui.InvalidSaveLocation":
-  "TextKey": "InGameData.Ui.InvalidSaveLocation"
+"Localization30":
+  "TextKey": 30
   "KoKR": "저장 경로를 사용할 수 없습니다."
   "EnUS": "The save location is unavailable."
-"LocalizationInGameData.Character.Swordswoman.Name":
-  "TextKey": "InGameData.Character.Swordswoman.Name"
+"Localization31":
+  "TextKey": 31
   "KoKR": "여검사"
   "EnUS": "Swordswoman"
-"LocalizationInGameData.Item.Token.Name":
-  "TextKey": "InGameData.Item.Token.Name"
+"Localization32":
+  "TextKey": 32
   "KoKR": "모험의 증표"
   "EnUS": "Adventure Token"
-"LocalizationInGameData.Achievement.Journey.Name":
-  "TextKey": "InGameData.Achievement.Journey.Name"
+"Localization33":
+  "TextKey": 33
   "KoKR": "모험의 시작"
   "EnUS": "Journey Begins"
-"LocalizationInGameData.Ui.NewGameFailed":
-  "TextKey": "InGameData.Ui.NewGameFailed"
+"Localization34":
+  "TextKey": 34
   "KoKR": "새 게임을 시작하지 못했습니다."
   "EnUS": "Could not start a new game."
-"LocalizationInGameData.Ui.NewGameSaveFailed":
-  "TextKey": "InGameData.Ui.NewGameSaveFailed"
+"Localization35":
+  "TextKey": 35
   "KoKR": "새 게임을 시작했지만 저장하지 못했습니다."
   "EnUS": "New game started, but saving failed."

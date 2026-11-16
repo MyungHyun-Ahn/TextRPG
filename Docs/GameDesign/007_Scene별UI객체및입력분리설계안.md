@@ -1,5 +1,7 @@
 # Scene별 UI 객체·텍스트 아트·입력 분리 설계
 
+> **숫자 키 정정:** SceneId/ArtId/TextKey와 모든 Excel PK/FK를 숫자로 이관했다. [Excel 작성 규칙](../../GameData/Excel/README.md)이 아래 과거 문자열 키 설명보다 우선한다. UI 수명·Layer·소유권은 바꾸지 않는다. 현재 실행·검토 마감 상태는 로드맵을 따른다.
+
 > **현재 라이브러리 경계 — 구현/실행 확인:** ConsoleGameCore의 공통 UI·중립 FUIManager와 TextRPG의 FGameUiBridge/SUIOption을 분리했다. 메인메뉴·상태·typed 아트 UI는 코어 기반을 실제 상속한다. Layer 소유·최상위 입력 및 진행/수명 보존 정책은 유지한다. 실제 경로와 네 구성 실행/최종 검토 범위는 [010 §10](010_게임코어및콘텐츠라이브러리분리설계안.md)을 따른다. 아래 분리 이전 FUIManager→FDataScene 설명과 검증 수치는 당시 이력이며 현재 공통 API 계약이 아니다.
 
 
@@ -330,7 +332,7 @@ Windows Terminal의 pseudoconsole에서는 `GetConsoleWindow()`의 HWND가 표�
 | 데이터 | 확정 계약 |
 |---|---|
 | Scene 정적 필드만 유지 | `SceneId`, `SceneType`, `IsStartupScene`. 자산 경로·현재 표시 대상/아트/이름/지역 필드 없음 |
-| 독립 선택적 TextArt 카탈로그 | `#Target=Client`. `ArtId` string Primary/Required/Scope Shared, `AssetPath` string 및 `Width`/`Height` uint32는 Required/Scope Client. 있으면 Scene 유무와 무관하게 검증 |
+| 독립 선택적 TextArt 카탈로그 | `#Target=Client`. `ArtId` uint32 Primary/Required/Scope Shared, `AssetPath` string 및 `Width`/`Height` uint32는 Required/Scope Client. 있으면 Scene 유무와 무관하게 검증 |
 | 현재 바인딩 | 제안 FCharacterUi/FMonsterUi/FTownUi/FMainMenuUi의 런타임 멤버. 구현은 P3 |
 | SceneOption 유지 참조 | `TargetSceneId → Scene.SceneId`, `OptionTextKey → Localization.TextKey` |
 
@@ -339,7 +341,7 @@ Windows Terminal의 pseudoconsole에서는 `GetConsoleWindow()`의 HWND가 표�
 - **Scene.AssetPath와 Asset/Scene의 레거시 배치 txt는 폐기했다.** Panel/Button/TextArt로 화면을 구성하며 TextArt.AssetPath의 경로·내용 검증은 유지한다. 아트의 실제 파일명 정정은 원본 바이트·ID·규격을 바꾸지 않는다.
 - 새 TextArt 경로는 빈 값·rooted/절대 경로·잘못된 Windows 경로·colon/ADS·`..` 루트 이탈·누락 파일·reparse/symlink 구성요소를 거부한다. rooted 경로를 묵시적으로 고치지 말고 진단한다. Generator는 parser 입력 루트의 부모를 GameData로 일관되게 사용하여 Excel/Sub의 workbook도 같은 자산을 참조한다.
 - SceneOption 목적지/레이블 현지화 참조는 `#Reference`를 지워도 우회할 수 없는 유지 계약이다. TargetSceneId는 값이 있으면 비활성이어도 유효해야 하며 활성 StartGame의 유효 목적지는 필수다. Scene 아트/제목/지역 참조 계약은 없다.
-- `SceneOption.TargetSceneId`만 값과 `#Default`를 모두 비워 참조 없음으로 표현할 수 있는 제한적 optional 문자열 참조 예외다(YAML null / C++ 빈 wstring). 일반 optional/default 규칙은 바꾸지 않으며 제거한 Scene 필드에 예외를 남기지 않는다.
+- `SceneOption.TargetSceneId`는 uint32 Optional과 명시적 `#Default=0`으로 참조 없음을 표현한다(빈 원본 셀도 YAML/C++ 숫자 0). 일반 optional/default 규칙은 바꾸지 않으며 제거한 Scene 필드에 예외를 남기지 않는다.
 - Enum 값은 Enums 시트가 단일 원본이므로 Config.OptionOverflowPolicy의 `#Allowed`는 비운다. 네 옵션/4/NoScroll은 데이터 검증으로 강제한다.
 - 새 데이터와 아트의 생성·검증은 P1, 아래 런타임 로딩·교체·표시는 P3다. 미사용 현지화/Enum은 마이그레이션 편의를 위해 임의 삭제하지 않는다.
 

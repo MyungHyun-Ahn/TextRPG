@@ -16,6 +16,13 @@ from application_observers import FileActivityWatch
 
 ROOT = Path(__file__).resolve().parents[2]
 
+# Frozen Excel IDs; SceneType and physical-screen oracle names remain enum/text labels.
+MAIN_MENU_TITLE_TEXT_KEY = 17
+PROGRESS_TEXT_KEYS = {"Hp": 22, "Attack": 23, "Defense": 24, "Gold": 25,
+                      "Inventory": 26, "Achievements": 27}
+LOAD_FAILED_TEXT_KEY = 28
+SAVE_FAILED_TEXT_KEY = 29
+
 
 class Coord(c.Structure):
     _fields_ = [("X", w.SHORT), ("Y", w.SHORT)]
@@ -78,6 +85,7 @@ def scene_labels(client=None, changed=False):
     options = generated_rows((client / "SceneOption.yaml").read_bytes())
     localized = {row["TextKey"]: row["KoKR"]
                  for row in generated_rows((client / "Localization.yaml").read_bytes())}
+    assert all(type(key) is int and 0 < key <= 0xFFFFFFFF for key in localized), "numeric TextKey expected"
     if changed:
         start = [row for row in options if row["SceneType"] == "MainMenu"
                  and row["ActionType"] == "StartGame"]
@@ -90,7 +98,7 @@ def scene_labels(client=None, changed=False):
         assert [row["OptionOrder"] for row in selected] == [1, 2, 3, 4]
         labels[scene] = [f'{row["OptionOrder"]}. {localized[row["OptionTextKey"]]}'
                          for row in selected]
-    labels["MainMenuTitle"] = localized["Scene.MainMenu.Title"]
+    labels["MainMenuTitle"] = localized[MAIN_MENU_TITLE_TEXT_KEY]
     return labels
 
 
@@ -179,8 +187,7 @@ def progress_acceptance(fixture, game, dat, cwd, env, work, options, app, runtim
     """별도 프로세스의 실제 저장/복원과 기존 정밀 Scene 오라클을 함께 검사한다."""
     localized = {row["TextKey"]: row["KoKR"] for row in
                  generated_rows((ROOT / "GameData/Data/Client/Localization.yaml").read_bytes())}
-    labels = {name: localized["InGameData.Ui." + name] for name in
-              ("Hp", "Attack", "Defense", "Gold", "Inventory", "Achievements")}
+    labels = {name: localized[key] for name, key in PROGRESS_TEXT_KEYS.items()}
 
     def invoke(mode, name):
         completed = subprocess.run([str(fixture.resolve()), mode, str(dat), str(save_root)],
@@ -223,14 +230,14 @@ def progress_acceptance(fixture, game, dat, cwd, env, work, options, app, runtim
     corrupt = bytearray(valid)
     corrupt[-1] ^= 1
     (save_root / "InGameData.sav").write_bytes(corrupt)
-    report = run("corrupt-save", scenario="corrupt", expected_error=localized["InGameData.Ui.LoadFailed"])
+    report = run("corrupt-save", scenario="corrupt", expected_error=localized[LOAD_FAILED_TEXT_KEY])
     assert (save_root / "InGameData.sav").read_bytes() == corrupt, "corrupt Continue/Quit overwrote previous bytes"
     assert (save_root / "SaveData.key").read_bytes() == key_before
     results.append({"name": "corrupt-save-keeps-exact-menu-localized-error-and-old-bytes", "passed": True,
                     "ciphertextSha256": hashlib.sha256(corrupt).hexdigest(), "fileActivityReport": report})
     (save_root / "InGameData.sav").write_bytes(valid)
     report = run("quit-save-failure", scenario="quit-failure", verify_newgame_save=True,
-                 expected_error=localized["InGameData.Ui.SaveFailed"])
+                 expected_error=localized[SAVE_FAILED_TEXT_KEY])
     results.append({"name": "quit-save-failure-localized-nonzero-preserves-ciphertext", "passed": True,
                     "fileActivityReport": report})
 
@@ -608,7 +615,10 @@ def run_application(args, work, results):
         if change:
             file_name, edit = change
             path = fixture / file_name
-            path.write_bytes(edit(path.read_bytes()))
+            before = path.read_bytes()
+            changed_bytes = edit(before)
+            assert changed_bytes != before, name + " YAML corruption was not applied"
+            path.write_bytes(changed_bytes)
         for omitted in ([omit] if isinstance(omit, str) else (omit or ())):
             (fixture / omitted).unlink()
         asset_fixture = work / (name + "-assets")
@@ -660,9 +670,9 @@ def run_application(args, work, results):
         if changed:
             env["TEXTRPG_GAMEDATA_ROOT"] = str(work / "nonexistent-loose-root")
             def replace_localization(raw):
-                before = '"KoKR": "새 게임"'.encode("utf-8")
+                before = '"TextKey": 1\n  "KoKR": "새 게임"'.encode("utf-8")
                 assert raw.count(before) == 1
-                return raw.replace(before, b'"KoKR": "DAT_RELOAD_OK"')
+                return raw.replace(before, b'"TextKey": 1\n  "KoKR": "DAT_RELOAD_OK"')
             expected_options = pack("changed", ("Localization.yaml", replace_localization), capture_options=True)
         directory = work / name
         directory.mkdir()
@@ -719,9 +729,13 @@ def run_application(args, work, results):
         ("required-null", "Scene.yaml", lambda raw: raw.replace(b'"IsStartupScene": true', b'"IsStartupScene": null', 1), ["IsStartupScene", "bool", "null"]),
         ("unknown-scene-field", "Scene.yaml", lambda raw: raw.replace(b'  "IsStartupScene": true', b'  "PlayerArtId": "illegal"\n  "IsStartupScene": true', 1), ["PlayerArtId", "field"]),
         ("invalid-enum", "Scene.yaml", lambda raw: raw.replace(b'"SceneType": "MainMenu"', b'"SceneType": "NotRegistered"', 1), ["SceneType", "enum"]),
-        ("broken-reference", "SceneOption.yaml", lambda raw: raw.replace(b'"TargetSceneId": "Town"', b'"TargetSceneId": "NotRegistered"', 1), ["TargetSceneId", "reference", "target"]),
+        ("broken-reference", "SceneOption.yaml",
+         lambda raw: raw.replace(b'"TargetSceneId": 2\n', b'"TargetSceneId": 999\n', 1),
+         ["TargetSceneId", "reference", "target"]),
         ("invalid-utf8", "Localization.yaml", lambda raw: raw + b"\xff", ["UTF", "encoding", "YAML"]),
-        ("duplicate-primary-key", "Scene.yaml", lambda raw: raw + b'"SceneAnotherRoot":\n  "SceneId": "MainMenu"\n  "SceneType": "MainMenu"\n  "IsStartupScene": false\n', ["duplicate", "SceneId", "key", "root"]),
+        ("duplicate-primary-key", "Scene.yaml",
+         lambda raw: raw + b'"Scene999":\n  "SceneId": 1\n  "SceneType": "MainMenu"\n  "IsStartupScene": false\n',
+         ["duplicate", "SceneId", "key", "root"]),
     ]
     for name, file_name, edit, expected in fixtures:
         pack(name, (file_name, edit))

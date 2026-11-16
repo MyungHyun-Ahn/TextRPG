@@ -19,7 +19,7 @@ namespace TextRPG
 	private:
 		const GameData::FGameDataStore& m_store;
 		const InGameData& m_progress;
-		std::wstring m_nameTextKey;
+		std::uint32_t m_nameTextKey{};
 		std::unique_ptr<FUiTextArt> m_art;
 	};
 }

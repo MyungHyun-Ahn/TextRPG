@@ -11,6 +11,6 @@ namespace TextRPG
 		[[nodiscard]] bool Prepare(const GameData::FGameDataStore& store, std::wstring& errorMessage);
 
 	private:
-		std::wstring m_logoArtId = L"MainLogo";
+		std::uint32_t m_logoArtId;
 	};
 }

@@ -11,9 +11,9 @@ namespace GameData::SceneOption
 		::std::uint32_t optionId{};
 		::GameData::Common::ESceneType sceneType{};
 		::std::uint32_t optionOrder{};
-		::std::wstring optionTextKey{};
+		::std::uint32_t optionTextKey{};
 		::GameData::Common::ESceneActionType actionType{};
-		::std::wstring targetSceneId{};
+		::std::uint32_t targetSceneId{};
 		bool isEnabled{};
 	};
 }

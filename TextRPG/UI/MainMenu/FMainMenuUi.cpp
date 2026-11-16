@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Common/GameDataEnums.g.h"
 #include "UI/Common/FUiElement.h"
 #include "UI/Common/FUiPanel.h"
 #include "UI/Common/FUiTextArtView.h"
@@ -13,6 +14,7 @@ namespace TextRPG
 {
 	FMainMenuUi::FMainMenuUi()
 		: FUiPanel({0, 0, 85, 43})
+		, m_logoArtId(static_cast<std::uint32_t>(GameData::Common::EArtId::MainLogo))
 	{
 	}
 	bool FMainMenuUi::Prepare(const GameData::FGameDataStore& store, std::wstring& errorMessage)

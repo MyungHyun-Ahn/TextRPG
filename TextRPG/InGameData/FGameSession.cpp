@@ -116,7 +116,7 @@ namespace TextRPG
 		}
 	}
 
-	EGameStartResult FGameSession::NewGame(const std::wstring& sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
+	EGameStartResult FGameSession::NewGame(std::uint32_t sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
 		std::string& error)
 	{
 		if (m_hasPendingStart)
@@ -213,7 +213,21 @@ namespace TextRPG
 			std::string probeError;
 			// 인증된 미래 버전만 선행 거부한다. 누락/손상 슬롯의 명시 저장 정책은 기존 서비스가 유지한다.
 			// 슬롯 쓰기는 게임 스레드에서 직렬화한다. 이 읽기 선행 검사는 다중 프로세스 CAS가 아니다.
-			if (store.Load(existing.Bytes, probeError) && !CanOverwriteProgressVersion(existing.Bytes, error)) return false;
+			if (store.Load(existing.Bytes, probeError))
+			{
+				if (!CanOverwriteProgressVersion(existing.Bytes, error)) return false;
+				const auto& bytes = existing.Bytes;
+				const bool isLegacy = bytes.size() >= 8 && bytes[0] == 'I' && bytes[1] == 'G' &&
+					bytes[2] == 'D' && bytes[3] == '1';
+				const bool isOldFramed = bytes.size() >= 12 && bytes[0] == 'C' && bytes[1] == 'G' &&
+					bytes[2] == 'S' && bytes[3] == 'A' && bytes[8] == 1 && bytes[9] == 0 && bytes[10] == 0 && bytes[11] == 0;
+				// 인증된 과거 콘텐츠를 해석할 수 없으면 명시 저장도 이전 슬롯을 보호한다.
+				if (isLegacy || isOldFramed)
+				{
+					std::unique_ptr<InGameData> migrated;
+					if (!InGameData::Deserialize(bytes, m_store, migrated, error)) return false;
+				}
+			}
 			SPlainBuffer plain;
 			return m_progress->Serialize(plain.Bytes, error) && store.Save(plain.Bytes, error);
 		}

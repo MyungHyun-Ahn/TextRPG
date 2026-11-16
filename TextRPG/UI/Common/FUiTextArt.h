@@ -8,7 +8,7 @@ namespace TextRPG
 	{
 	public:
 		explicit FUiTextArt(SCellRect rect);
-		[[nodiscard]] bool LoadFromGameData(const GameData::FGameDataStore& store, const std::wstring& artId,
+		[[nodiscard]] bool LoadFromGameData(const GameData::FGameDataStore& store, std::uint32_t artId,
 											std::wstring& errorMessage);
 	};
 }

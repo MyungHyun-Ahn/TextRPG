@@ -14,6 +14,7 @@
 #include "AchievementDefinition/AchievementDefinitionData.g.h"
 #include "Serialization/FSerializationArchive.h"
 #include "InGameDataAll.h"
+#include "LegacyProgressFixture.h"
 #include "SharedGraph/InGameDataAll.h"
 #include "CompatibilityV1/InGameDataAll.h"
 #include "CustomInGameData/FCharacterInGameData.h"
@@ -25,9 +26,17 @@ namespace
 {
 	namespace Graph = TextRPGTest::InGameData;
 	namespace V1 = TextRPGTest::InGameDataV1;
+	constexpr auto kSwordswoman = static_cast<std::uint32_t>(GameData::Common::ECharacterId::Swordswoman);
+	constexpr auto kToken = static_cast<std::uint32_t>(GameData::Common::EItemId::Token);
+	constexpr auto kJourney = static_cast<std::uint32_t>(GameData::Common::EAchievementId::Journey);
 	using TextRPG::FSerializableTypeRegistry;
 	using TextRPG::FSerializationArchive;
 
+	static_assert(GameData::InGameData::kSchemaVersion == 2);
+	static_assert(std::is_same_v<decltype(GameData::InGameData::SCharacterProgress::CharacterId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(GameData::InGameData::SInventoryItemProgress::ItemId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(GameData::InGameData::SAchievementProgress::AchievementId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(GameData::InGameData::SRootInGameData::m_sceneId), std::uint32_t>);
 	static_assert(std::is_convertible_v<TextRPG::InGameData*, TextRPG::ISerializable*>);
 	static_assert(std::is_same_v<TextRPG::SCharacterStats, GameData::InGameData::SCharacterStats>);
 	static_assert(std::is_same_v<TextRPG::SCharacterProgress, GameData::InGameData::SCharacterProgress>);
@@ -540,8 +549,8 @@ namespace
 
 		const auto* active = restored.get();
 		const auto* activeCharacter = &restored->GetCharacter();
-		const auto* characterId = activeCharacter->CharacterId.data();
-		const auto* sceneId = restored->GetSceneId().data();
+		const auto characterId = activeCharacter->CharacterId;
+		const auto sceneId = restored->GetSceneId();
 		const auto* items = restored->GetInventory().data();
 		const auto* awards = restored->GetAchievements().data();
 		const auto reject = [&](const std::vector<std::uint8_t>& invalid, const char* context)
@@ -550,7 +559,7 @@ namespace
 			const bool succeeded = TextRPG::InGameData::Deserialize(invalid, store, restored, error);
 			RequireExactArchiveRejection(succeeded, error, context);
 			assert(restored.get() == active && &restored->GetCharacter() == activeCharacter);
-			assert(activeCharacter->CharacterId.data() == characterId && restored->GetSceneId().data() == sceneId);
+			assert(activeCharacter->CharacterId == characterId && restored->GetSceneId() == sceneId);
 			assert(restored->GetInventory().data() == items && restored->GetAchievements().data() == awards);
 			assert(restored->Serialize(encoded, error) && encoded == directBytes);
 		};
@@ -644,7 +653,7 @@ int main(int argc, char** argv)
 	}
 	const std::array<const char*, 5> cohort{"CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
 		"ItemDefinition.yaml", "AchievementDefinition.yaml"};
-	const auto* prior = store.FindScene(L"MainMenu");
+	const auto* prior = store.FindScene(static_cast<std::uint32_t>(GameData::Common::ESceneId::MainMenu));
 
 	std::vector<std::function<void()>> catalogChecks;
 	const auto remember = [&](auto lookup, auto values)
@@ -657,7 +666,7 @@ int main(int argc, char** argv)
 			assert(lookup() == row && values(*row) == snapshot);
 		});
 	};
-	remember([&]() { return store.FindCharacterDefinition(L"Swordswoman"); }, [](const auto& row)
+	remember([&]() { return store.FindCharacterDefinition(kSwordswoman); }, [](const auto& row)
 		{ return std::make_tuple(row.characterId, row.nameTextKey, row.artId); });
 	remember([&]() { return store.FindLevelDefinition(1); }, [](const auto& row)
 		{ return std::make_tuple(row.level, row.requiredExperience, row.maxHp, row.attack, row.defense); });
@@ -666,9 +675,9 @@ int main(int argc, char** argv)
 	remember([&]() { return store.GetDefaultNewGameProfile(); }, [](const auto& row)
 		{ return std::make_tuple(row.profileId, row.characterId, row.initialLevel, row.initialExperience, row.initialGold,
 			row.initialMaxHpBonus, row.initialAttackBonus, row.initialDefenseBonus, row.contentVersion, row.isDefault); });
-	remember([&]() { return store.FindItemDefinition(L"Token"); }, [](const auto& row)
+	remember([&]() { return store.FindItemDefinition(kToken); }, [](const auto& row)
 		{ return std::make_tuple(row.itemId, row.nameTextKey, row.maxStack); });
-	remember([&]() { return store.FindAchievementDefinition(L"Journey"); }, [](const auto& row)
+	remember([&]() { return store.FindAchievementDefinition(kJourney); }, [](const auto& row)
 		{ return std::make_tuple(row.achievementId, row.nameTextKey, row.targetCount); });
 
 	const auto restore = [&]()
@@ -691,15 +700,46 @@ int main(int argc, char** argv)
 		assert(GameData::BuildEncryptedPackage(yaml, package, key, error, source / "Asset"));
 		error = "stale catalog error must be replaced";
 		RequireRejection(store.Load(package, key, error), error, expected, table);
-		assert(store.FindScene(L"MainMenu") == prior);
+		assert(store.FindScene(static_cast<std::uint32_t>(GameData::Common::ESceneId::MainMenu)) == prior);
 		for (const auto& check : catalogChecks) check();
 		std::cout << "PASS invalid catalog rejects with rollback: " << table << ' ' << diagnostic << '\n';
 	};
 	const std::string catalogLocation = "InGameData catalog cohort: ";
+	// 실제 숫자 키 decoder를 전체 콘텐츠 PK/FK에서 검증하고 기존 행/자산의 게시를 보존한다.
+	for (const auto& [table, field] : std::vector<std::pair<std::string, std::string>>{
+		{"Scene.yaml", "SceneId"}, {"SceneOption.yaml", "OptionTextKey"},
+		{"SceneOption.yaml", "TargetSceneId"}, {"SceneTypeConfig.yaml", "ConfigId"},
+		{"Localization.yaml", "TextKey"}, {"TextArt.yaml", "ArtId"},
+		{"CharacterDefinition.yaml", "CharacterId"}, {"CharacterDefinition.yaml", "NameTextKey"},
+		{"CharacterDefinition.yaml", "ArtId"}, {"NewGameProfile.yaml", "ProfileId"},
+		{"NewGameProfile.yaml", "CharacterId"}, {"ItemDefinition.yaml", "ItemId"},
+		{"ItemDefinition.yaml", "NameTextKey"}, {"AchievementDefinition.yaml", "AchievementId"},
+		{"AchievementDefinition.yaml", "NameTextKey"}})
+	{
+		const auto& text = baseline.at(table);
+		const auto at = text.find("  \"" + field + "\": ");
+		assert(at != std::string::npos);
+		const auto end = text.find('\n', at);
+		const auto line = 1 + std::count(text.begin(), text.begin() + static_cast<std::ptrdiff_t>(at), '\n');
+		const auto rowAt = text.rfind("\n\"", at) + 1;
+		const auto rowLine = 1 + std::count(text.begin(), text.begin() + static_cast<std::ptrdiff_t>(rowAt), '\n');
+		const auto prefix = "  \"" + field + "\": ";
+		const auto original = text.substr(at, end - at);
+		const auto location = "Data/Client/" + table + ": row at line " + std::to_string(rowLine) + ": ";
+		reject(table.c_str(), original.c_str(), (prefix + "\"1\"").c_str(), "quoted numeric key",
+			location + field + ": wrong scalar type or required null");
+		for (const auto* scalar : {"-1", "1.5", "4294967296"})
+		{
+			const auto reason = std::string(scalar) == "4294967296" ? "uint32 range" : "unsupported scalar kind";
+			reject(table.c_str(), original.c_str(), (prefix + scalar).c_str(), scalar,
+				"Data/Client/" + table + ": YAML line " + std::to_string(line) + ": " + reason);
+		}
+	}
+
 	for (const auto* table : cohort) reject(table, nullptr, "", "cohort", catalogLocation + "partial catalog cohort");
 	reject("NewGameProfile.yaml", "\"IsDefault\": true", "\"IsDefault\": false", "default",
 		catalogLocation + "exactly one default profile is required");
-	reject("NewGameProfile.yaml", "\"CharacterId\": \"Swordswoman\"", "\"CharacterId\": \"Missing\"", "CharacterId",
+	reject("NewGameProfile.yaml", "\"CharacterId\": 1", "\"CharacterId\": 4294967295", "CharacterId",
 		catalogLocation + "CharacterId reference is missing");
 	reject("NewGameProfile.yaml", "\"InitialLevel\": 1", "\"InitialLevel\": 7", "InitialLevel",
 		catalogLocation + "InitialLevel reference is missing");
@@ -713,22 +753,22 @@ int main(int argc, char** argv)
 		catalogLocation + "initial derived stats overflow");
 	reject("NewGameProfile.yaml", "\"InitialDefenseBonus\": 0", "\"InitialDefenseBonus\": 4294967295", "overflow",
 		catalogLocation + "initial derived stats overflow");
-	reject("CharacterDefinition.yaml", "\"ArtId\": \"PlayerSwordswoman\"", "\"ArtId\": \"Missing\"", "ArtId",
+	reject("CharacterDefinition.yaml", "\"ArtId\": 2", "\"ArtId\": 4294967295", "ArtId",
 		catalogLocation + "ArtId reference is missing");
-	reject("CharacterDefinition.yaml", "\"NameTextKey\": \"InGameData.Character.Swordswoman.Name\"",
-		"\"NameTextKey\": \"Missing\"", "NameTextKey", catalogLocation + "NameTextKey reference is missing");
+	reject("CharacterDefinition.yaml", "\"NameTextKey\": 31",
+		"\"NameTextKey\": 4294967295", "NameTextKey", catalogLocation + "NameTextKey reference is missing");
 	reject("LevelDefinition.yaml", "\"Level\": 2", "\"Level\": 1", "duplicate", catalogLocation + "Level: duplicate primary key");
-	reject("LevelDefinition.yaml", "\"Level\": 1", "\"Level\": 0", "Level", catalogLocation + "Level must be positive");
+	reject("LevelDefinition.yaml", "\"Level\": 1", "\"Level\": 0", "Level", catalogLocation + "Level: primary key must be positive");
 	reject("LevelDefinition.yaml", "\"MaxHp\": 100", "\"MaxHp\": 0", "MaxHp", catalogLocation + "MaxHp must be positive");
 	reject("LevelDefinition.yaml", "\"RequiredExperience\": 100", "\"RequiredExperience\": 0", "experience",
 		catalogLocation + "level experience thresholds must increase");
 	reject("ItemDefinition.yaml", "\"MaxStack\": 99", "\"MaxStack\": 0", "MaxStack", catalogLocation + "MaxStack must be positive");
-	reject("ItemDefinition.yaml", "\"NameTextKey\": \"InGameData.Item.Token.Name\"", "\"NameTextKey\": \"Missing\"", "NameTextKey",
+	reject("ItemDefinition.yaml", "\"NameTextKey\": 32", "\"NameTextKey\": 4294967295", "NameTextKey",
 		catalogLocation + "NameTextKey reference is missing");
 	reject("AchievementDefinition.yaml", "\"TargetCount\": 1", "\"TargetCount\": 0", "TargetCount",
 		catalogLocation + "TargetCount must be positive");
-	reject("AchievementDefinition.yaml", "\"NameTextKey\": \"InGameData.Achievement.Journey.Name\"",
-		"\"NameTextKey\": \"Missing\"", "NameTextKey", catalogLocation + "NameTextKey reference is missing");
+	reject("AchievementDefinition.yaml", "\"NameTextKey\": 33",
+		"\"NameTextKey\": 4294967295", "NameTextKey", catalogLocation + "NameTextKey reference is missing");
 
 	const auto replace = [](std::string& text, const std::string& from, const std::string& to)
 	{
@@ -769,7 +809,7 @@ int main(int argc, char** argv)
 			catalogLocation + primaryKey + ": duplicate primary key");
 	}
 	auto extraProfile = baseline.at("NewGameProfile.yaml");
-	replace(extraProfile, "\"ProfileId\": \"Default\"", "\"ProfileId\": \"Extra\"");
+	replace(extraProfile, "\"ProfileId\": 1", "\"ProfileId\": 2");
 	extraProfile.erase(0, extraProfile.find('\n') + 1);
 	extraProfile.replace(0, extraProfile.find('\n'), "\"ExtraDefault\":");
 	reject("NewGameProfile.yaml", "# TextRPG.GameData 1\n", ("# TextRPG.GameData 1\n" + extraProfile).c_str(), "default",
@@ -786,10 +826,10 @@ int main(int argc, char** argv)
 	assert(profile && store.FindNewGameProfile(profile->profileId) == profile);
 	const auto* level = store.FindLevelDefinition(profile->initialLevel);
 	assert(level && store.GetLevelDefinitions().size() >= 2);
-	std::wstring initialScene;
+	std::uint32_t initialScene{};
 	for (const auto& option : store.GetSceneOptions())
 		if (option.isEnabled && option.actionType == GameData::Common::ESceneActionType::StartGame) initialScene = option.targetSceneId;
-	assert(!initialScene.empty());
+	assert(initialScene != 0);
 	std::unique_ptr<TextRPG::InGameData> progress;
 	if (!TextRPG::InGameData::CreateNew(store, initialScene, progress, error))
 	{
@@ -814,32 +854,32 @@ int main(int argc, char** argv)
 		const auto* root = output.get();
 		assert(root);
 		const auto* character = &root->GetCharacter();
-		const auto* characterId = character->CharacterId.data();
-		const auto* scene = root->GetSceneId().data();
+		const auto characterId = character->CharacterId;
+		const auto scene = root->GetSceneId();
 		const auto* items = &root->GetInventory();
 		const auto* itemBuffer = items->data();
 		const auto* awards = &root->GetAchievements();
 		const auto* awardBuffer = awards->data();
-		std::vector<const wchar_t*> itemIds, awardIds;
-		for (const auto& item : *items) itemIds.push_back(item.ItemId.data());
-		for (const auto& award : *awards) awardIds.push_back(award.AchievementId.data());
+		std::vector<const std::uint32_t*> itemIds, awardIds;
+		for (const auto& item : *items) itemIds.push_back(&item.ItemId);
+		for (const auto& award : *awards) awardIds.push_back(&award.AchievementId);
 		std::vector<std::uint8_t> before, after;
 		std::string preservationError;
 		assert(root->Serialize(before, preservationError));
 		error = "stale progress error must be replaced";
 		const bool succeeded = operation();
 		RequireRejection(succeeded, error, expected, context);
-		assert(output.get() == root && &root->GetCharacter() == character && character->CharacterId.data() == characterId);
-		assert(root->GetSceneId().data() == scene);
+		assert(output.get() == root && &root->GetCharacter() == character && character->CharacterId == characterId);
+		assert(root->GetSceneId() == scene);
 		assert(&root->GetInventory() == items && items->data() == itemBuffer && items->size() == itemIds.size());
 		assert(&root->GetAchievements() == awards && awards->data() == awardBuffer && awards->size() == awardIds.size());
-		for (std::size_t i = 0; i < itemIds.size(); ++i) assert((*items)[i].ItemId.data() == itemIds[i]);
-		for (std::size_t i = 0; i < awardIds.size(); ++i) assert((*awards)[i].AchievementId.data() == awardIds[i]);
+		for (std::size_t i = 0; i < itemIds.size(); ++i) assert(&(*items)[i].ItemId == itemIds[i]);
+		for (std::size_t i = 0; i < awardIds.size(); ++i) assert(&(*awards)[i].AchievementId == awardIds[i]);
 		assert(root->Serialize(after, preservationError) && after == before);
 	};
 	expectUnchanged(progress, [&]() { return TextRPG::InGameData::CreateNew(legacy, initialScene, progress, error); },
 		"New-game catalog is missing", "CreateNew legacy catalog");
-	expectUnchanged(progress, [&]() { return TextRPG::InGameData::CreateNew(store, L"Missing", progress, error); },
+	expectUnchanged(progress, [&]() { return TextRPG::InGameData::CreateNew(store, UINT32_MAX, progress, error); },
 		"SceneId definition is missing", "CreateNew SceneId");
 	assert(progress.get() == active);
 	std::cout << "PASS Excel profile and derived stats create one progress root without fallback\n";
@@ -857,24 +897,22 @@ int main(int argc, char** argv)
 	assert(progress->SetCurrentHp(store, 7, error));
 	assert(progress->SetGold(54321, error) && progress->GetGold() == 54321);
 	assert(progress->SetSceneId(store, initialScene, error));
-	expectUnchanged(progress, [&]() { return progress->SetSceneId(store, L"Missing", error); },
+	expectUnchanged(progress, [&]() { return progress->SetSceneId(store, UINT32_MAX, error); },
 		"SceneId definition is missing", "SetSceneId reference");
 	assert(progress->GetSceneId() == initialScene);
-	expectUnchanged(progress, [&]() { return progress->SetSceneId(store, std::wstring(257, L'x'), error); },
-		"ID length is invalid", "SetSceneId length");
-	expectUnchanged(progress, [&]() { return progress->SetSceneId(store, std::wstring(1, static_cast<wchar_t>(0xD800)), error); },
-		"ID contains invalid UTF-16", "SetSceneId UTF-16");
-	const std::vector<TextRPG::SInventoryItemProgress> inventory{{0x123456789ABCDEF0ULL, L"Token", 2}, {2, L"Token", 1}};
-	const std::vector<TextRPG::SAchievementProgress> achievements{{L"Journey", 1, true}};
+	expectUnchanged(progress, [&]() { return progress->SetSceneId(store, 0, error); },
+		"SceneId definition is missing", "SetSceneId zero");
+	const std::vector<TextRPG::SInventoryItemProgress> inventory{{0x123456789ABCDEF0ULL, kToken, 2}, {2, kToken, 1}};
+	const std::vector<TextRPG::SAchievementProgress> achievements{{kJourney, 1, true}};
 	assert(progress->SetInventory(store, inventory, error) && progress->GetInventory() == inventory);
 	assert(progress->SetAchievements(store, achievements, error) && progress->GetAchievements() == achievements);
 	const auto* inventoryBuffer = progress->GetInventory().data();
 	const std::vector<std::pair<std::vector<TextRPG::SInventoryItemProgress>, const char*>> invalidInventories{
-		{{{0, L"Token", 1}}, "Inventory has zero or duplicate InstanceId"},
-		{{{1, L"Missing", 1}}, "ItemId definition is missing"},
-		{{{1, L"Token", 0}}, "Inventory Count is invalid"},
-		{{{1, L"Token", 100}}, "Inventory Count is invalid"},
-		{{{1, L"Token", 1}, {1, L"Token", 1}}, "Inventory has zero or duplicate InstanceId"},
+		{{{0, kToken, 1}}, "Inventory has zero or duplicate InstanceId"},
+		{{{1, UINT32_MAX, 1}}, "ItemId definition is missing"},
+		{{{1, kToken, 0}}, "Inventory Count is invalid"},
+		{{{1, kToken, 100}}, "Inventory Count is invalid"},
+		{{{1, kToken, 1}, {1, kToken, 1}}, "Inventory has zero or duplicate InstanceId"},
 		{std::vector<TextRPG::SInventoryItemProgress>(4097), "Progress collection count exceeds limit"}};
 	for (const auto& [invalid, diagnostic] : invalidInventories)
 	{
@@ -882,11 +920,11 @@ int main(int argc, char** argv)
 		assert(progress->GetInventory() == inventory && progress->GetInventory().data() == inventoryBuffer);
 	}
 	const std::vector<std::pair<std::vector<TextRPG::SAchievementProgress>, const char*>> invalidAchievements{
-		{{{L"Missing", 0, false}}, "AchievementId definition is missing"},
-		{{{L"Journey", 0, true}}, "Achievement completion/progress is inconsistent"},
-		{{{L"Journey", 1, false}}, "Achievement completion/progress is inconsistent"},
-		{{{L"Journey", 2, true}}, "Achievement completion/progress is inconsistent"},
-		{{{L"Journey", 0, false}, {L"Journey", 1, true}}, "Duplicate AchievementId"},
+		{{{UINT32_MAX, 0, false}}, "AchievementId definition is missing"},
+		{{{kJourney, 0, true}}, "Achievement completion/progress is inconsistent"},
+		{{{kJourney, 1, false}}, "Achievement completion/progress is inconsistent"},
+		{{{kJourney, 2, true}}, "Achievement completion/progress is inconsistent"},
+		{{{kJourney, 0, false}, {kJourney, 1, true}}, "Duplicate AchievementId"},
 		{std::vector<TextRPG::SAchievementProgress>(4097), "Progress collection count exceeds limit"}};
 	for (const auto& [invalid, diagnostic] : invalidAchievements)
 	{
@@ -903,6 +941,71 @@ int main(int argc, char** argv)
 	}
 	RequireFramedOutput(framedBytes, GameData::InGameData::kSchemaVersion);
 	TestRuntimeGeneratedRoot(*progress, store, framedBytes);
+	// 구형 CGSA schema1은 당시 문자열 field signature를 가진 독립 writer로 만든다.
+	LegacyProgressFixture::SRootInGameData oldRoot;
+	oldRoot.ContentVersion = profile->contentVersion;
+	oldRoot.Character->Level = progress->GetCharacter().Level;
+	oldRoot.Character->Experience = progress->GetCharacter().Experience;
+	oldRoot.Character->StatBonuses = bonuses;
+	for (const auto& item : inventory)
+	{
+		LegacyProgressFixture::SInventoryItemProgress oldItem;
+		oldItem.InstanceId = item.InstanceId;
+		oldItem.Count = item.Count;
+		oldRoot.Inventory.push_back(oldItem);
+	}
+	oldRoot.Achievements.emplace_back();
+	std::vector<std::uint8_t> oldFramed;
+	assert(FSerializationArchive::Serialize(oldRoot, oldFramed, error, 1));
+	RequireFramedOutput(oldFramed, 1);
+	std::unique_ptr<TextRPG::InGameData> migrated;
+	const bool oldFramedRestored = TextRPG::InGameData::Deserialize(oldFramed, store, migrated, error);
+	if (!oldFramedRestored)
+	{
+		std::cerr << "FAIL independent CGSA schema1 string-ID migration: " << error << '\n';
+		return 1;
+	}
+	assert(migrated->GetCharacter() == progress->GetCharacter() && migrated->GetSceneId() == initialScene);
+	assert(migrated->GetInventory() == inventory && migrated->GetAchievements() == achievements);
+	assert(migrated->GetGold() == 54321);
+	assert(dynamic_cast<const TextRPG::FCharacterInGameData*>(&migrated->GetCharacter()));
+	std::vector<std::uint8_t> migratedBytes;
+	assert(migrated->Serialize(migratedBytes, error) && migratedBytes == framedBytes);
+	RequireFramedOutput(migratedBytes, 2);
+	const auto rejectOldFramed = [&](const char* diagnostic)
+	{
+		std::vector<std::uint8_t> badOld;
+		assert(FSerializationArchive::Serialize(oldRoot, badOld, error, 1));
+		expectUnchanged(migrated, [&]() { return TextRPG::InGameData::Deserialize(badOld, store, migrated, error); },
+			diagnostic, "CGSA schema1 unknown historical ID");
+	};
+	oldRoot.SceneId = L"UnknownScene";
+	rejectOldFramed("SceneId definition is missing");
+	oldRoot.SceneId = L"Town";
+	oldRoot.Character->CharacterId = L"UnknownCharacter";
+	rejectOldFramed("CharacterId or Level definition is missing");
+	oldRoot.Character->CharacterId = L"Swordswoman";
+	oldRoot.Inventory[0].ItemId = L"UnknownItem";
+	rejectOldFramed("ItemId definition is missing");
+	oldRoot.Inventory[0].ItemId = L"Token";
+	oldRoot.Achievements[0].AchievementId = L"UnknownAchievement";
+	rejectOldFramed("AchievementId definition is missing");
+	oldRoot.Achievements[0].AchievementId = L"Journey";
+	oldRoot.Character->CharacterId.clear();
+	rejectOldFramed("ID length is invalid");
+	oldRoot.Character->CharacterId.assign(257, L'x');
+	rejectOldFramed("ID length is invalid");
+	oldRoot.Character->CharacterId = L"Swordswoman";
+	oldRoot.Inventory[0].Count = 0;
+	rejectOldFramed("Inventory Count is invalid");
+	oldRoot.Inventory[0].Count = inventory[0].Count;
+	oldRoot.Achievements[0].IsCompleted = false;
+	rejectOldFramed("Achievement completion/progress is inconsistent");
+	oldRoot.Achievements[0].IsCompleted = true;
+	oldRoot.Character.reset();
+	rejectOldFramed("Character progress is missing");
+	std::cout << "PASS independent CGSA schema1 string IDs migrate all values to schema2 and reject unknown IDs transactionally\n";
+
 	std::unique_ptr<TextRPG::InGameData> restored;
 	assert(TextRPG::InGameData::Deserialize(framedBytes, store, restored, error));
 	assert(restored && restored.get() != progress.get());
@@ -953,7 +1056,7 @@ int main(int argc, char** argv)
 	};
 	appendNumber(0x31444749, 4, "Magic"); appendNumber(1, 4, "FormatVersion");
 	appendNumber(profile->contentVersion, 4, "ContentVersion");
-	appendId(progress->GetSceneId(), "SceneId"); appendId(progress->GetCharacter().CharacterId, "CharacterId");
+	appendId(L"Town", "SceneId"); appendId(L"Swordswoman", "CharacterId");
 	appendNumber(progress->GetCharacter().Level, 4, "Level");
 	appendNumber(progress->GetCharacter().Experience, 4, "Experience");
 	appendNumber(7, 4, "CurrentHp"); appendNumber(bonuses.MaxHp, 4, "Bonuses.MaxHp");
@@ -966,10 +1069,10 @@ int main(int argc, char** argv)
 	{
 		const auto field = "Inventory[" + std::to_string(i) + "]";
 		appendNumber(inventory[i].InstanceId, 8, field + ".InstanceId");
-		appendId(inventory[i].ItemId, field + ".ItemId"); appendNumber(inventory[i].Count, 4, field + ".Count");
+		appendId(L"Token", field + ".ItemId"); appendNumber(inventory[i].Count, 4, field + ".Count");
 	}
 	appendCount(achievements.size(), 4 + 2 + 4 + 1, "Achievements.count");
-	appendId(achievements[0].AchievementId, "Achievements[0].AchievementId");
+	appendId(L"Journey", "Achievements[0].AchievementId");
 	appendNumber(1, 4, "Achievements[0].Progress"); appendNumber(1, 1, "Achievements[0].IsCompleted");
 	const auto& bytes = oracle;
 	assert(bytes != framedBytes);
@@ -1007,15 +1110,15 @@ int main(int argc, char** argv)
 		auto invalid = bytes; put(invalid, at, value, width); rejectBytes(invalid, diagnostic);
 	};
 	const std::size_t sceneUnits = 16;
-	const auto characterLength = sceneUnits + 2 * progress->GetSceneId().size();
-	const auto levelAt = characterLength + 4 + 2 * progress->GetCharacter().CharacterId.size();
+	const auto characterLength = sceneUnits + 2 * std::wstring_view(L"Town").size();
+	const auto levelAt = characterLength + 4 + 2 * std::wstring_view(L"Swordswoman").size();
 	const auto inventoryCountAt = levelAt + 28;
 	const auto firstItemAt = inventoryCountAt + 4;
-	const auto firstItemCountAt = firstItemAt + 12 + 2 * inventory[0].ItemId.size();
+	const auto firstItemCountAt = firstItemAt + 12 + 2 * std::wstring_view(L"Token").size();
 	const auto secondItemAt = firstItemCountAt + 4;
-	const auto achievementCountAt = secondItemAt + 16 + 2 * inventory[1].ItemId.size();
+	const auto achievementCountAt = secondItemAt + 16 + 2 * std::wstring_view(L"Token").size();
 	const auto achievementAt = achievementCountAt + 4;
-	const auto achievementProgressAt = achievementAt + 4 + 2 * achievements[0].AchievementId.size();
+	const auto achievementProgressAt = achievementAt + 4 + 2 * std::wstring_view(L"Journey").size();
 	mutate(0, 0, "Invalid progress magic"); mutate(4, 2, "Unsupported progress format version");
 	mutate(8, 2, "Unsupported content version or missing catalog");
 	for (const auto length : {0U, 257U, 0xFFFFFFFFU}) mutate(12, length, "ID length is invalid or truncated");
@@ -1144,44 +1247,25 @@ int main(int argc, char** argv)
 	std::cout << "PASS data-only profile changes supply initial level experience gold and all stat bonuses\n";
 	// 다수 객체와 정확한 컬렉션 상한의 실제 진행을 왕복한다.
 	std::vector<TextRPG::SInventoryItemProgress> many;
-	for (std::uint64_t i = 1; i <= 4096; ++i) many.push_back({i, L"Token", 1});
+	for (std::uint64_t i = 1; i <= 4096; ++i) many.push_back({i, kToken, 1});
 	assert(edge->SetInventory(store, many, error));
 	assert(edge->Serialize(encoded, error));
 	assert(TextRPG::InGameData::Deserialize(encoded, store, fromAlternate, error));
 	assert(fromAlternate->GetInventory() == many);
 	std::cout << "PASS 4096 distinct inventory instances roundtrip without pointers or partial publication\n";
-	// 기술적 문자열/총량 경계는 실제 참조가 있는 별도 카탈로그로 확인한다.
+	// uint32 최댓값도 실제 숫자 콘텐츠 키로 왕복한다. 과거 문자열 키로 새 카탈로그를 만들지 않는다.
 	restore();
-	const std::string longItem(256, 'a');
-	auto longDefinition = baseline.at("ItemDefinition.yaml");
-	replace(longDefinition, "\"ItemId\": \"Token\"", "\"ItemId\": \"" + longItem + "\"");
-	std::ofstream(yaml / "ItemDefinition.yaml", std::ios::binary) << longDefinition;
-	auto unicodeCharacter = baseline.at("CharacterDefinition.yaml");
-	replace(unicodeCharacter, "\"CharacterId\": \"Swordswoman\"", "\"CharacterId\": \"\\uAC80\\uC0AC\\uD83D\\uDE00\"");
-	std::ofstream(yaml / "CharacterDefinition.yaml", std::ios::binary) << unicodeCharacter;
-	auto unicodeProfile = baseline.at("NewGameProfile.yaml");
-	replace(unicodeProfile, "\"CharacterId\": \"Swordswoman\"", "\"CharacterId\": \"\\uAC80\\uC0AC\\uD83D\\uDE00\"");
-	std::ofstream(yaml / "NewGameProfile.yaml", std::ios::binary) << unicodeProfile;
+	auto highDefinition = baseline.at("ItemDefinition.yaml");
+	replace(highDefinition, "\"ItemId\": 1", "\"ItemId\": 4294967295");
+	std::ofstream(yaml / "ItemDefinition.yaml", std::ios::binary) << highDefinition;
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, source / "Asset"));
 	GameData::FGameDataStore limits;
 	assert(limits.Load(package, key, error));
 	assert(TextRPG::InGameData::CreateNew(limits, initialScene, edge, error));
-	assert(edge->GetCharacter().CharacterId == L"검사\U0001F600");
-	const std::vector<TextRPG::SInventoryItemProgress> longInventory{{1, std::wstring(256, L'a'), 1}};
-	assert(edge->SetInventory(limits, longInventory, error));
+	const std::vector<TextRPG::SInventoryItemProgress> highInventory{{1, UINT32_MAX, 1}};
+	assert(edge->SetInventory(limits, highInventory, error));
 	assert(edge->Serialize(encoded, error));
 	assert(TextRPG::InGameData::Deserialize(encoded, limits, fromAlternate, error));
-	assert(fromAlternate->GetCharacter() == edge->GetCharacter() && fromAlternate->GetInventory() == longInventory);
-	many.clear();
-	for (std::uint64_t i = 1; i <= 4096; ++i) many.push_back({i, std::wstring(256, L'a'), 1});
-	expectUnchanged(edge, [&]() { return edge->SetInventory(limits, many, error); },
-		"Total progress bytes exceed limit", "SetInventory aggregate byte limit");
-	assert(edge->GetInventory() == longInventory);
-	std::cout << "PASS valid supplementary UTF-16 and 256-unit IDs roundtrip while aggregate byte limit rejects\n";
-
-
-
-
-
-
+	assert(fromAlternate->GetCharacter() == edge->GetCharacter() && fromAlternate->GetInventory() == highInventory);
+	std::cout << "PASS uint32 maximum static key roundtrips through numeric schema two\n";
 }

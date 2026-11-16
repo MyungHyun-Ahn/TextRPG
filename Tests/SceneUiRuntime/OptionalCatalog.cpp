@@ -14,12 +14,16 @@
 int main(int argc, char** argv)
 {
 	assert(argc == 3 || argc == 4);
+	static_assert(std::is_same_v<GameData::TextArt::STextArtData::KeyType, std::uint32_t>);
+	static_assert(std::is_same_v<decltype(GameData::TextArt::STextArtData::artId), std::uint32_t>);
 	GameData::FGameDataStore store;
 	LoadRuntimeFixture(store, std::filesystem::path(argv[1]), std::filesystem::path(argv[2]), false, argc == 4 ? std::filesystem::path(argv[3]) : std::filesystem::path{});
+	assert(store.FindTextArt(static_cast<std::uint32_t>(GameData::Common::EArtId::MainLogo)) == nullptr);
+	assert(store.GetDefaultNewGameProfile() == nullptr);
 	TextRPG::FGameUiBridge bridge;
 	TextRPG::FDataScene scene(store, bridge);
 	std::wstring error;
-	assert(scene.LoadFromGameData(L"MainMenu", error));
+	assert(scene.LoadFromGameData(static_cast<std::uint32_t>(GameData::Common::ESceneId::MainMenu), error));
 	scene.OnEnter();
 	TextRPG::FFrameBuffer frame(132, 43);
 	scene.Render(frame);

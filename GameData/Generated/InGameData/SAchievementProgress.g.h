@@ -15,10 +15,10 @@ namespace GameData::InGameData
 		SAchievementProgress(const SAchievementProgress& _other) = default;
 		SAchievementProgress& operator=(const SAchievementProgress& _other) = default;
 		SAchievementProgress(
-			::std::wstring _field0,
+			::std::uint32_t _field0,
 			::std::uint32_t _field1,
 			bool _field2);
-		::std::wstring AchievementId{};
+		::std::uint32_t AchievementId{};
 		::std::uint32_t Progress{};
 		bool IsCompleted{};
 		bool operator==(const SAchievementProgress& _other) const;

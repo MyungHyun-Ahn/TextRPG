@@ -14,10 +14,10 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = (
-    ("MainLogo", "Asset/Logo/Logo_Text_Rpg.txt", 83, 41),
-    ("PlayerSwordswoman", "Asset/Character/Character_Swordswoman.txt", 36, 36),
-    ("MonsterDragon", "Asset/Monster/Monster_Dragon.txt", 36, 36),
-    ("TownWindwood", "Asset/Town/Town_Windwood.txt", 36, 36),
+    (1, "Asset/Logo/Logo_Text_Rpg.txt", 83, 41),
+    (2, "Asset/Character/Character_Swordswoman.txt", 36, 36),
+    (3, "Asset/Monster/Monster_Dragon.txt", 36, 36),
+    (4, "Asset/Town/Town_Windwood.txt", 36, 36),
 )
 # 승인된 기본 네 자산의 원시 바이트만 고정하며 일반 카탈로그 형식 검증과 구분한다.
 APPROVED_ASSET_SHA256 = {
@@ -101,6 +101,7 @@ class SceneUiDataTests(unittest.TestCase):
 
     def test_every_config_is_four_without_paging_or_scroll(self):
         configurations = table_records(self.workbook["SceneTypeConfig"])
+        self.assertEqual(len(configurations), len({row["SceneType"] for row in configurations}))
         for config in configurations:
             with self.subTest(scene_type=config["SceneType"]):
                 self.assertEqual(4, config["MaxVisibleOptions"])
@@ -115,6 +116,48 @@ class SceneUiDataTests(unittest.TestCase):
         forbidden = {"PlayerArtId", "ContentArtId", "TitleTextKey", "RegionTextKey"}
         for scene in table_records(sheet):
             self.assertTrue(forbidden.isdisjoint(scene))
+
+    def test_numeric_primary_and_reference_cell_contracts(self):
+        for sheet in self.workbook:
+            fields = {sheet.cell(13, column).value: column for column in range(2, sheet.max_column + 1)}
+            keys = [name for name, column in fields.items() if sheet.cell(4, column).value == "Primary"]
+            self.assertEqual(1, len(keys), sheet.title)
+            for name, column in fields.items():
+                reference = sheet.cell(12, column).value
+                if name not in keys and not reference:
+                    continue
+                self.assertEqual("uint32", sheet.cell(6, column).value)
+                values = []
+                for row in table_records(sheet):
+                    value = row[name]
+                    if value is None and sheet.title == "SceneOption" and name == "TargetSceneId":
+                        self.assertEqual(0, sheet.cell(10, column).value)
+                        continue
+                    self.assertIs(type(value), int, (sheet.title, name, value))
+                    self.assertGreaterEqual(value, 1 if name in keys else 0)
+                    self.assertLessEqual(value, 4294967295)
+                    values.append(value)
+                if name in keys:
+                    self.assertEqual(len(values), len(set(values)))
+        enum_sheet = self.workbook["Enums"]
+        enum_fields = {enum_sheet.cell(13, c).value: c for c in range(2, enum_sheet.max_column + 1)}
+        self.assertIsNone(enum_sheet.cell(4, enum_fields["EnumName"]).value)
+        self.assertEqual("string", enum_sheet.cell(6, enum_fields["EnumName"]).value)
+        names = [row["EnumName"].casefold() for row in table_records(enum_sheet)]
+        self.assertEqual(len(names), len(set(names)))
+
+    def test_numeric_optional_target_zero_and_startgame_reference(self):
+        targets = {row["SceneId"] for row in table_records(self.workbook["Scene"])}
+        sheet = self.workbook["SceneOption"]
+        column = next(c for c in range(2, sheet.max_column + 1) if sheet.cell(13, c).value == "TargetSceneId")
+        self.assertEqual(0, sheet.cell(10, column).value)
+        self.assertEqual("Scene.SceneId", sheet.cell(12, column).value)
+        for option in table_records(sheet):
+            target = option["TargetSceneId"]
+            if target not in (None, 0):
+                self.assertIn(target, targets)
+            if option["ActionType"] == "StartGame" and option["IsEnabled"]:
+                self.assertIn(target, targets)
 
     def test_text_art_catalog_is_independent_of_scene_definitions(self):
         self.assertIn("TextArt", self.workbook.sheetnames)
@@ -138,7 +181,7 @@ class SceneUiDataTests(unittest.TestCase):
 
     def test_unimplemented_actions_are_visible_but_disabled(self):
         for option in table_records(self.workbook["SceneOption"]):
-            self.assertEqual(option["ActionType"] in {"StartGame", "Quit"}, option["IsEnabled"])
+            self.assertEqual(option["ActionType"] in {"StartGame", "Continue", "Quit"}, option["IsEnabled"])
         main = sorted((row for row in table_records(self.workbook["SceneOption"]) if row["SceneType"] == "MainMenu"),
                       key=lambda row: row["OptionOrder"])
         self.assertEqual([1, 2, 3, 5], [row["OptionId"] for row in main])
@@ -147,7 +190,7 @@ class SceneUiDataTests(unittest.TestCase):
     def test_new_assets_are_registered_in_matching_visual_studio_filters(self):
         from xml.etree import ElementTree
 
-        project = ROOT / "TextRPG/TextRPG.vcxproj"
+        project = ROOT / "GameData/GameData.vcxproj"
         namespace = {"m": "http://schemas.microsoft.com/developer/msbuild/2003"}
         project_items = {node.attrib["Include"] for node in ElementTree.parse(project).findall(".//m:None", namespace)}
         filters = ElementTree.parse(str(project) + ".filters")
@@ -156,8 +199,8 @@ class SceneUiDataTests(unittest.TestCase):
                           for node in filters.findall(".//m:None", namespace)}
         for _, path, _, _ in ASSETS:
             with self.subTest(path=path):
-                include = "..\\GameData\\" + path.replace("/", "\\")
-                expected_filter = "GameData\\" + str(Path(path).parent).replace("/", "\\")
+                include = path.replace("/", "\\")
+                expected_filter = str(Path(path).parent).replace("/", "\\")
                 self.assertIn(include, project_items)
                 self.assertEqual(expected_filter, filtered_items[include])
                 self.assertIn(expected_filter, definitions)

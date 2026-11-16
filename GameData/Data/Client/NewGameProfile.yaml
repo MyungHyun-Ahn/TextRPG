@@ -1,7 +1,7 @@
 # TextRPG.GameData 1
-"NewGameProfileDefault":
-  "ProfileId": "Default"
-  "CharacterId": "Swordswoman"
+"NewGameProfile1":
+  "ProfileId": 1
+  "CharacterId": 1
   "InitialLevel": 1
   "InitialExperience": 0
   "InitialGold": 0

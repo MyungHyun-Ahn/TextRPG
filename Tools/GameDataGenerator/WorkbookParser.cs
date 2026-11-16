@@ -148,6 +148,16 @@ internal static class FWorkbookParser
             foreach (FGameDataField field in fields)
             {
                 IXLCell cell = worksheet.Cell(row, field.ColumnNumber);
+                bool isDataKey = FNumericKeyValidation.IsKey(tableName, field);
+                if (isDataKey && ((!IsBlank(cell) && (cell.DataType != XLDataType.Number ||
+                    !double.IsFinite(cell.GetDouble()) || Math.Truncate(cell.GetDouble()) != cell.GetDouble())) ||
+                    (field.IsPrimaryKey && IsBlank(cell) && field.DefaultText != null)))
+                {
+                    diagnostics.Add("GD0210", "Data keys must be numeric integer Excel cells, not text, boolean, fractional or generated default IDs.",
+                        Locate(workbookPath, sheetName, row, field.ColumnNumber));
+                    values.TryAdd(field.Name, null);
+                    continue;
+                }
                 string text = cell.HasFormula ? string.Empty : GetCellText(cell);
                 if (field.Type != null && FGameDataIntegerRange.IsInteger(field.Type) &&
                     cell.DataType == XLDataType.Number && Math.Abs(cell.GetDouble()) > 9007199254740991d)

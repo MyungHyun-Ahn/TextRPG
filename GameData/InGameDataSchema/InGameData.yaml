@@ -1,5 +1,5 @@
 # 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
-schema_version: 1
+schema_version: 2
 types:
   - name: SCharacterStats
     fields:
@@ -18,7 +18,7 @@ types:
   - name: SCharacterProgress
     fields:
       - name: CharacterId
-        type: 'string'
+        type: 'uint32'
         missing: reject
         since: 1
       - name: Level
@@ -44,7 +44,7 @@ types:
         missing: reject
         since: 1
       - name: ItemId
-        type: 'string'
+        type: 'uint32'
         missing: reject
         since: 1
       - name: Count
@@ -54,7 +54,7 @@ types:
   - name: SAchievementProgress
     fields:
       - name: AchievementId
-        type: 'string'
+        type: 'uint32'
         missing: reject
         since: 1
       - name: Progress
@@ -72,7 +72,7 @@ types:
         missing: reject
         since: 1
       - name: m_sceneId
-        type: 'string'
+        type: 'uint32'
         missing: reject
         since: 1
       - name: m_character

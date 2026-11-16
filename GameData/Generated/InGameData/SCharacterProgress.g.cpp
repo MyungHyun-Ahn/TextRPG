@@ -11,7 +11,7 @@ namespace GameData::InGameData
 	SCharacterProgress& SCharacterProgress::operator=(SCharacterProgress&& _other) noexcept = default;
 
 	SCharacterProgress::SCharacterProgress(
-		::std::wstring _field0,
+		::std::uint32_t _field0,
 		::std::uint32_t _field1,
 		::std::uint32_t _field2,
 		::std::uint32_t _field3,

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Common/GameDataEnums.g.h"
 #include "UI/Common/FUiElement.h"
 #include "UI/Common/FUiTextArtView.h"
 #include "UI/Common/FUiTextArt.h"
@@ -11,6 +12,7 @@
 
 namespace TextRPG
 {
+	using ETextKey = GameData::Common::ETextKey;
 	FInGameStatusUi::FInGameStatusUi(const GameData::FGameDataStore& store, const InGameData& progress)
 		: FUiElement({0, 0, 86, 43})
 		, m_store(store)
@@ -55,19 +57,19 @@ namespace TextRPG
 		SCharacterStats stats;
 		std::string error;
 		if (!m_progress.GetStats(m_store, stats, error)) return;
-		const auto number = [this](const wchar_t* key, std::uint64_t value)
+		const auto number = [this](ETextKey key, std::uint64_t value)
 		{
-			return GetLocalizedText(m_store, key) + L": " + std::to_wstring(value);
+			return GetLocalizedText(m_store, static_cast<std::uint32_t>(key)) + L": " + std::to_wstring(value);
 		};
 		clipped.DrawText(rect.X + 2, rect.Y + 1, GetLocalizedText(m_store, m_nameTextKey) + L"  " +
-			number(L"InGameData.Ui.Level", m_progress.GetCharacter().Level), 7, 38);
-		clipped.DrawText(rect.X + 2, rect.Y + 2, number(L"InGameData.Ui.Hp", m_progress.GetCharacter().CurrentHp) +
+			number(ETextKey::InGameData_Ui_Level, m_progress.GetCharacter().Level), 7, 38);
+		clipped.DrawText(rect.X + 2, rect.Y + 2, number(ETextKey::InGameData_Ui_Hp, m_progress.GetCharacter().CurrentHp) +
 			L"/" + std::to_wstring(stats.MaxHp), 7, 38);
-		clipped.DrawText(rect.X + 2, rect.Y + 3, number(L"InGameData.Ui.Attack", stats.Attack) + L"  " +
-			number(L"InGameData.Ui.Defense", stats.Defense), 7, 38);
-		clipped.DrawText(rect.X + 45, rect.Y + 1, number(L"InGameData.Ui.Gold", m_progress.GetGold()), 7, 38);
-		clipped.DrawText(rect.X + 45, rect.Y + 2, number(L"InGameData.Ui.Inventory", m_progress.GetInventory().size()), 7, 38);
-		clipped.DrawText(rect.X + 45, rect.Y + 3, number(L"InGameData.Ui.Achievements", m_progress.GetAchievements().size()), 7, 38);
+		clipped.DrawText(rect.X + 2, rect.Y + 3, number(ETextKey::InGameData_Ui_Attack, stats.Attack) + L"  " +
+			number(ETextKey::InGameData_Ui_Defense, stats.Defense), 7, 38);
+		clipped.DrawText(rect.X + 45, rect.Y + 1, number(ETextKey::InGameData_Ui_Gold, m_progress.GetGold()), 7, 38);
+		clipped.DrawText(rect.X + 45, rect.Y + 2, number(ETextKey::InGameData_Ui_Inventory, m_progress.GetInventory().size()), 7, 38);
+		clipped.DrawText(rect.X + 45, rect.Y + 3, number(ETextKey::InGameData_Ui_Achievements, m_progress.GetAchievements().size()), 7, 38);
 		if (m_art) m_art->Render(clipped);
 	}
 }

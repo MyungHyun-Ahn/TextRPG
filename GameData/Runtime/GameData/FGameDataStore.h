@@ -20,8 +20,8 @@ namespace GameData
 	{
 		struct STextArtData final
 		{
-			using KeyType = std::wstring;
-			std::wstring artId;
+			using KeyType = std::uint32_t;
+			std::uint32_t artId{};
 			std::wstring assetPath;
 			std::uint32_t width{};
 			std::uint32_t height{};
@@ -41,22 +41,24 @@ namespace GameData
 		FGameDataStore& operator=(const FGameDataStore&) = delete;
 		// 성공한 재로드만 기존 행을 교체한다. 행 참조는 다음 성공한 Load까지 유효하다.
 		[[nodiscard]] bool Load(const std::filesystem::path& path, const std::array<std::uint8_t, 32>& key, std::string& error);
-		[[nodiscard]] const Scene::SSceneData* FindScene(const std::wstring& key) const noexcept;
+		[[nodiscard]] const Scene::SSceneData* FindScene(std::uint32_t key) const noexcept;
 		[[nodiscard]] const SceneOption::SSceneOptionData* FindSceneOption(std::uint32_t key) const noexcept;
+		// SceneType은 분류 조회다. 실제 PK는 ConfigId다.
+		[[nodiscard]] const SceneTypeConfig::SSceneTypeConfigData* FindSceneTypeConfigById(std::uint32_t key) const noexcept;
 		[[nodiscard]] const SceneTypeConfig::SSceneTypeConfigData* FindSceneTypeConfig(Common::ESceneType key) const noexcept;
-		[[nodiscard]] const Localization::SLocalizationData* FindLocalization(const std::wstring& key) const noexcept;
-		[[nodiscard]] const TextArt::STextArtData* FindTextArt(const std::wstring& key) const noexcept;
+		[[nodiscard]] const Localization::SLocalizationData* FindLocalization(std::uint32_t key) const noexcept;
+		[[nodiscard]] const TextArt::STextArtData* FindTextArt(std::uint32_t key) const noexcept;
 		// 정확한 대소문자의 GameData 기준 Asset/... 키. 다음 성공한 Load 또는 소멸까지 유효하다.
 		// 실패한 Load는 바이트 객체/버퍼 주소와 기존 행을 모두 보존한다. reader의 임시 메모리를 참조하지 않는다.
 		[[nodiscard]] const std::vector<std::uint8_t>* FindAsset(const std::wstring& assetPath) const noexcept;
 		[[nodiscard]] const std::vector<Scene::SSceneData>& GetScenes() const noexcept;
 		[[nodiscard]] const std::vector<SceneOption::SSceneOptionData>& GetSceneOptions() const noexcept;
-		[[nodiscard]] const CharacterDefinition::SCharacterDefinitionData* FindCharacterDefinition(const std::wstring& key) const noexcept;
+		[[nodiscard]] const CharacterDefinition::SCharacterDefinitionData* FindCharacterDefinition(std::uint32_t key) const noexcept;
 		[[nodiscard]] const LevelDefinition::SLevelDefinitionData* FindLevelDefinition(std::uint32_t key) const noexcept;
-		[[nodiscard]] const NewGameProfile::SNewGameProfileData* FindNewGameProfile(const std::wstring& key) const noexcept;
-		[[nodiscard]] const ItemDefinition::SItemDefinitionData* FindItemDefinition(const std::wstring& key) const noexcept;
+		[[nodiscard]] const NewGameProfile::SNewGameProfileData* FindNewGameProfile(std::uint32_t key) const noexcept;
+		[[nodiscard]] const ItemDefinition::SItemDefinitionData* FindItemDefinition(std::uint32_t key) const noexcept;
 		[[nodiscard]] const AchievementDefinition::SAchievementDefinitionData* FindAchievementDefinition(
-			const std::wstring& key) const noexcept;
+			std::uint32_t key) const noexcept;
 		[[nodiscard]] const NewGameProfile::SNewGameProfileData* GetDefaultNewGameProfile() const noexcept;
 		[[nodiscard]] const std::vector<LevelDefinition::SLevelDefinitionData>& GetLevelDefinitions() const noexcept;
 	private:

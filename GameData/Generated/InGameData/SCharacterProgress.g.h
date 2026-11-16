@@ -15,12 +15,12 @@ namespace GameData::InGameData
 		SCharacterProgress(const SCharacterProgress& _other) = default;
 		SCharacterProgress& operator=(const SCharacterProgress& _other) = default;
 		SCharacterProgress(
-			::std::wstring _field0,
+			::std::uint32_t _field0,
 			::std::uint32_t _field1,
 			::std::uint32_t _field2,
 			::std::uint32_t _field3,
 			::GameData::InGameData::SCharacterStats _field4);
-		::std::wstring CharacterId{};
+		::std::uint32_t CharacterId{};
 		::std::uint32_t Level{};
 		::std::uint32_t Experience{};
 		::std::uint32_t CurrentHp{};

@@ -169,6 +169,9 @@
     <ClInclude Include="ConsoleGameCore\Scene\TSceneManager.h">
       <Filter>ConsoleGameCore\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Tests\InGameData\LegacyProgressFixture.h">
+      <Filter>Tests\InGameData</Filter>
+    </ClInclude>
     <ClInclude Include="Tests\SceneUiRuntime\RuntimeFixture.h">
       <Filter>Tests\SceneUiRuntime</Filter>
     </ClInclude>
@@ -177,6 +180,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Tests\InGameData\test_numeric_schema.py"><Filter>Tests\InGameData</Filter></None>
     <None Include="Tests\InGameData\Schema\SharedGraph.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
     <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
   </ItemGroup>

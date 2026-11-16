@@ -19,8 +19,8 @@ REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 def write_fixture(path):
     # 외부 Python 패키지나 실제 게임 workbook 없이 최소 OOXML fixture를 만든다.
     tables = [
-        ("Enums", ["EnumName", "Target", "UnderlyingType", "Values"], ["string"] * 4,
-         [["ProbeKind", "Client", "uint8", "One=1|Two=2"]]),
+        ("Enums", ["EnumId", "EnumName", "Target", "UnderlyingType", "Values"], ["uint32"] + ["string"] * 4,
+         [[1, "ProbeKind", "Client", "uint8", "One=1|Two=2"]]),
         ("Alpha", ["Id", "Label", "Kind"], ["uint32", "string", "enum<ProbeKind>"], [[7, "한글", "Two"]]),
         ("std", ["Id", "Label", "Kind"], ["uint32", "string", "enum<ProbeKind>"], [[9, "shadow", "One"]]),
         ("Plain", ["Id", "Label", "SignedValue", "WideSigned", "WideUnsigned", "Ratio", "Precise", "Enabled", "Bonus"],
@@ -60,8 +60,13 @@ def write_fixture(path):
                 for column, value in enumerate(cells):
                     if value == "":
                         continue
-                    cell = ET.SubElement(row, "c", r=f"{chr(65 + column)}{row_number}", t="inlineStr")
-                    ET.SubElement(ET.SubElement(cell, "is"), "t").text = str(value)
+                    # 정확한 Excel 숫자 셀을 사용한다. 비키 64비트 경계 값의 텍스트 계약은 유지한다.
+                    if isinstance(value, (int, float)) and abs(value) <= 9007199254740991:
+                        cell = ET.SubElement(row, "c", r=f"{chr(65 + column)}{row_number}", t="n")
+                        ET.SubElement(cell, "v").text = str(value)
+                    else:
+                        cell = ET.SubElement(row, "c", r=f"{chr(65 + column)}{row_number}", t="inlineStr")
+                        ET.SubElement(ET.SubElement(cell, "is"), "t").text = str(value)
             archive.writestr(f"xl/worksheets/sheet{index}.xml", ET.tostring(worksheet, encoding="utf-8", xml_declaration=True))
         archive.writestr("xl/workbook.xml", ET.tostring(workbook, encoding="utf-8", xml_declaration=True))
         archive.writestr("xl/_rels/workbook.xml.rels", ET.tostring(relationships, encoding="utf-8", xml_declaration=True))

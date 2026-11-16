@@ -60,7 +60,11 @@ namespace
 	{
 		std::set<decltype(key(rows.front()))> keys;
 		for (const auto& row : rows)
+		{
+			if constexpr (std::is_integral_v<decltype(key(row))>)
+				if (key(row) == 0) throw std::runtime_error(std::string(field) + ": primary key must be positive");
 			if (!keys.insert(key(row)).second) throw std::runtime_error(std::string(field) + ": duplicate primary key");
+		}
 	}
 	void AssetPath(const std::wstring& value)
 	{
@@ -232,32 +236,33 @@ namespace GameData
 					if (tableName == "Scene.yaml")
 					{
 						Count(row, 3);
-						candidate.m_scenes.push_back({String(row, L"SceneId"), SceneType(row), Boolean(row, L"IsStartupScene")});
+						candidate.m_scenes.push_back({Number(row, L"SceneId"), SceneType(row), Boolean(row, L"IsStartupScene")});
 					}
 					else if (tableName == "SceneOption.yaml")
 					{
 						Count(row, 7);
 						candidate.m_options.push_back({Number(row, L"OptionId"), SceneType(row), Number(row, L"OptionOrder"),
-							String(row, L"OptionTextKey"), ActionType(row), String(row, L"TargetSceneId", true), Boolean(row, L"IsEnabled")});
+							Number(row, L"OptionTextKey"), ActionType(row), Number(row, L"TargetSceneId"), Boolean(row, L"IsEnabled")});
 					}
 					else if (tableName == "SceneTypeConfig.yaml")
 					{
-						Count(row, 3);
+						Count(row, 4);
 						const auto policy = String(row, L"OptionOverflowPolicy");
 						if (policy != L"NoScroll" && policy != L"Scroll") throw std::runtime_error("invalid overflow enum");
-						candidate.m_configs.push_back({SceneType(row), Number(row, L"MaxVisibleOptions"), policy == L"NoScroll" ?
+						candidate.m_configs.push_back({Number(row, L"ConfigId"), SceneType(row), Number(row, L"MaxVisibleOptions"),
+							policy == L"NoScroll" ?
 							Common::EOptionOverflowPolicy::NoScroll : Common::EOptionOverflowPolicy::Scroll});
 					}
 					else if (tableName == "Localization.yaml")
 					{
 						Count(row, 3);
-						candidate.m_localization.push_back({String(row, L"TextKey"), String(row, L"KoKR"), String(row, L"EnUS")});
+						candidate.m_localization.push_back({Number(row, L"TextKey"), String(row, L"KoKR"), String(row, L"EnUS")});
 					}
 					else if (tableName == "CharacterDefinition.yaml")
 					{
 						Count(row, 3);
-						candidate.m_characterDefinition.push_back({String(row, L"CharacterId"),
-							String(row, L"NameTextKey"), String(row, L"ArtId")});
+						candidate.m_characterDefinition.push_back({Number(row, L"CharacterId"),
+							Number(row, L"NameTextKey"), Number(row, L"ArtId")});
 					}
 					else if (tableName == "LevelDefinition.yaml")
 					{
@@ -268,7 +273,7 @@ namespace GameData
 					else if (tableName == "NewGameProfile.yaml")
 					{
 						Count(row, 10);
-						candidate.m_newGameProfile.push_back({String(row, L"ProfileId"), String(row, L"CharacterId"),
+						candidate.m_newGameProfile.push_back({Number(row, L"ProfileId"), Number(row, L"CharacterId"),
 							Number(row, L"InitialLevel"), Number(row, L"InitialExperience"), Number(row, L"InitialGold"),
 							Number(row, L"InitialMaxHpBonus"), Number(row, L"InitialAttackBonus"), Number(row, L"InitialDefenseBonus"),
 							Number(row, L"ContentVersion"), Boolean(row, L"IsDefault")});
@@ -276,19 +281,20 @@ namespace GameData
 					else if (tableName == "ItemDefinition.yaml")
 					{
 						Count(row, 3);
-						candidate.m_itemDefinition.push_back({String(row, L"ItemId"),
-							String(row, L"NameTextKey"), Number(row, L"MaxStack")});
+						candidate.m_itemDefinition.push_back({Number(row, L"ItemId"),
+							Number(row, L"NameTextKey"), Number(row, L"MaxStack")});
 					}
 					else if (tableName == "AchievementDefinition.yaml")
 					{
 						Count(row, 3);
-						candidate.m_achievementDefinition.push_back({String(row, L"AchievementId"),
-							String(row, L"NameTextKey"), Number(row, L"TargetCount")});
+						candidate.m_achievementDefinition.push_back({Number(row, L"AchievementId"),
+							Number(row, L"NameTextKey"), Number(row, L"TargetCount")});
 					}
 					else
 					{
 						Count(row, 4);
-						candidate.m_textArt.push_back({String(row, L"ArtId"), String(row, L"AssetPath"), Number(row, L"Width"), Number(row, L"Height")});
+						candidate.m_textArt.push_back({Number(row, L"ArtId"), String(row, L"AssetPath"),
+							Number(row, L"Width"), Number(row, L"Height")});
 					}
 				}
 			}
@@ -297,6 +303,7 @@ namespace GameData
 			location = "primary keys";
 			Unique(candidate.m_scenes, [](const auto& row) { return row.sceneId; }, "Scene.yaml/sceneId");
 			Unique(candidate.m_options, [](const auto& row) { return row.optionId; }, "SceneOption.yaml/optionId");
+			Unique(candidate.m_configs, [](const auto& row) { return row.configId; }, "SceneTypeConfig.yaml/configId");
 			Unique(candidate.m_configs, [](const auto& row) { return row.sceneType; }, "SceneTypeConfig.yaml/sceneType");
 			Unique(candidate.m_localization, [](const auto& row) { return row.textKey; }, "Localization.yaml/textKey");
 			Unique(candidate.m_textArt, [](const auto& row) { return row.artId; }, "TextArt.yaml/artId");
@@ -308,8 +315,8 @@ namespace GameData
 			{
 				if (row.optionId == 0) throw std::runtime_error("OptionId must be at least 1");
 				if (!candidate.FindLocalization(row.optionTextKey)) throw std::runtime_error("OptionTextKey reference is missing");
-				if ((!row.targetSceneId.empty() && !candidate.FindScene(row.targetSceneId)) ||
-					(row.isEnabled && row.actionType == Common::ESceneActionType::StartGame && row.targetSceneId.empty()))
+				if ((row.targetSceneId != 0 && !candidate.FindScene(row.targetSceneId)) ||
+					(row.isEnabled && row.actionType == Common::ESceneActionType::StartGame && row.targetSceneId == 0))
 					throw std::runtime_error("TargetSceneId reference is missing");
 			}
 			location = "SceneTypeConfig.yaml/SceneOption.yaml";
@@ -337,7 +344,7 @@ namespace GameData
 				AssetPath(row.assetPath);
 				if (!((row.width == 36 && row.height == 36) || (row.width == 83 && row.height == 41)))
 					throw std::runtime_error("Width/Height must be 36x36 or 83x41");
-				if (row.artId == L"MainLogo" && (row.width != 83 || row.height != 41))
+				if (row.artId == static_cast<std::uint32_t>(GameData::Common::EArtId::MainLogo) && (row.width != 83 || row.height != 41))
 					throw std::runtime_error("TextArt MainLogo does not fit the 83x41 UI slot");
 				const auto* bytes = candidate.FindAsset(row.assetPath);
 				if (!bytes) throw std::runtime_error("TextArt AssetPath is missing from the package");
@@ -345,10 +352,12 @@ namespace GameData
 				if (!DecodeTextArt(*bytes, row.width, row.height, lines, error)) throw std::runtime_error(error);
 			}
 			location = "Localization.yaml";
-			if (!candidate.FindLocalization(L"System.ScreenTooSmall"))
-				throw std::runtime_error("required TextKey System.ScreenTooSmall is missing");
-			if (!candidate.FindLocalization(L"Scene.MainMenu.Title"))
-				throw std::runtime_error("required TextKey Scene.MainMenu.Title is missing");
+			if (!candidate.FindLocalization(static_cast<std::uint32_t>(GameData::Common::ETextKey::System_ScreenTooSmall)))
+				throw std::runtime_error("required TextKey " +
+					std::to_string(static_cast<std::uint32_t>(Common::ETextKey::System_ScreenTooSmall)) + " is missing");
+			if (!candidate.FindLocalization(static_cast<std::uint32_t>(GameData::Common::ETextKey::Scene_MainMenu_Title)))
+				throw std::runtime_error("required TextKey " +
+					std::to_string(static_cast<std::uint32_t>(Common::ETextKey::Scene_MainMenu_Title)) + " is missing");
 			location = "InGameData catalog cohort";
 			std::size_t catalogTables = 0;
 			for (const auto* name : {"CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
@@ -431,7 +440,7 @@ namespace GameData
 		}
 	}
 
-	const CharacterDefinition::SCharacterDefinitionData* FGameDataStore::FindCharacterDefinition(const std::wstring& key) const noexcept
+	const CharacterDefinition::SCharacterDefinitionData* FGameDataStore::FindCharacterDefinition(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_characterDefinition) if (row.characterId == key) return &row;
 		return nullptr;
@@ -441,18 +450,18 @@ namespace GameData
 		for (const auto& row : m_levelDefinition) if (row.level == key) return &row;
 		return nullptr;
 	}
-	const NewGameProfile::SNewGameProfileData* FGameDataStore::FindNewGameProfile(const std::wstring& key) const noexcept
+	const NewGameProfile::SNewGameProfileData* FGameDataStore::FindNewGameProfile(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_newGameProfile) if (row.profileId == key) return &row;
 		return nullptr;
 	}
-	const ItemDefinition::SItemDefinitionData* FGameDataStore::FindItemDefinition(const std::wstring& key) const noexcept
+	const ItemDefinition::SItemDefinitionData* FGameDataStore::FindItemDefinition(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_itemDefinition) if (row.itemId == key) return &row;
 		return nullptr;
 	}
 	const AchievementDefinition::SAchievementDefinitionData* FGameDataStore::FindAchievementDefinition(
-		const std::wstring& key) const noexcept
+		std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_achievementDefinition) if (row.achievementId == key) return &row;
 		return nullptr;
@@ -467,7 +476,7 @@ namespace GameData
 		return m_levelDefinition;
 	}
 
-	const Scene::SSceneData* FGameDataStore::FindScene(const std::wstring& key) const noexcept
+	const Scene::SSceneData* FGameDataStore::FindScene(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_scenes) if (row.sceneId == key) return &row;
 		return nullptr;
@@ -477,17 +486,22 @@ namespace GameData
 		for (const auto& row : m_options) if (row.optionId == key) return &row;
 		return nullptr;
 	}
+	const SceneTypeConfig::SSceneTypeConfigData* FGameDataStore::FindSceneTypeConfigById(std::uint32_t key) const noexcept
+	{
+		for (const auto& row : m_configs) if (row.configId == key) return &row;
+		return nullptr;
+	}
 	const SceneTypeConfig::SSceneTypeConfigData* FGameDataStore::FindSceneTypeConfig(Common::ESceneType key) const noexcept
 	{
 		for (const auto& row : m_configs) if (row.sceneType == key) return &row;
 		return nullptr;
 	}
-	const Localization::SLocalizationData* FGameDataStore::FindLocalization(const std::wstring& key) const noexcept
+	const Localization::SLocalizationData* FGameDataStore::FindLocalization(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_localization) if (row.textKey == key) return &row;
 		return nullptr;
 	}
-	const TextArt::STextArtData* FGameDataStore::FindTextArt(const std::wstring& key) const noexcept
+	const TextArt::STextArtData* FGameDataStore::FindTextArt(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_textArt) if (row.artId == key) return &row;
 		return nullptr;

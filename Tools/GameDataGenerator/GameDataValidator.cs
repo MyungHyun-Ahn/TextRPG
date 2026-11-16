@@ -17,6 +17,7 @@ internal static partial class FGameDataValidator
 
         FGameDataEnumCatalog.ValidateReferences(tables, enumDefinitions, diagnostics);
         ValidateReferences(tables, diagnostics);
+        FNumericKeyValidation.Validate(tables, diagnostics);
         ValidateClientOnly(tables, enumDefinitions, diagnostics);
         FSceneDataValidation.Validate(tables, enumDefinitions, diagnostics);
         return enumDefinitions;
@@ -87,7 +88,7 @@ internal static partial class FGameDataValidator
             {
                 diagnostics.Add("GD0306", "Primary key scope must be Shared.", key.Location);
             }
-            if (key.Type?.Kind is EGameDataScalarKind.Float or EGameDataScalarKind.Double or EGameDataScalarKind.Bool)
+            if (key.Type != null && !FGameDataIntegerRange.IsInteger(key.Type))
             {
                 diagnostics.Add("GD0307", $"Type '{key.Type.SourceName}' cannot be used as a primary key.", key.Location);
             }
@@ -167,7 +168,7 @@ internal static partial class FGameDataValidator
                 diagnostics.Add("GD0313", $"Field '{field.Name}' collides with another generated C# property name.", field.Location);
             }
 
-            if (!field.Required && field.DefaultText == null && !FSceneDataValidation.IsNullableReference(table.Name, field))
+            if (!field.Required && field.DefaultText == null)
             {
                 diagnostics.Add(
                     "GD0324",
@@ -327,6 +328,10 @@ internal static partial class FGameDataValidator
                 continue;
             }
 
+            if (FGameDataIntegerRange.IsInteger(primaryKey.Type) &&
+                Convert.ToDecimal(keyValue, CultureInfo.InvariantCulture) <= 0)
+                diagnostics.Add("GD0331", "Primary key must be a positive integer; zero is reserved for absent optional references.",
+                    table.Locate(row.SourceRowNumber, primaryKey.ColumnNumber));
             string canonicalKey = FGameDataText.FormatScalar(keyValue, primaryKey.Type!);
             if (firstRows.TryGetValue(canonicalKey, out int firstRow))
             {
@@ -370,7 +375,9 @@ internal static partial class FGameDataValidator
                 {
                     diagnostics.Add("GD0342", $"Referenced field '{field.Reference}' must be the target table's primary key.", table.Locate(12, field.ColumnNumber));
                 }
-                if (!AreEquivalentTypes(field.Type, referencedField.Type))
+                if (field.Type == null || referencedField.Type == null ||
+                    !FGameDataIntegerRange.IsInteger(field.Type) || !FGameDataIntegerRange.IsInteger(referencedField.Type) ||
+                    !AreEquivalentTypes(field.Type, referencedField.Type))
                 {
                     diagnostics.Add("GD0343", $"Reference type mismatch: '{field.Type?.SourceName}' -> '{referencedField.Type?.SourceName}'.", table.Locate(12, field.ColumnNumber));
                     continue;
@@ -393,6 +400,7 @@ internal static partial class FGameDataValidator
                         continue;
                     }
                     string canonical = FGameDataText.FormatScalar(value, field.Type!);
+                    if (!field.Required && canonical == "0") continue;
                     if (!referencedValues.Contains(canonical))
                     {
                         diagnostics.Add("GD0344", $"Value '{canonical}' does not exist in referenced field '{field.Reference}'.", table.Locate(row.SourceRowNumber, field.ColumnNumber));

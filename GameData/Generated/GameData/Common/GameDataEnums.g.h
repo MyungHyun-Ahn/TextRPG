@@ -5,10 +5,38 @@
 // 이 헤더는 열거형을 사용하는 데이터 헤더보다 먼저 명시적으로 포함한다.
 namespace GameData::Common
 {
+	enum class EAchievementId : ::std::uint32_t
+	{
+		Journey = 1
+	};
+
+	enum class EArtId : ::std::uint32_t
+	{
+		MainLogo = 1,
+		PlayerSwordswoman = 2,
+		MonsterDragon = 3,
+		TownWindwood = 4
+	};
+
+	enum class ECharacterId : ::std::uint32_t
+	{
+		Swordswoman = 1
+	};
+
+	enum class EItemId : ::std::uint32_t
+	{
+		Token = 1
+	};
+
 	enum class EOptionOverflowPolicy : ::std::uint8_t
 	{
 		NoScroll = 0,
 		Scroll = 1
+	};
+
+	enum class EProfileId : ::std::uint32_t
+	{
+		Default = 1
 	};
 
 	enum class ESceneActionType : ::std::uint8_t
@@ -29,10 +57,56 @@ namespace GameData::Common
 		Defend = 13
 	};
 
+	enum class ESceneId : ::std::uint32_t
+	{
+		MainMenu = 1,
+		Town = 2,
+		BattleField = 3
+	};
+
 	enum class ESceneType : ::std::uint8_t
 	{
 		MainMenu = 0,
 		Town = 1,
 		BattleField = 2
+	};
+
+	enum class ETextKey : ::std::uint32_t
+	{
+		MainMenu_NewGame = 1,
+		MainMenu_Continue = 2,
+		MainMenu_Settings = 3,
+		MainMenu_Credits = 4,
+		MainMenu_Exit = 5,
+		Town_Move = 6,
+		Town_Inventory = 7,
+		Town_Shop = 8,
+		Town_Rest = 9,
+		System_ScreenTooSmall = 10,
+		Town_Talk = 11,
+		Town_Inn = 12,
+		Battle_Attack = 13,
+		Battle_Skill = 14,
+		Battle_Item = 15,
+		Battle_Defend = 16,
+		Scene_MainMenu_Title = 17,
+		Scene_Town_Title = 18,
+		Scene_Town_Region = 19,
+		Scene_BattleField_Title = 20,
+		InGameData_Ui_Level = 21,
+		InGameData_Ui_Hp = 22,
+		InGameData_Ui_Attack = 23,
+		InGameData_Ui_Defense = 24,
+		InGameData_Ui_Gold = 25,
+		InGameData_Ui_Inventory = 26,
+		InGameData_Ui_Achievements = 27,
+		InGameData_Ui_LoadFailed = 28,
+		InGameData_Ui_SaveFailed = 29,
+		InGameData_Ui_InvalidSaveLocation = 30,
+		InGameData_Character_Swordswoman_Name = 31,
+		InGameData_Item_Token_Name = 32,
+		InGameData_Achievement_Journey_Name = 33,
+		InGameData_Ui_NewGameFailed = 34,
+		InGameData_Ui_NewGameSaveFailed = 35
 	};
 }

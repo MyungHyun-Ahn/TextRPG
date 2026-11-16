@@ -7,8 +7,8 @@ namespace GameData::Scene
 {
 	struct SSceneData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring sceneId{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t sceneId{};
 		::GameData::Common::ESceneType sceneType{};
 		bool isStartupScene{};
 	};

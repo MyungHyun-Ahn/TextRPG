@@ -166,17 +166,17 @@ internal static class FInGameSchemaSelfTest
         using (var workbook = new ClosedXML.Excel.XLWorkbook(workbookPath))
         {
             var sheet = workbook.Worksheet("Enums");
-            sheet.Cell("F5").Value = "Shared";
-            sheet.Cell("F6").Value = "string";
-            sheet.Cell("F7").Value = "true";
-            sheet.Cell("F13").Value = "Values";
-            sheet.Cell("F14").Value = "One=1|Two=2";
+            sheet.Cell("G5").Value = "Shared";
+            sheet.Cell("G6").Value = "string";
+            sheet.Cell("G7").Value = "true";
+            sheet.Cell("G13").Value = "Values";
+            sheet.Cell("G14").Value = "One=1|Two=2";
             workbook.Save();
         }
         Reject("enum<TestKind>", nestedRoot, workbookPath + " [Enums] E13: error GD0303: Duplicate field name 'Values'.\n" +
-            workbookPath + " [Enums] F13: error GD0303: Duplicate field name 'Values'.\n" +
-            workbookPath + " [Enums] F13: error GD0312: Field 'Values' collides with another generated C++ member name.\n" +
-            workbookPath + " [Enums] F13: error GD0313: Field 'Values' collides with another generated C# property name.");
+            workbookPath + " [Enums] G13: error GD0303: Duplicate field name 'Values'.\n" +
+            workbookPath + " [Enums] G13: error GD0312: Field 'Values' collides with another generated C++ member name.\n" +
+            workbookPath + " [Enums] G13: error GD0313: Field 'Values' collides with another generated C# property name.");
         File.Copy(Path.Combine(catalogRoot, "Enums.xlsx"), workbookPath, overwrite: true);
         foreach (var item in new[]
         {

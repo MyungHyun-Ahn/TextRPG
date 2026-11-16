@@ -71,7 +71,7 @@ namespace TextRPG
 		std::uint32_t OptionOrder = 0;
 		std::wstring Text;
 		::GameData::Common::ESceneActionType ActionType = ::GameData::Common::ESceneActionType::StartGame;
-		std::wstring TargetSceneId;
+		std::uint32_t TargetSceneId{};
 		bool IsEnabled = true;
 	};
 
@@ -83,7 +83,7 @@ namespace TextRPG
 		~FDataScene() override;
 
 		// 직접 API도 NVI와 같은 Scene 작업 수명을 쓴다. callback/인수 정리 반환 전 EndFrame 게시를 허용하지 않는다.
-		[[nodiscard]] bool LoadFromGameData(const std::wstring& sceneId, std::wstring& errorMessage);
+		[[nodiscard]] bool LoadFromGameData(std::uint32_t sceneId, std::wstring& errorMessage);
 
 		[[nodiscard]] const InGameData* GetProgress() const noexcept { const SOperation operation(*this); return m_progress; }
 		// 기존 참조 API는 로드된 기본 Layer가 있을 때만 사용한다. 동적 Layer/빈 Scene은 nullable API를 쓴다.
@@ -119,7 +119,7 @@ namespace TextRPG
 		// 안전점에서만 호출한다. 가상 UI destructor는 재진입할 수 있으며 root보다 먼저 반환한다.
 		void RetireForReplacement() noexcept;
 		void InvalidateUiInputForShutdown() noexcept;
-		std::wstring m_sceneId;
+		std::uint32_t m_sceneId{};
 		const InGameData* m_progress = nullptr;
 		bool m_canContinue = false;
 		bool m_isRetired = false;

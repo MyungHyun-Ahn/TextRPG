@@ -25,7 +25,7 @@ namespace TextRPG
 		~FGameSession();
 		[[nodiscard]] const InGameData* GetProgress() const noexcept;
 		[[nodiscard]] bool CanContinue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error) const;
-		[[nodiscard]] EGameStartResult NewGame(const std::wstring& sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
+		[[nodiscard]] EGameStartResult NewGame(std::uint32_t sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui,
 			std::string& error);
 		[[nodiscard]] bool Continue(FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error);
 		// NewGame/Continue는 요청만 수락한다. EndFrame 후 실제 게시/저장 결과를 한 번 받는다.

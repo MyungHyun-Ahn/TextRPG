@@ -1,5 +1,14 @@
 # Native 런타임 테스트 runner
 
+## Excel 숫자 키 이관의 현재 실행 검사
+
+- 원본 Excel 두 통합문서와 템플릿의 전체 12시트 PK/FK가 숫자임을 다시 읽어 확인했다. Enums.EnumId·SceneTypeConfig.ConfigId와 명시적 TargetSceneId Default0을 포함한다. 실제 생성기 검증/생성/check와 생성 C++ 소비자, 외부 생성기 계약71사례·데이터 검사14개를 확인했다.
+- Debug/Release × x64/Win32 solution 증분 Build와 GameData/TextRPG native 분석은 최종 경고0이다. 최초 C26478과 입력/fixture 실패는 별도 FAIL 기록으로 보존하고 영향 부분만 수정·확인했다. Clean/Rebuild·경고 억제·복사 소스 빌드는 하지 않았다.
+- 네 구성 각각 Scene99·InGameData198·Store429 checkpoint groups를 확인했다. Debug/x64 InGameData는 동일 컴파일 입력의 worker 실행을 승계하며 프로젝트 ClInclude/필터·관측 fingerprint 등록과 후속 공백 전용 보완을 실행 코드 변경으로 취급하지 않는다. group은 고유 테스트 총수가 아니므로 합산하지 않는다.
+- IGD1과 CGSA schema1의 실제 인증 슬롯을 Session/Scene으로 Continue하고 암호문/키 불변, 명시 저장의 숫자 schema2 전환, 알 수 없는 과거 ID의 Continue 실패·Save/NewGame autosave 덮어쓰기 거부를 확인했다. Core의 범용 string/map codec·아트·개발 키 정책은 바꾸지 않았다.
+- 실제 게임은 네 구성 각각 일반23·저장/복원/Continue5 case, Debug/x64 fixed-update·frame-skip 진행 각5 case를 통과했다. 화면 오라클21, Debug x64/x86 optional 헤더 부재, Store 예외 주입 normal/analyze를 확인했다. 이전 APP-D32-EMPTY-OUTPUT은 이번에 재현되지 않았으며 과거 실패를 해결 완료로 바꾸지 않는다.
+- 기존 Core/Input 및 독립 SaveData byte/fault suite는 실행 코드 불변 범위로 새로 실행하지 않았다. 현재 Session의 실제 인증 파일/실패 보존은 위 새 검사에서 실행했다. 전체 reader 예외/수동 DPI·글꼴 인증을 반복했다고 주장하지 않는다. 독립 검토는 generator33·runtime42 경로와 보완2경로/4hunk를 정체성으로 조합했고 현재 소스 차단 결함은 없다. 최초 runtime FAIL은 보존한다. 최종 상태는 [로드맵](../../Docs/ROADMAP.md)을 따른다. 근거 루트는 `numeric-data-keys-23df5938`이며 이번 새 변경은 로컬만 반영한다.
+
 ## SceneManager 추출의 현재 검사 — 로컬 마감, 빈 출력 이슈는 사용자 보류
 
 - 기존 runner/NativeTests/native_build와 원본 소스·PCH/증분 캐시를 유지한다. 네 구성 각각 제품 Build/실제 native 분석 경고0, Core31·Scene98·model137·Save28 checkpoint groups 및 Input168 checks를 확인했다. Input 분석 모드의 변경 없는 캐시 사용을 새 analyzer 실행으로 세지 않는다.

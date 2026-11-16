@@ -12,7 +12,7 @@ namespace GameData::InGameData
 
 	SRootInGameData::SRootInGameData(
 		::std::uint32_t _field0,
-		::std::wstring _field1,
+		::std::uint32_t _field1,
 		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field2,
 		::std::uint32_t _field3,
 		::std::vector<::GameData::InGameData::SInventoryItemProgress> _field4,

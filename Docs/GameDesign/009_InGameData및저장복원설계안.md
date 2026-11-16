@@ -1,5 +1,7 @@
 # InGameData 소유권·직렬화·암호화 저장/복원 설계
 
+> **현재 숫자 키 계약:** [Excel 작성 규칙](../../GameData/Excel/README.md)에 따라 정적 데이터 PK/FK와 진행의 CharacterId/ItemId/AchievementId/m_sceneId는 uint32다. 인스턴스 InstanceId는 기존 uint64를 유지한다. 현재 진행 schema_version은 2이며 새 CGSA 저장은 숫자 ID만 쓴다. IGD1 v1과 CGSA schema1의 문자열 ID는 콘텐츠 계층의 읽기 전용 이관 경계에서만 해석한다. 알 수 없는 과거 ID나 미래 버전의 인증 슬롯은 덮어쓰지 않으며 Continue는 기존 암호문/키를 다시 쓰지 않는다. 실제 저장 파일·Session·Scene/EndFrame 연동과 실패 시 보존을 확인했다. 아래 schema1/문자열 ID 설명과 이전 완료 수치는 당시 이력으로 보존하며 최신 실행·검토 상태는 로드맵을 따른다.
+
 > 현재 생성 모델 — 2026-11-16: [012 InGameData YAML 정의·자동 생성](012_InGameDataYaml정의및자동생성설계안.md)의 **생성 단일 가변 루트 직접 사용·shared_ptr/재귀 컨테이너·Custom hook/factory·이름 기반 CGSA 저장을 구현·실행 검증했다.** 기존 IGD1 v1은 읽기 전용으로 이관하며, 아래 인증 저장·후보 검증·EndFrame 게시·종료 정책은 유지한다. 현재 실행/검토는 §9.6과 012 §11, 이전 후보 기록은 §9.5로 구분한다. 로컬만 반영했고 커밋·푸시·publication은 없다.
 
 > 상태 — 2026-11-15: **최소 진행 모델·앱 수명 소유·인증 저장/Continue·EndFrame 결합 게시를 구현했고, 실제 실행 게이트와 독립 focused source review를 확인했다.** 현재 구현·검증 범위는 §9가 기준이다. UI-08/09의 전투·장비·몬스터 콘텐츠·업적 게임플레이/전용 UI 및 전체 호스트 시각 인증을 완료한 것은 아니다. 초기 문서 전용 작업의 이력은 §8에 보존한다.

@@ -6,9 +6,9 @@ namespace GameData::CharacterDefinition
 {
 	struct SCharacterDefinitionData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring characterId{};
-		::std::wstring nameTextKey{};
-		::std::wstring artId{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t characterId{};
+		::std::uint32_t nameTextKey{};
+		::std::uint32_t artId{};
 	};
 }

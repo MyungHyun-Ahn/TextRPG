@@ -43,21 +43,21 @@ internal static class FGameDataGeneratorSelfTest
             string header = File.ReadAllText(headerPath);
             Assert(header.Contains("std::wstring", StringComparison.Ordinal), "generated strings are not std::wstring");
             Assert(header.Contains("struct SLocalizationData final", StringComparison.Ordinal) &&
-                   header.Contains("using KeyType = ::std::wstring;", StringComparison.Ordinal),
+                   header.Contains("using KeyType = ::std::uint32_t;", StringComparison.Ordinal),
                 "client table type/key contract is missing");
             Assert(!header.Contains("한글", StringComparison.Ordinal) && !header.Contains("TITLE_MAIN", StringComparison.Ordinal),
                 "actual localization data leaked into the type header");
             string yaml = files.Single(file => file.RelativePath == "Data/Client/Localization.yaml").Content;
             Assert(yaml == "# TextRPG.GameData 1\n" +
-                "\"LocalizationTITLE_MAIN\":\n  \"TextId\": \"TITLE_MAIN\"\n  \"Korean\": \"한글\"\n  \"English\": \"Title\"\n" +
-                "\"LocalizationUI_START\":\n  \"TextId\": \"UI_START\"\n  \"Korean\": \"새 게임\"\n  \"English\": \"New Game\"\n",
+                "\"Localization1\":\n  \"TextKey\": 1\n  \"KoKR\": \"한글\"\n  \"EnUS\": \"Title\"\n" +
+                "\"Localization2\":\n  \"TextKey\": 2\n  \"KoKR\": \"새 게임\"\n  \"EnUS\": \"New Game\"\n",
                 "Client YAML must contain the exact version line followed by unchanged mapping/scalar data");
             foreach (SGeneratedFile clientYaml in files.Where(file => file.RelativePath.StartsWith("Data/Client/", StringComparison.Ordinal)))
             {
                 Assert(clientYaml.Content.StartsWith("# TextRPG.GameData 1\n", StringComparison.Ordinal),
                     "Client YAML version marker missing: " + clientYaml.RelativePath);
             }
-            Assert(yaml.Contains("\"Korean\": \"한글\"", StringComparison.Ordinal),
+            Assert(yaml.Contains("\"KoKR\": \"한글\"", StringComparison.Ordinal),
                 "Korean text was not preserved in Client YAML");
 
             string[] generatedPaths = Directory.GetFiles(validOutputRoot, "*", SearchOption.AllDirectories);
@@ -235,6 +235,13 @@ internal static class FGameDataGeneratorSelfTest
             sheet.Cell(13, column).Value = fields[index];
         }
         WriteDataRow(sheet, 14, ["TestKind", "Client", "uint8", "One=1|Two=2"]);
+        sheet.Cell("B4").Value = "";
+        sheet.Cell("F4").Value = "Primary";
+        sheet.Cell("F5").Value = "Shared";
+        sheet.Cell("F6").Value = "uint32";
+        sheet.Cell("F7").Value = true;
+        sheet.Cell("F13").Value = "EnumId";
+        sheet.Cell("F14").Value = 1;
         workbook.SaveAs(path);
     }
 
@@ -243,9 +250,9 @@ internal static class FGameDataGeneratorSelfTest
         using var workbook = new XLWorkbook();
         IXLWorksheet sheet = workbook.AddWorksheet("Localization");
         WriteMetadataLabels(sheet, "Localization", tableTarget);
-        string[] fields = ["TextId", "Korean", "English"];
+        string[] fields = ["TextKey", "KoKR", "EnUS"];
         string[] scopes = ["Shared", "Client", "Client"];
-        string[] types = ["string", "string", "string"];
+        string[] types = ["uint32", "string", "string"];
         for (int index = 0; index < fields.Length; ++index)
         {
             int column = index + 2;
@@ -255,8 +262,8 @@ internal static class FGameDataGeneratorSelfTest
             sheet.Cell(7, column).Value = "true";
             sheet.Cell(13, column).Value = fields[index];
         }
-        WriteDataRow(sheet, 14, ["TITLE_MAIN", "한글", "Title"]);
-        WriteDataRow(sheet, 15, ["UI_START", "새 게임", "New Game"]);
+        WriteDataRow(sheet, 14, [1, "한글", "Title"]);
+        WriteDataRow(sheet, 15, [2, "새 게임", "New Game"]);
         workbook.SaveAs(path);
     }
 

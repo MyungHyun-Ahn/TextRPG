@@ -6,9 +6,9 @@ namespace GameData::NewGameProfile
 {
 	struct SNewGameProfileData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring profileId{};
-		::std::wstring characterId{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t profileId{};
+		::std::uint32_t characterId{};
 		::std::uint32_t initialLevel{};
 		::std::uint32_t initialExperience{};
 		::std::uint32_t initialGold{};

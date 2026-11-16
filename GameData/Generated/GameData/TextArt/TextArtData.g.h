@@ -6,8 +6,8 @@ namespace GameData::TextArt
 {
 	struct STextArtData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring artId{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t artId{};
 		::std::wstring assetPath{};
 		::std::uint32_t width{};
 		::std::uint32_t height{};

@@ -12,7 +12,7 @@ namespace GameData::InGameData
 
 	SInventoryItemProgress::SInventoryItemProgress(
 		::std::uint64_t _field0,
-		::std::wstring _field1,
+		::std::uint32_t _field1,
 		::std::uint32_t _field2)
 		: InstanceId(::std::move(_field0))
 		, ItemId(::std::move(_field1))

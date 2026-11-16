@@ -57,7 +57,7 @@ namespace
 	}
 	auto Values(const SceneTypeConfig::SSceneTypeConfigData& row)
 	{
-		return std::make_tuple(row.sceneType, row.maxVisibleOptions, row.optionOverflowPolicy);
+		return std::make_tuple(row.configId, row.sceneType, row.maxVisibleOptions, row.optionOverflowPolicy);
 	}
 	auto Values(const Localization::SLocalizationData& row)
 	{
@@ -196,7 +196,7 @@ int main(int argc, char** argv)
 				++rowCount;
 				if (entry.name == "Data/Client/Scene.yaml")
 				{
-					const auto id = row.fields.at(L"SceneId").text;
+					const auto id = row.fields.at(L"SceneId").number;
 					if (populated) Remember(checks, [&store, id]() { return store.FindScene(id); });
 					else checks.emplace_back([&store, id]() { Require(!store.FindScene(id), "empty Scene published"); });
 				}
@@ -209,6 +209,7 @@ int main(int argc, char** argv)
 				else if (entry.name == "Data/Client/SceneTypeConfig.yaml")
 				{
 					const auto type = row.fields.at(L"SceneType").text;
+					Require(type == L"MainMenu" || type == L"Town" || type == L"BattleField", "invalid fixture SceneType");
 					const auto id = type == L"MainMenu" ? GameData::Common::ESceneType::MainMenu :
 						(type == L"Town" ? GameData::Common::ESceneType::Town : GameData::Common::ESceneType::BattleField);
 					if (populated) Remember(checks, [&store, id]() { return store.FindSceneTypeConfig(id); });
@@ -216,19 +217,19 @@ int main(int argc, char** argv)
 				}
 				else if (entry.name == "Data/Client/Localization.yaml")
 				{
-					const auto id = row.fields.at(L"TextKey").text;
+					const auto id = row.fields.at(L"TextKey").number;
 					if (populated) Remember(checks, [&store, id]() { return store.FindLocalization(id); });
 					else checks.emplace_back([&store, id]() { Require(!store.FindLocalization(id), "empty localization published"); });
 				}
 				else if (entry.name == "Data/Client/TextArt.yaml")
 				{
-					const auto id = row.fields.at(L"ArtId").text;
+					const auto id = row.fields.at(L"ArtId").number;
 					if (populated) Remember(checks, [&store, id]() { return store.FindTextArt(id); });
 					else checks.emplace_back([&store, id]() { Require(!store.FindTextArt(id), "empty art published"); });
 				}
 				else if (entry.name == "Data/Client/CharacterDefinition.yaml")
 				{
-					const auto id = row.fields.at(L"CharacterId").text;
+					const auto id = row.fields.at(L"CharacterId").number;
 					const auto lookup = [&store, id]() { return store.FindCharacterDefinition(id); };
 					if (populated) Remember(checks, lookup);
 					else checks.emplace_back([lookup]() { Require(!lookup(), "empty character definition published"); });
@@ -244,7 +245,7 @@ int main(int argc, char** argv)
 				}
 				else if (entry.name == "Data/Client/NewGameProfile.yaml")
 				{
-					const auto id = row.fields.at(L"ProfileId").text;
+					const auto id = row.fields.at(L"ProfileId").number;
 					const auto lookup = [&store, id]() { return store.FindNewGameProfile(id); };
 					if (populated) Remember(checks, lookup);
 					else checks.emplace_back([lookup]() { Require(!lookup(), "empty new game profile published"); });
@@ -252,7 +253,7 @@ int main(int argc, char** argv)
 				}
 				else if (entry.name == "Data/Client/ItemDefinition.yaml")
 				{
-					const auto id = row.fields.at(L"ItemId").text;
+					const auto id = row.fields.at(L"ItemId").number;
 					const auto lookup = [&store, id]() { return store.FindItemDefinition(id); };
 					if (populated) Remember(checks, lookup);
 					else checks.emplace_back([lookup]() { Require(!lookup(), "empty item definition published"); });
@@ -260,7 +261,7 @@ int main(int argc, char** argv)
 				}
 				else if (entry.name == "Data/Client/AchievementDefinition.yaml")
 				{
-					const auto id = row.fields.at(L"AchievementId").text;
+					const auto id = row.fields.at(L"AchievementId").number;
 					const auto lookup = [&store, id]() { return store.FindAchievementDefinition(id); };
 					if (populated) Remember(checks, lookup);
 					else checks.emplace_back([lookup]() { Require(!lookup(), "empty achievement definition published"); });
@@ -274,11 +275,14 @@ int main(int argc, char** argv)
 		Require(checks.size() == rowCount + assetCount && rowCount > 0 && assetCount > 0, "incomplete snapshot");
 		Require(HasCompleteSnapshot(tables), "incomplete fixture table coverage");
 		// 실제 판정 함수를 공유하여 신규 cohort 한 테이블의 조용한 누락을 거부한다.
-		auto missingTable = tables;
-		missingTable[5].entries = 0;
-		missingTable[5].rows = 0;
-		missingTable[5].checks = 0;
-		Require(!HasCompleteSnapshot(missingTable), "missing fixture table control accepted");
+		for (std::size_t index = 0; index < tables.size(); ++index)
+		{
+			auto missingTable = tables;
+			missingTable[index].entries = 0;
+			missingTable[index].rows = 0;
+			missingTable[index].checks = 0;
+			Require(!HasCompleteSnapshot(missingTable), "missing fixture table control accepted");
+		}
 		std::size_t definitionRows = 0;
 		for (std::size_t index = 5; index < tables.size(); ++index) definitionRows += tables[index].rows;
 		Require(recoveryChecks.size() == definitionRows, "incomplete definition recovery snapshot");

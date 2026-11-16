@@ -14,15 +14,15 @@ namespace TextRPG
 		explicit FTextRPGSceneManager(const GameData::FGameDataStore& store);
 		~FTextRPGSceneManager() override;
 		[[nodiscard]] bool LoadStartupScene(FGameUiBridge& uiManager, std::wstring& errorMessage);
-		[[nodiscard]] bool LoadSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager, std::wstring& errorMessage);
-		[[nodiscard]] bool PrepareSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager,
+		[[nodiscard]] bool LoadSceneById(std::uint32_t sceneId, FGameUiBridge& uiManager, std::wstring& errorMessage);
+		[[nodiscard]] bool PrepareSceneById(std::uint32_t sceneId, FGameUiBridge& uiManager,
 			const InGameData* progress, std::unique_ptr<FDataScene>& output, std::wstring& errorMessage) const;
 		// active는 Manager보다 오래 사는 Session의 안정된 owner다. bool은 수락이며 실제 완료는 별도로 소비한다.
 		[[nodiscard]] bool CommitProgress(std::unique_ptr<FDataScene>& nextScene,
 			std::unique_ptr<InGameData>& active, std::unique_ptr<InGameData>& candidate, std::wstring& errorMessage);
 		[[nodiscard]] bool TakeProgressResult(std::unique_ptr<InGameData>& active, bool& published, std::wstring& errorMessage);
 		void SetContinueAvailable(bool available) noexcept;
-		void ShowMessage(std::wstring textKey);
+		void ShowMessage(std::uint32_t textKey);
 
 	private:
 		bool ValidateCandidate(const FScene& scene) const override;
@@ -67,6 +67,6 @@ namespace TextRPG
 		bool m_primaryGate = false;
 		std::uint64_t m_currentBatch = 0;
 		bool m_canContinue = false;
-		std::wstring m_messageKey;
+		std::uint32_t m_messageKey{};
 	};
 }

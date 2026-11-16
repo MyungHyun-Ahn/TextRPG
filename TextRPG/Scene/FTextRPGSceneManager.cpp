@@ -61,7 +61,7 @@ namespace TextRPG
 		return LoadSceneById(startupScene->sceneId, uiManager, errorMessage);
 	}
 
-	bool FTextRPGSceneManager::LoadSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager, std::wstring& errorMessage)
+	bool FTextRPGSceneManager::LoadSceneById(std::uint32_t sceneId, FGameUiBridge& uiManager, std::wstring& errorMessage)
 	{
 		SHostOperation operation(*this);
 		if (IsQuitting() || HasPendingTransition() || m_publicationProgress.Owner || m_acceptProgress)
@@ -80,7 +80,7 @@ namespace TextRPG
 		return true;
 	}
 
-	bool FTextRPGSceneManager::PrepareSceneById(const std::wstring& sceneId, FGameUiBridge& uiManager,
+	bool FTextRPGSceneManager::PrepareSceneById(std::uint32_t sceneId, FGameUiBridge& uiManager,
 		const InGameData* progress, std::unique_ptr<FDataScene>& output, std::wstring& errorMessage) const
 	{
 		SHostOperation operation(*this);
@@ -237,7 +237,7 @@ namespace TextRPG
 			next->m_dropBatch = m_currentBatch;
 			next->m_uiManager.Bind(*next);
 		}
-		m_messageKey.clear();
+		m_messageKey = 0;
 	}
 
 	void FTextRPGSceneManager::OnTransitionComplete(ESceneTransitionResult result, std::wstring& error)
@@ -256,9 +256,9 @@ namespace TextRPG
 	{
 		m_canContinue = available;
 	}
-	void FTextRPGSceneManager::ShowMessage(std::wstring textKey)
+	void FTextRPGSceneManager::ShowMessage(std::uint32_t textKey)
 	{
-		m_messageKey = std::move(textKey);
+		m_messageKey = textKey;
 	}
 
 	bool FTextRPGSceneManager::ObserveInput(const SInputEvent& event) noexcept
@@ -342,7 +342,7 @@ namespace TextRPG
 
 	void FTextRPGSceneManager::RenderOverlay(FFrameBuffer& frame) const
 	{
-		if (!m_messageKey.empty() && frame.GetWidth() >= 132 && frame.GetHeight() >= 43)
+		if (m_messageKey != 0 && frame.GetWidth() >= 132 && frame.GetHeight() >= 43)
 			frame.DrawText(88, 40, GetLocalizedText(m_store, m_messageKey), 7, 42);
 	}
 }

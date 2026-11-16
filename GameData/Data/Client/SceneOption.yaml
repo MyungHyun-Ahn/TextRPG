@@ -3,95 +3,95 @@
   "OptionId": 1
   "SceneType": "MainMenu"
   "OptionOrder": 1
-  "OptionTextKey": "MainMenu.NewGame"
+  "OptionTextKey": 1
   "ActionType": "StartGame"
-  "TargetSceneId": "Town"
+  "TargetSceneId": 2
   "IsEnabled": true
 "SceneOption2":
   "OptionId": 2
   "SceneType": "MainMenu"
   "OptionOrder": 2
-  "OptionTextKey": "MainMenu.Continue"
+  "OptionTextKey": 2
   "ActionType": "Continue"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": true
 "SceneOption3":
   "OptionId": 3
   "SceneType": "MainMenu"
   "OptionOrder": 3
-  "OptionTextKey": "MainMenu.Settings"
+  "OptionTextKey": 3
   "ActionType": "Settings"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption5":
   "OptionId": 5
   "SceneType": "MainMenu"
   "OptionOrder": 4
-  "OptionTextKey": "MainMenu.Exit"
+  "OptionTextKey": 5
   "ActionType": "Quit"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": true
 "SceneOption105":
   "OptionId": 105
   "SceneType": "Town"
   "OptionOrder": 1
-  "OptionTextKey": "Town.Talk"
+  "OptionTextKey": 11
   "ActionType": "Talk"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption103":
   "OptionId": 103
   "SceneType": "Town"
   "OptionOrder": 2
-  "OptionTextKey": "Town.Shop"
+  "OptionTextKey": 8
   "ActionType": "Shop"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption104":
   "OptionId": 104
   "SceneType": "Town"
   "OptionOrder": 3
-  "OptionTextKey": "Town.Inn"
+  "OptionTextKey": 12
   "ActionType": "Rest"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption101":
   "OptionId": 101
   "SceneType": "Town"
   "OptionOrder": 4
-  "OptionTextKey": "Town.Move"
+  "OptionTextKey": 6
   "ActionType": "Move"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption201":
   "OptionId": 201
   "SceneType": "BattleField"
   "OptionOrder": 1
-  "OptionTextKey": "Battle.Attack"
+  "OptionTextKey": 13
   "ActionType": "Attack"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption202":
   "OptionId": 202
   "SceneType": "BattleField"
   "OptionOrder": 2
-  "OptionTextKey": "Battle.Skill"
+  "OptionTextKey": 14
   "ActionType": "Skill"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption203":
   "OptionId": 203
   "SceneType": "BattleField"
   "OptionOrder": 3
-  "OptionTextKey": "Battle.Item"
+  "OptionTextKey": 15
   "ActionType": "Item"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false
 "SceneOption204":
   "OptionId": 204
   "SceneType": "BattleField"
   "OptionOrder": 4
-  "OptionTextKey": "Battle.Defend"
+  "OptionTextKey": 16
   "ActionType": "Defend"
-  "TargetSceneId": null
+  "TargetSceneId": 0
   "IsEnabled": false

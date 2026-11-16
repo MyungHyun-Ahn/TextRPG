@@ -6,9 +6,9 @@ namespace GameData::AchievementDefinition
 {
 	struct SAchievementDefinitionData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring achievementId{};
-		::std::wstring nameTextKey{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t achievementId{};
+		::std::uint32_t nameTextKey{};
 		::std::uint32_t targetCount{};
 	};
 }

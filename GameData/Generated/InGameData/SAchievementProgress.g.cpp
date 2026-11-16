@@ -11,7 +11,7 @@ namespace GameData::InGameData
 	SAchievementProgress& SAchievementProgress::operator=(SAchievementProgress&& _other) noexcept = default;
 
 	SAchievementProgress::SAchievementProgress(
-		::std::wstring _field0,
+		::std::uint32_t _field0,
 		::std::uint32_t _field1,
 		bool _field2)
 		: AchievementId(::std::move(_field0))

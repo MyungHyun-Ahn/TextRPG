@@ -15,7 +15,7 @@ namespace TextRPG
 	{
 		SetPassThrough(true);
 	}
-	bool FUiTextArt::LoadFromGameData(const GameData::FGameDataStore& store, const std::wstring& artId, std::wstring& errorMessage)
+	bool FUiTextArt::LoadFromGameData(const GameData::FGameDataStore& store, std::uint32_t artId, std::wstring& errorMessage)
 	{
 		const auto* row = store.FindTextArt(artId);
 		if (!row || row->width != static_cast<std::uint32_t>(m_rect.Width) || row->height != static_cast<std::uint32_t>(m_rect.Height))

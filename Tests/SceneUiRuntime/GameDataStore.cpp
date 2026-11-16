@@ -7,6 +7,11 @@
 #if __has_include("TextArt/TextArtData.g.h")
 #include "TextArt/TextArtData.g.h"
 #endif
+#include "CharacterDefinition/CharacterDefinitionData.g.h"
+#include "LevelDefinition/LevelDefinitionData.g.h"
+#include "NewGameProfile/NewGameProfileData.g.h"
+#include "ItemDefinition/ItemDefinitionData.g.h"
+#include "AchievementDefinition/AchievementDefinitionData.g.h"
 #include "GameData/FGameDataPackage.h"
 #include "GameData/FGeneratedYaml.h"
 #include "GameData/FGameDataStore.h"
@@ -14,6 +19,25 @@
 namespace
 {
 	using namespace GameData;
+	constexpr auto kMainMenuSceneId = static_cast<std::uint32_t>(Common::ESceneId::MainMenu);
+	constexpr auto kNewGameTextKey = static_cast<std::uint32_t>(Common::ETextKey::MainMenu_NewGame);
+	constexpr auto kMainLogoArtId = static_cast<std::uint32_t>(Common::EArtId::MainLogo);
+	static_assert(std::is_same_v<decltype(Scene::SSceneData::sceneId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(SceneOption::SSceneOptionData::optionId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(SceneOption::SSceneOptionData::optionTextKey), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(SceneOption::SSceneOptionData::targetSceneId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(SceneTypeConfig::SSceneTypeConfigData::configId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(Localization::SLocalizationData::textKey), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(TextArt::STextArtData::artId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(CharacterDefinition::SCharacterDefinitionData::characterId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(CharacterDefinition::SCharacterDefinitionData::nameTextKey), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(CharacterDefinition::SCharacterDefinitionData::artId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(NewGameProfile::SNewGameProfileData::profileId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(NewGameProfile::SNewGameProfileData::characterId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(ItemDefinition::SItemDefinitionData::itemId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(ItemDefinition::SItemDefinitionData::nameTextKey), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(AchievementDefinition::SAchievementDefinitionData::achievementId), std::uint32_t>);
+	static_assert(std::is_same_v<decltype(AchievementDefinition::SAchievementDefinitionData::nameTextKey), std::uint32_t>);
 	auto Values(const Scene::SSceneData& row)
 	{
 		return std::make_tuple(row.sceneId, row.sceneType, row.isStartupScene);
@@ -25,7 +49,7 @@ namespace
 	}
 	auto Values(const SceneTypeConfig::SSceneTypeConfigData& row)
 	{
-		return std::make_tuple(row.sceneType, row.maxVisibleOptions, row.optionOverflowPolicy);
+		return std::make_tuple(row.configId, row.sceneType, row.maxVisibleOptions, row.optionOverflowPolicy);
 	}
 	auto Values(const Localization::SLocalizationData& row)
 	{
@@ -34,6 +58,41 @@ namespace
 	auto Values(const TextArt::STextArtData& row)
 	{
 		return std::make_tuple(row.artId, row.assetPath, row.width, row.height);
+	}
+	auto Values(const CharacterDefinition::SCharacterDefinitionData& row)
+	{
+		return std::make_tuple(row.characterId, row.nameTextKey, row.artId);
+	}
+	auto Values(const LevelDefinition::SLevelDefinitionData& row)
+	{
+		return std::make_tuple(row.level, row.requiredExperience, row.maxHp, row.attack, row.defense);
+	}
+	auto Values(const NewGameProfile::SNewGameProfileData& row)
+	{
+		return std::make_tuple(row.profileId, row.characterId, row.initialLevel, row.initialExperience, row.initialGold,
+			row.initialMaxHpBonus, row.initialAttackBonus, row.initialDefenseBonus, row.contentVersion, row.isDefault);
+	}
+	auto Values(const ItemDefinition::SItemDefinitionData& row)
+	{
+		return std::make_tuple(row.itemId, row.nameTextKey, row.maxStack);
+	}
+	auto Values(const AchievementDefinition::SAchievementDefinitionData& row)
+	{
+		return std::make_tuple(row.achievementId, row.nameTextKey, row.targetCount);
+	}
+	struct SFixtureTable final
+	{
+		const char* name;
+		std::size_t entries{};
+		std::size_t rows{};
+		std::size_t checks{};
+	};
+	bool HasCompleteSnapshot(const std::array<SFixtureTable, 10>& tables)
+	{
+		return std::all_of(tables.begin(), tables.end(), [](const auto& table)
+		{
+			return table.entries == 1 && table.rows > 0 && table.checks == table.rows;
+		});
 	}
 	template<class Lookup>
 	void Remember(std::vector<std::function<void()>>& checks, Lookup lookup)
@@ -75,10 +134,10 @@ int main(int argc, char** argv)
 	GameData::FGameDataStore store;
 	assert(store.Load(package, key, error));
 	assert(error.empty());
-	assert(store.FindScene(L"MainMenu") && store.FindScene(L"MainMenu")->isStartupScene);
-	assert(store.FindLocalization(L"MainMenu.NewGame")->koKR == L"새 게임");
+	assert(store.FindScene(kMainMenuSceneId) && store.FindScene(kMainMenuSceneId)->isStartupScene);
+	assert(store.FindLocalization(kNewGameTextKey)->koKR == L"새 게임");
 	std::cout << "PASS authenticated package to typed runtime rows\n";
-	const auto* prior = store.FindScene(L"MainMenu");
+	const auto* prior = store.FindScene(kMainMenuSceneId);
 	std::ifstream sceneInput(yaml / "Scene.yaml", std::ios::binary);
 	std::string scenes((std::istreambuf_iterator<char>(sceneInput)), {});
 	sceneInput.close();
@@ -89,21 +148,21 @@ int main(int argc, char** argv)
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, assets));
 	assert(!store.Load(package, key, error));
 	assert(error.find("startup") != std::string::npos);
-	assert(store.FindScene(L"MainMenu") == prior && prior->isStartupScene);
+	assert(store.FindScene(kMainMenuSceneId) == prior && prior->isStartupScene);
 	std::cout << "PASS startup semantic failure preserves published store\n";
 	// 메모리 후보의 PK 유일성은 YAML mapping 이름의 유일성과 별도 계약이다.
 	std::ifstream validSceneInput(source / "Data/Client/Scene.yaml", std::ios::binary);
 	std::string validScenes((std::istreambuf_iterator<char>(validSceneInput)), {});
 	if (validScenes.starts_with("\xEF\xBB\xBF")) validScenes.erase(0, 3);
 	if (!validScenes.starts_with("# TextRPG.GameData ")) validScenes.insert(0, "# TextRPG.GameData 1\n");
-	const auto townKey = validScenes.find("\"SceneId\": \"Town\"");
+	const auto townKey = validScenes.find("\"SceneId\": 2\n");
 	assert(townKey != std::string::npos);
-	validScenes.replace(townKey, std::string("\"SceneId\": \"Town\"").size(), "\"SceneId\": \"MainMenu\"");
+	validScenes.replace(townKey, std::string("\"SceneId\": 2\n").size(), "\"SceneId\": 1\n");
 	std::ofstream(yaml / "Scene.yaml", std::ios::binary) << validScenes;
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, assets));
 	assert(!store.Load(package, key, error));
 	assert(error.find("duplicate") != std::string::npos);
-	assert(store.FindScene(L"MainMenu") == prior);
+	assert(store.FindScene(kMainMenuSceneId) == prior);
 	std::cout << "PASS duplicate primary key preserves published store\n";
 	// 모든 변형은 실제 인증 패키지를 다시 생성한다. 의미 오류와 GCM 실패를 혼동하지 않는다.
 	std::map<std::string, std::string> baseline;
@@ -125,17 +184,30 @@ int main(int argc, char** argv)
 	// 게시된 모든 행의 포인터와 전체 필드를 보존하는지 모든 음성 변형 뒤 확인한다.
 	std::vector<std::function<void()>> publishedChecks;
 	std::size_t publishedRowCount = 0;
+	std::array<SFixtureTable, 10> tables{{
+		{"Scene.yaml"}, {"SceneOption.yaml"}, {"SceneTypeConfig.yaml"}, {"Localization.yaml"}, {"TextArt.yaml"},
+		{"CharacterDefinition.yaml"}, {"LevelDefinition.yaml"}, {"NewGameProfile.yaml"},
+		{"ItemDefinition.yaml"}, {"AchievementDefinition.yaml"}
+	}};
 	for (const auto& [file, bytes] : baseline)
 	{
+		const auto table = std::find_if(tables.begin(), tables.end(), [&file](const auto& candidate)
+		{
+			return file == candidate.name;
+		});
+		assert(table != tables.end());
+		++table->entries;
 		std::vector<GameData::SYamlRow> rows;
 		const std::vector<std::uint8_t> contents(bytes.begin(), bytes.end());
 		assert(GameData::ParseGeneratedYaml(contents, rows, error));
+		table->rows += rows.size();
 		for (const auto& row : rows)
 		{
+			const auto checksBeforeRow = publishedChecks.size();
 			++publishedRowCount;
 			if (file == "Scene.yaml")
 			{
-				const auto id = row.fields.at(L"SceneId").text;
+				const auto id = row.fields.at(L"SceneId").number;
 				Remember(publishedChecks, [&store, id]() { return store.FindScene(id); });
 			}
 			else if (file == "SceneOption.yaml")
@@ -146,24 +218,64 @@ int main(int argc, char** argv)
 			else if (file == "SceneTypeConfig.yaml")
 			{
 				const auto type = row.fields.at(L"SceneType").text;
+				assert(type == L"MainMenu" || type == L"Town" || type == L"BattleField");
 				const auto id = type == L"MainMenu" ? GameData::Common::ESceneType::MainMenu :
 					(type == L"Town" ? GameData::Common::ESceneType::Town : GameData::Common::ESceneType::BattleField);
 				Remember(publishedChecks, [&store, id]() { return store.FindSceneTypeConfig(id); });
 			}
 			else if (file == "Localization.yaml")
 			{
-				const auto id = row.fields.at(L"TextKey").text;
+				const auto id = row.fields.at(L"TextKey").number;
 				Remember(publishedChecks, [&store, id]() { return store.FindLocalization(id); });
 			}
 			else if (file == "TextArt.yaml")
 			{
-				const auto id = row.fields.at(L"ArtId").text;
+				const auto id = row.fields.at(L"ArtId").number;
 				Remember(publishedChecks, [&store, id]() { return store.FindTextArt(id); });
 			}
+			else if (file == "CharacterDefinition.yaml")
+			{
+				const auto id = row.fields.at(L"CharacterId").number;
+				Remember(publishedChecks, [&store, id]() { return store.FindCharacterDefinition(id); });
+			}
+			else if (file == "LevelDefinition.yaml")
+			{
+				const auto id = row.fields.at(L"Level").number;
+				Remember(publishedChecks, [&store, id]() { return store.FindLevelDefinition(id); });
+			}
+			else if (file == "NewGameProfile.yaml")
+			{
+				const auto id = row.fields.at(L"ProfileId").number;
+				Remember(publishedChecks, [&store, id]() { return store.FindNewGameProfile(id); });
+			}
+			else if (file == "ItemDefinition.yaml")
+			{
+				const auto id = row.fields.at(L"ItemId").number;
+				Remember(publishedChecks, [&store, id]() { return store.FindItemDefinition(id); });
+			}
+			else if (file == "AchievementDefinition.yaml")
+			{
+				const auto id = row.fields.at(L"AchievementId").number;
+				Remember(publishedChecks, [&store, id]() { return store.FindAchievementDefinition(id); });
+			}
 			else assert(false);
+			assert(publishedChecks.size() == checksBeforeRow + 1);
+			table->checks += publishedChecks.size() - checksBeforeRow;
 		}
 	}
 	assert(publishedChecks.size() == publishedRowCount && publishedRowCount > 0);
+	assert(HasCompleteSnapshot(tables));
+	for (std::size_t index = 0; index < tables.size(); ++index)
+	{
+		auto missingTable = tables;
+		missingTable[index].entries = 0;
+		missingTable[index].rows = 0;
+		missingTable[index].checks = 0;
+		assert(!HasCompleteSnapshot(missingTable));
+	}
+	for (const auto& table : tables)
+		std::cout << "COVERAGE " << table.name << " entries=" << table.entries << " rows=" << table.rows
+			<< " checks=" << table.checks << '\n';
 	std::size_t publishedAssetCount = 0;
 	for (const auto& file : std::filesystem::recursive_directory_iterator(assets))
 	{
@@ -205,7 +317,7 @@ int main(int argc, char** argv)
 			std::cerr << name << ": loaded=" << loaded << " diagnostic=" << error << '\n';
 			std::abort();
 		}
-		assert(store.FindScene(L"MainMenu") == prior && prior->isStartupScene);
+		assert(store.FindScene(kMainMenuSceneId) == prior && prior->isStartupScene);
 		assertPublished();
 		std::cout << "PASS " << name << " rejects and rolls back\n";
 	};
@@ -238,14 +350,15 @@ int main(int argc, char** argv)
 	replace(changed, "\"Height\": 41", "\"Height\": 36");
 	reject("main-logo-slot", "TextArt.yaml", changed, "slot");
 	changed = baseline.at("SceneOption.yaml");
-	replace(changed, "\"TargetSceneId\": \"Town\"", "\"TargetSceneId\": \"Missing\"");
+	replace(changed, "\"TargetSceneId\": 2\n", "\"TargetSceneId\": 999\n");
 	reject("target-reference", "SceneOption.yaml", changed, "TargetSceneId");
 	changed = baseline.at("SceneOption.yaml");
 	replace(changed, "\"OptionOrder\": 4", "\"OptionOrder\": 3");
 	reject("four-options-distinct-orders", "SceneOption.yaml", changed, "OptionOrder");
 	changed = baseline.at("SceneOption.yaml");
 	replace(changed, "\"OptionId\": 1\n", "\"OptionId\": 0\n");
-	reject("metadata-OptionId-min", "SceneOption.yaml", changed, "OptionId");
+	reject("metadata-OptionId-min", "SceneOption.yaml", changed,
+		"SceneOption.yaml/optionId: primary key must be positive");
 	changed = baseline.at("TextArt.yaml");
 	replace(changed, "\"Width\": 83", "\"Width\": 84");
 	reject("TextArt-dimension-pair", "TextArt.yaml", changed, "Width/Height");
@@ -256,8 +369,8 @@ int main(int argc, char** argv)
 	replace(changed, "Asset/Logo/Logo_Text_Rpg.txt", "../outside.txt");
 	reject("AssetPath-traversal", "TextArt.yaml", changed, "AssetPath");
 	changed = baseline.at("Localization.yaml");
-	replace(changed, "\"TextKey\": \"System.ScreenTooSmall\"", "\"TextKey\": \"Unused.Screen\"");
-	reject("mandatory-UI-localization", "Localization.yaml", changed, "System.ScreenTooSmall");
+	replace(changed, "\"TextKey\": 10\n", "\"TextKey\": 999\n");
+	reject("mandatory-UI-localization", "Localization.yaml", changed, "Localization.yaml: required TextKey 10 is missing");
 	struct SMutation
 	{
 		const char* name;
@@ -280,29 +393,67 @@ int main(int argc, char** argv)
 		{"uint32-overflow", "SceneOption.yaml", "\"OptionId\": 1\n", "\"OptionId\": 4294967296\n", "range"},
 		{"uint32-negative", "SceneOption.yaml", "\"OptionId\": 1\n", "\"OptionId\": -1\n", "scalar"},
 		{"uint32-quoted", "SceneOption.yaml", "\"OptionId\": 1\n", "\"OptionId\": \"1\"\n", "OptionId"},
+		{"numeric-key-quoted-Scene-SceneId", "Scene.yaml",
+			"\"SceneId\": 1\n", "\"SceneId\": \"1\"\n", "SceneId"},
+		{"numeric-key-quoted-SceneTypeConfig-ConfigId", "SceneTypeConfig.yaml",
+			"\"ConfigId\": 1\n", "\"ConfigId\": \"1\"\n", "ConfigId"},
+		{"numeric-key-quoted-Localization-TextKey", "Localization.yaml",
+			"\"TextKey\": 1\n", "\"TextKey\": \"1\"\n", "TextKey"},
+		{"numeric-key-quoted-TextArt-ArtId", "TextArt.yaml",
+			"\"ArtId\": 1\n", "\"ArtId\": \"1\"\n", "ArtId"},
+		{"numeric-key-quoted-CharacterDefinition-CharacterId", "CharacterDefinition.yaml",
+			"\"CharacterId\": 1\n", "\"CharacterId\": \"1\"\n", "CharacterId"},
+		{"numeric-key-quoted-LevelDefinition-Level", "LevelDefinition.yaml",
+			"\"Level\": 1\n", "\"Level\": \"1\"\n", "Level"},
+		{"numeric-key-quoted-NewGameProfile-ProfileId", "NewGameProfile.yaml",
+			"\"ProfileId\": 1\n", "\"ProfileId\": \"1\"\n", "ProfileId"},
+		{"numeric-key-quoted-ItemDefinition-ItemId", "ItemDefinition.yaml",
+			"\"ItemId\": 1\n", "\"ItemId\": \"1\"\n", "ItemId"},
+		{"numeric-key-quoted-AchievementDefinition-AchievementId", "AchievementDefinition.yaml",
+			"\"AchievementId\": 1\n", "\"AchievementId\": \"1\"\n", "AchievementId"},
+		{"numeric-key-quoted-SceneOption-OptionTextKey", "SceneOption.yaml",
+			"\"OptionTextKey\": 1\n", "\"OptionTextKey\": \"1\"\n", "OptionTextKey"},
+		{"numeric-key-quoted-SceneOption-TargetSceneId", "SceneOption.yaml",
+			"\"TargetSceneId\": 2\n", "\"TargetSceneId\": \"2\"\n", "TargetSceneId"},
+		{"numeric-key-quoted-CharacterDefinition-NameTextKey", "CharacterDefinition.yaml",
+			"\"NameTextKey\": 31\n", "\"NameTextKey\": \"31\"\n", "NameTextKey"},
+		{"numeric-key-quoted-CharacterDefinition-ArtId", "CharacterDefinition.yaml",
+			"\"ArtId\": 2\n", "\"ArtId\": \"2\"\n", "ArtId"},
+		{"numeric-key-quoted-NewGameProfile-CharacterId", "NewGameProfile.yaml",
+			"\"CharacterId\": 1\n", "\"CharacterId\": \"1\"\n", "CharacterId"},
+		{"numeric-key-quoted-ItemDefinition-NameTextKey", "ItemDefinition.yaml",
+			"\"NameTextKey\": 32\n", "\"NameTextKey\": \"32\"\n", "NameTextKey"},
+		{"numeric-key-quoted-AchievementDefinition-NameTextKey", "AchievementDefinition.yaml",
+			"\"NameTextKey\": 33\n", "\"NameTextKey\": \"33\"\n", "NameTextKey"},
 		{"bool-quoted", "Scene.yaml", "\"IsStartupScene\": true", "\"IsStartupScene\": \"true\"", "IsStartupScene"},
 		{"invalid-utf8", "Localization.yaml", "New Game", "\xff", "UTF-8"},
 		{"invalid-escape", "Localization.yaml", "New Game", "bad\\q", "escape"},
 		{"unpaired-surrogate", "Localization.yaml", "New Game", "\\uD800", "escape"},
 		{"raw-nul", "Localization.yaml", "New Game", "\\u0000", "escape"},
-		{"yaml-sequence", "Scene.yaml", "\"SceneMainMenu\":", "- \"SceneMainMenu\":", "mapping"},
+		{"yaml-sequence", "Scene.yaml", "\"Scene1\":", "- \"Scene1\":", "mapping"},
 		{"yaml-anchor", "Scene.yaml", "\"IsStartupScene\": true", "\"IsStartupScene\": &x true", "scalar"},
-		{"yaml-flow", "Scene.yaml", "\"SceneMainMenu\":", "\"SceneMainMenu\": {}", "row key"},
+		{"yaml-flow", "Scene.yaml", "\"Scene1\":", "\"Scene1\": {}", "row key"},
 		{"yaml-comment", "Scene.yaml", "\"IsStartupScene\": true", "\"IsStartupScene\": true # comment", "scalar"},
-		{"duplicate-field", "Scene.yaml", "  \"SceneId\": \"MainMenu\"", "  \"SceneId\": \"MainMenu\"\n  \"SceneId\": \"Other\"", "duplicate field"},
-		{"duplicate-mapping", "Scene.yaml", "\"SceneTown\":", "\"SceneMainMenu\":", "duplicate"},
+		{"duplicate-field", "Scene.yaml", "  \"SceneId\": 1\n", "  \"SceneId\": 1\n  \"SceneId\": 999\n", "duplicate field"},
+		{"duplicate-mapping", "Scene.yaml", "\"Scene2\":", "\"Scene1\":", "duplicate"},
 		{"duplicate-option-PK", "SceneOption.yaml", "\"OptionId\": 2\n", "\"OptionId\": 1\n", "duplicate"},
-		{"duplicate-config-PK", "SceneTypeConfig.yaml", "\"SceneType\": \"Town\"", "\"SceneType\": \"MainMenu\"", "duplicate"},
-		{"duplicate-loc-PK", "Localization.yaml", "\"TextKey\": \"MainMenu.Continue\"", "\"TextKey\": \"MainMenu.NewGame\"", "duplicate"},
-		{"duplicate-art-PK", "TextArt.yaml", "\"ArtId\": \"MonsterDragon\"", "\"ArtId\": \"MainLogo\"", "duplicate"},
+		{"duplicate-config-PK", "SceneTypeConfig.yaml", "\"ConfigId\": 2\n", "\"ConfigId\": 1\n", "duplicate"},
+		{"duplicate-config-type", "SceneTypeConfig.yaml", "\"SceneType\": \"Town\"",
+			"\"SceneType\": \"MainMenu\"", "SceneType"},
+		{"duplicate-loc-PK", "Localization.yaml", "\"TextKey\": 2\n", "\"TextKey\": 1\n", "duplicate"},
+		{"duplicate-art-PK", "TextArt.yaml", "\"ArtId\": 3\n", "\"ArtId\": 1\n", "duplicate"},
 		{"empty-required", "Localization.yaml", "\"EnUS\": \"New Game\"", "\"EnUS\": \"\"", "EnUS"},
 		{"blank-required", "Localization.yaml", "\"EnUS\": \"New Game\"", "\"EnUS\": \"   \"", "EnUS"},
 		{"blank-unicode-required", "Localization.yaml", "\"EnUS\": \"New Game\"", "\"EnUS\": \"　\"", "EnUS"},
-		{"option-loc-reference", "SceneOption.yaml", "\"OptionTextKey\": \"MainMenu.NewGame\"", "\"OptionTextKey\": \"Missing\"", "OptionTextKey"},
-		{"disabled-target-reference", "SceneOption.yaml", "\"TargetSceneId\": null", "\"TargetSceneId\": \"Missing\"", "TargetSceneId"},
-		{"enabled-target-null", "SceneOption.yaml", "\"TargetSceneId\": \"Town\"", "\"TargetSceneId\": null", "TargetSceneId"},
+		{"option-loc-reference", "SceneOption.yaml", "\"OptionTextKey\": 1\n", "\"OptionTextKey\": 999\n", "OptionTextKey"},
+		{"disabled-target-reference", "SceneOption.yaml",
+			"\"ActionType\": \"Settings\"\n  \"TargetSceneId\": 0\n  \"IsEnabled\": false",
+			"\"ActionType\": \"Settings\"\n  \"TargetSceneId\": 999\n  \"IsEnabled\": false", "TargetSceneId"},
+		{"enabled-target-zero", "SceneOption.yaml", "\"TargetSceneId\": 2\n", "\"TargetSceneId\": 0\n", "TargetSceneId"},
+		{"enabled-target-null", "SceneOption.yaml", "\"TargetSceneId\": 2\n", "\"TargetSceneId\": null\n", "TargetSceneId"},
 		{"startup-multiple", "Scene.yaml", "\"IsStartupScene\": false", "\"IsStartupScene\": true", "startup"},
-		{"title-required", "Localization.yaml", "\"TextKey\": \"Scene.MainMenu.Title\"", "\"TextKey\": \"Unused.Title\"", "Scene.MainMenu.Title"},
+		{"title-required", "Localization.yaml", "\"TextKey\": 17\n", "\"TextKey\": 999\n",
+			"Localization.yaml: required TextKey 17 is missing"},
 		{"path-absolute", "TextArt.yaml", "Asset/Logo/Logo_Text_Rpg.txt", "C:/outside.txt", "AssetPath"},
 		{"path-ADS", "TextArt.yaml", "Asset/Logo/Logo_Text_Rpg.txt", "Asset/file.txt:stream", "AssetPath"},
 		{"path-device", "TextArt.yaml", "Asset/Logo/Logo_Text_Rpg.txt", "Asset/CON.txt", "AssetPath"},
@@ -393,7 +544,7 @@ int main(int argc, char** argv)
 			std::wstring expected(static_cast<std::size_t>(length), L'\0');
 			assert(MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path.data(), static_cast<int>(path.size()),
 				expected.data(), length) == length);
-			const auto& actual = accepted.FindTextArt(L"MainLogo")->assetPath;
+			const auto& actual = accepted.FindTextArt(kMainLogoArtId)->assetPath;
 			assert(actual == expected);
 			assertPublished();
 			std::cout << "PASS accepted-path-" << table << '-' << ++pathAcceptCount << " preserves raw AssetPath\n";
@@ -404,9 +555,15 @@ int main(int argc, char** argv)
 	const std::map<std::string, std::vector<std::string>> requiredFields{
 		{"Scene.yaml", {"SceneId", "SceneType", "IsStartupScene"}},
 		{"SceneOption.yaml", {"OptionId", "SceneType", "OptionOrder", "OptionTextKey", "ActionType", "IsEnabled"}},
-		{"SceneTypeConfig.yaml", {"SceneType", "MaxVisibleOptions", "OptionOverflowPolicy"}},
+		{"SceneTypeConfig.yaml", {"ConfigId", "SceneType", "MaxVisibleOptions", "OptionOverflowPolicy"}},
 		{"Localization.yaml", {"TextKey", "KoKR", "EnUS"}},
-		{"TextArt.yaml", {"ArtId", "AssetPath", "Width", "Height"}}
+		{"TextArt.yaml", {"ArtId", "AssetPath", "Width", "Height"}},
+		{"CharacterDefinition.yaml", {"CharacterId", "NameTextKey", "ArtId"}},
+		{"LevelDefinition.yaml", {"Level", "RequiredExperience", "MaxHp", "Attack", "Defense"}},
+		{"NewGameProfile.yaml", {"ProfileId", "CharacterId", "InitialLevel", "InitialExperience", "InitialGold",
+			"InitialMaxHpBonus", "InitialAttackBonus", "InitialDefenseBonus", "ContentVersion", "IsDefault"}},
+		{"ItemDefinition.yaml", {"ItemId", "NameTextKey", "MaxStack"}},
+		{"AchievementDefinition.yaml", {"AchievementId", "NameTextKey", "TargetCount"}}
 	};
 	for (const auto& [table, fields] : requiredFields)
 	{
@@ -424,6 +581,11 @@ int main(int argc, char** argv)
 	}
 	for (const auto* table : {"Scene.yaml", "SceneOption.yaml", "SceneTypeConfig.yaml", "Localization.yaml"})
 		reject((std::string("missing-table-") + table).c_str(), table, "", "required table", true);
+	for (const auto* table : {"CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
+		"ItemDefinition.yaml", "AchievementDefinition.yaml"})
+		reject((std::string("missing-progress-table-") + table).c_str(), table, "", "cohort", true);
+	// 진행 정의가 남은 채 TextArt만 빠지면 필수 ArtId 참조 오류다.
+	reject("required-character-art-catalog", "TextArt.yaml", "", "ArtId reference is missing", true);
 	// 필수 열 삭제 및 scalar 종류 오류도 각 테이블의 모든 필수 열에 대해 검사한다.
 	for (const auto& [table, fields] : requiredFields)
 	{
@@ -465,7 +627,7 @@ int main(int argc, char** argv)
 			if (i >= 4)
 			{
 				const auto nameEnd = row.find('\n');
-				row.replace(0, nameEnd, "\"Extra" + std::to_string(i) + "\":");
+				row.replace(0, nameEnd, "\"SceneOption" + std::to_string(9000 + i) + "\":");
 				const auto id = row.find("  \"OptionId\": ");
 				const auto end = row.find('\n', id);
 				row.replace(id, end - id, "  \"OptionId\": " + std::to_string(9000 + i));
@@ -481,7 +643,7 @@ int main(int argc, char** argv)
 		assert(!store.Load(pathToLoad, loadKey, error));
 		assert(error.find(diagnostic) != std::string::npos);
 		assert(error.find("YAML line") == std::string::npos);
-		assert(store.FindScene(L"MainMenu") == prior);
+		assert(store.FindScene(kMainMenuSceneId) == prior);
 		assertPublished();
 	};
 	changed = baseline.at("Scene.yaml");
@@ -516,14 +678,16 @@ int main(int argc, char** argv)
 	std::ofstream(yaml / "Localization.yaml", std::ios::binary) << changed;
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, assets));
 	assert(store.Load(package, key, error));
-	assert(store.FindLocalization(L"MainMenu.NewGame")->koKR == L"새 게임 \"quote\" \\ \n 	 \U0001F600");
-	assert(store.FindScene(L"MainMenu"));
+	assert(store.FindLocalization(kNewGameTextKey)->koKR == L"새 게임 \"quote\" \\ \n 	 \U0001F600");
+	assert(store.FindScene(kMainMenuSceneId));
 	std::cout << "PASS successful data-only reload preserves escaped Korean supplementary UTF-16 text\n";
 	// TextArt 헤더 유무와 관계없이 선택 카탈로그가 없는 패키지도 정상이다.
-	std::filesystem::remove(yaml / "TextArt.yaml");
+	for (const auto* table : {"TextArt.yaml", "CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
+		"ItemDefinition.yaml", "AchievementDefinition.yaml"}) std::filesystem::remove(yaml / table);
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, assets));
 	assert(store.Load(package, key, error));
-	assert(store.FindTextArt(L"MainLogo") == nullptr && store.FindScene(L"MainMenu"));
+	assert(store.FindTextArt(kMainLogoArtId) == nullptr && store.FindScene(kMainMenuSceneId));
+	assert(store.GetDefaultNewGameProfile() == nullptr);
 	std::cout << "PASS optional TextArt absence publishes a complete store\n";
 
 }

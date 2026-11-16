@@ -6,8 +6,8 @@ namespace GameData::Localization
 {
 	struct SLocalizationData final
 	{
-		using KeyType = ::std::wstring;
-		::std::wstring textKey{};
+		using KeyType = ::std::uint32_t;
+		::std::uint32_t textKey{};
 		::std::wstring koKR{};
 		::std::wstring enUS{};
 	};
