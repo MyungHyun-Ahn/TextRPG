@@ -9,6 +9,7 @@
 - `Data/Client/`: 생성 실제 데이터 YAML.
 - `Asset/`: 기존 txt 아트 원시 바이트.
 - `Runtime/GameData/`: package/key/generated-YAML/typed Store. 안정 SDK/표준 전제는 `GameDataPch.h`, 라이브러리의 실제 PCH 진입은 `pch.h`다. 소비 프로젝트의 PCH는 `GameData/GameDataPch.h`를 직접 포함한다.
+- `Runtime/GameData/GameDataPaths.h/.cpp`: `GameData::ResolveGameDataPackagePath`로 현재 EXE 옆 `GameData.dat` 경로를 구한다. 게임은 `GameData/GameDataPaths.h`를 포함해 호출하고, 실제 패키지 읽기·검증은 기존 Store에 맡긴다. cwd 탐색이나 loose-root fallback은 하지 않는다.
 - `GameData.vcxproj`: C++20/v145 StaticLibrary. `Runtime`와 `Class`를 소비 include 경로로 사용하므로 기존 `GameData/FGameDataStore.h` 등의 spelling을 유지한다.
 
 일반 TextRPG와 GameDataPacker는 이 프로젝트에 ProjectReference로 연결한다. 타깃별 obj/PCH를 공유하지 않으며 Debug/Release·x64/Win32·CRT·분석 설정을 맞춘다. 소비자 전용 OutDir/IntDir/TargetName은 참조 라이브러리에 전파하지 않는다. 매크로 치환·생성 헤더 부재를 검증하는 특수 테스트는 원본 CPP variant를 유지한다.

@@ -3,6 +3,18 @@
 namespace GameData
 {
 	namespace Common { enum class ESceneType : std::uint8_t; }
+	namespace CharacterCombat
+	{
+		struct SCharacterCombatData;
+	}
+	namespace MonsterDefinition
+	{
+		struct SMonsterDefinitionData;
+	}
+	namespace CombatRule
+	{
+		struct SCombatRuleData;
+	}
 	namespace CharacterDefinition { struct SCharacterDefinitionData; }
 	namespace LevelDefinition { struct SLevelDefinitionData; }
 	namespace NewGameProfile { struct SNewGameProfileData; }
@@ -61,7 +73,14 @@ namespace GameData
 			std::uint32_t key) const noexcept;
 		[[nodiscard]] const NewGameProfile::SNewGameProfileData* GetDefaultNewGameProfile() const noexcept;
 		[[nodiscard]] const std::vector<LevelDefinition::SLevelDefinitionData>& GetLevelDefinitions() const noexcept;
+		[[nodiscard]] const CharacterCombat::SCharacterCombatData* FindCharacterCombat(std::uint32_t key) const noexcept;
+		[[nodiscard]] const MonsterDefinition::SMonsterDefinitionData* FindMonsterDefinition(std::uint32_t key) const noexcept;
+		[[nodiscard]] const CombatRule::SCombatRuleData* FindCombatRule(std::uint32_t key) const noexcept;
+		[[nodiscard]] const std::vector<CombatRule::SCombatRuleData>& GetCombatRules() const noexcept;
 	private:
+		std::vector<CharacterCombat::SCharacterCombatData> m_characterCombat;
+		std::vector<MonsterDefinition::SMonsterDefinitionData> m_monsterDefinition;
+		std::vector<CombatRule::SCombatRuleData> m_combatRule;
 		std::vector<CharacterDefinition::SCharacterDefinitionData> m_characterDefinition;
 		std::vector<LevelDefinition::SLevelDefinitionData> m_levelDefinition;
 		std::vector<NewGameProfile::SNewGameProfileData> m_newGameProfile;

@@ -61,8 +61,8 @@
   "OptionOrder": 4
   "OptionTextKey": 6
   "ActionType": "Move"
-  "TargetSceneId": 0
-  "IsEnabled": false
+  "TargetSceneId": 3
+  "IsEnabled": true
 "SceneOption201":
   "OptionId": 201
   "SceneType": "BattleField"
@@ -70,7 +70,7 @@
   "OptionTextKey": 13
   "ActionType": "Attack"
   "TargetSceneId": 0
-  "IsEnabled": false
+  "IsEnabled": true
 "SceneOption202":
   "OptionId": 202
   "SceneType": "BattleField"
@@ -91,7 +91,7 @@
   "OptionId": 204
   "SceneType": "BattleField"
   "OptionOrder": 4
-  "OptionTextKey": 16
-  "ActionType": "Defend"
-  "TargetSceneId": 0
-  "IsEnabled": false
+  "OptionTextKey": 36
+  "ActionType": "ReturnTown"
+  "TargetSceneId": 2
+  "IsEnabled": true

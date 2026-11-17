@@ -88,6 +88,23 @@ namespace
 	{
 		return std::make_tuple(row.achievementId, row.nameTextKey, row.targetCount);
 	}
+	auto Values(const CharacterCombat::SCharacterCombatData& row)
+	{
+		return std::make_tuple(row.characterId, row.strength, row.dexterity, row.intelligence, row.luck);
+	}
+	auto Values(const MonsterDefinition::SMonsterDefinitionData& row)
+	{
+		return std::make_tuple(row.monsterId, row.nameTextKey, row.artId, row.maxHp, row.attack,
+			row.defense, row.strength, row.dexterity, row.intelligence, row.luck);
+	}
+	auto Values(const CombatRule::SCombatRuleData& row)
+	{
+		return std::make_tuple(row.ruleId, row.monsterId, row.battleSceneId, row.townSceneId, row.scale,
+			row.strengthDefense, row.dexteritySpeed, row.baseSpeed, row.luckCritical, row.criticalCap,
+			row.criticalMultiplier, row.minimumDamage, row.strengthCoefficient, row.dexterityCoefficient, row.intelligenceCoefficient,
+			row.luckCoefficient, row.maxStat, row.maxRounds, row.healOnReturn, row.hitTextKey,
+			row.criticalTextKey, row.victoryTextKey, row.defeatTextKey, row.readyTextKey, row.roundTextKey);
+	}
 	struct SFixtureTable final
 	{
 		const char* name;
@@ -95,7 +112,7 @@ namespace
 		std::size_t rows{};
 		std::size_t checks{};
 	};
-	bool HasCompleteSnapshot(const std::array<SFixtureTable, 10>& tables)
+	bool HasCompleteSnapshot(const std::array<SFixtureTable, 13>& tables)
 	{
 		return std::all_of(tables.begin(), tables.end(), [](const auto& table)
 		{
@@ -154,11 +171,12 @@ int main(int argc, char** argv)
 		const auto optionCount = store.GetSceneOptions().size();
 		std::vector<std::function<void()>> checks;
 		std::vector<std::function<void()>> recoveryChecks;
-		std::array<SFixtureTable, 10> tables{{
+		std::array<SFixtureTable, 13> tables{{
 			{"Data/Client/Scene.yaml"}, {"Data/Client/SceneOption.yaml"}, {"Data/Client/SceneTypeConfig.yaml"},
 			{"Data/Client/Localization.yaml"}, {"Data/Client/TextArt.yaml"}, {"Data/Client/CharacterDefinition.yaml"},
 			{"Data/Client/LevelDefinition.yaml"}, {"Data/Client/NewGameProfile.yaml"}, {"Data/Client/ItemDefinition.yaml"},
-			{"Data/Client/AchievementDefinition.yaml"}
+			{"Data/Client/AchievementDefinition.yaml"}, {"Data/Client/CharacterCombat.yaml"},
+			{"Data/Client/MonsterDefinition.yaml"}, {"Data/Client/CombatRule.yaml"}
 		}};
 		std::size_t rowCount = 0;
 		std::size_t assetCount = 0;
@@ -266,6 +284,57 @@ int main(int argc, char** argv)
 					if (populated) Remember(checks, lookup);
 					else checks.emplace_back([lookup]() { Require(!lookup(), "empty achievement definition published"); });
 					RememberRecovery(recoveryChecks, lookup, [&control, id]() { return control.FindAchievementDefinition(id); });
+				}
+				else if (entry.name == "Data/Client/CharacterCombat.yaml")
+				{
+					const auto id = row.fields.at(L"CharacterId").number;
+					const auto lookup = [&store, id]()
+					{
+						return store.FindCharacterCombat(id);
+					};
+					if (populated) Remember(checks, lookup);
+					else checks.emplace_back([lookup]()
+					{
+						Require(!lookup(), "empty combat definition published");
+					});
+					RememberRecovery(recoveryChecks, lookup, [&control, id]()
+					{
+						return control.FindCharacterCombat(id);
+					});
+				}
+				else if (entry.name == "Data/Client/MonsterDefinition.yaml")
+				{
+					const auto id = row.fields.at(L"MonsterId").number;
+					const auto lookup = [&store, id]()
+					{
+						return store.FindMonsterDefinition(id);
+					};
+					if (populated) Remember(checks, lookup);
+					else checks.emplace_back([lookup]()
+					{
+						Require(!lookup(), "empty combat definition published");
+					});
+					RememberRecovery(recoveryChecks, lookup, [&control, id]()
+					{
+						return control.FindMonsterDefinition(id);
+					});
+				}
+				else if (entry.name == "Data/Client/CombatRule.yaml")
+				{
+					const auto id = row.fields.at(L"RuleId").number;
+					const auto lookup = [&store, id]()
+					{
+						return store.FindCombatRule(id);
+					};
+					if (populated) Remember(checks, lookup);
+					else checks.emplace_back([lookup]()
+					{
+						Require(!lookup(), "empty combat definition published");
+					});
+					RememberRecovery(recoveryChecks, lookup, [&control, id]()
+					{
+						return control.FindCombatRule(id);
+					});
 				}
 				else Require(false, "unexpected fixture table");
 				Require(checks.size() == checksBeforeRow + 1, "fixture row snapshot missing");

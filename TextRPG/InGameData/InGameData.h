@@ -22,6 +22,7 @@ namespace TextRPG
 		[[nodiscard]] bool Serialize(std::vector<std::uint8_t>& output, std::string& error) const;
 		[[nodiscard]] std::string_view GetSerializableTypeName() const noexcept override;
 		[[nodiscard]] const SCharacterProgress& GetCharacter() const noexcept;
+		[[nodiscard]] const GameData::InGameData::SBattleProgress& GetBattle() const noexcept;
 		[[nodiscard]] std::uint32_t GetGold() const noexcept;
 		[[nodiscard]] std::uint32_t GetSceneId() const noexcept;
 		[[nodiscard]] const std::vector<SInventoryItemProgress>& GetInventory() const noexcept;
@@ -39,6 +40,7 @@ namespace TextRPG
 		[[nodiscard]] bool SerializeFields(FBinaryWriter& writer, std::string& error) const override;
 		[[nodiscard]] bool DeserializeFields(FBinaryReader& reader, std::string& error) override;
 	private:
+		friend class FCombat;
 		InGameData();
 		[[nodiscard]] bool Validate(const GameData::FGameDataStore& store, std::string& error) const;
 		// 유일한 변경 가능 원본이다. UI에는 내부 shared_ptr나 변경 가능한 루트를 노출하지 않는다.

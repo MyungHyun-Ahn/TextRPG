@@ -21,5 +21,6 @@ namespace TextRPG
 		const InGameData& m_progress;
 		std::uint32_t m_nameTextKey{};
 		std::unique_ptr<FUiTextArt> m_art;
+		std::unique_ptr<FUiTextArt> m_monsterArt;
 	};
 }

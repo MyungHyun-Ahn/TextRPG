@@ -12,6 +12,9 @@
 #include "NewGameProfile/NewGameProfileData.g.h"
 #include "ItemDefinition/ItemDefinitionData.g.h"
 #include "AchievementDefinition/AchievementDefinitionData.g.h"
+#include "CharacterCombat/CharacterCombatData.g.h"
+#include "MonsterDefinition/MonsterDefinitionData.g.h"
+#include "CombatRule/CombatRuleData.g.h"
 #include "FGameDataPackage.h"
 #include "FGeneratedYaml.h"
 #include "FGameDataStore.h"
@@ -50,6 +53,14 @@ namespace
 	std::uint32_t Number(const SYamlRow& row, const wchar_t* name)
 	{
 		return Field(row, name, EYamlScalar::UInt32).number;
+	}
+	// 게임 기본값이 아닌 Combat.xlsx 9행과 일치하는 기술적 검증 상한이다.
+	constexpr std::uint32_t kCombatWorkbookMaximum = 1000000;
+	void CombatUpperBounds(const SYamlRow& row, std::initializer_list<const wchar_t*> names)
+	{
+		for (const auto* name : names)
+			if (Number(row, name) > kCombatWorkbookMaximum)
+				throw std::runtime_error(FieldName(name) + ": combat workbook range exceeded");
 	}
 	bool Boolean(const SYamlRow& row, const wchar_t* name)
 	{
@@ -111,7 +122,7 @@ namespace
 		const auto value = String(row, L"ActionType");
 #define ACTION(Name) if (value == L## #Name) return Common::ESceneActionType::Name
 		ACTION(StartGame); ACTION(Continue); ACTION(Settings); ACTION(Credits); ACTION(Quit); ACTION(Move); ACTION(Inventory);
-		ACTION(Shop); ACTION(Rest); ACTION(Talk); ACTION(Attack); ACTION(Skill); ACTION(Item); ACTION(Defend);
+		ACTION(Shop); ACTION(Rest); ACTION(Talk); ACTION(Attack); ACTION(Skill); ACTION(Item); ACTION(Defend); ACTION(ReturnTown);
 #undef ACTION
 		throw std::runtime_error("invalid ActionType enum");
 	}
@@ -226,7 +237,8 @@ namespace GameData
 					tableName != "LevelDefinition.yaml" &&
 					tableName != "NewGameProfile.yaml" &&
 					tableName != "ItemDefinition.yaml" &&
-					tableName != "AchievementDefinition.yaml") throw std::runtime_error("unknown table");
+					tableName != "AchievementDefinition.yaml" && tableName != "CharacterCombat.yaml" &&
+					tableName != "MonsterDefinition.yaml" && tableName != "CombatRule.yaml") throw std::runtime_error("unknown table");
 				if (!tables.insert(tableName).second) throw std::runtime_error("duplicate table");
 				std::vector<SYamlRow> rows;
 				if (!ParseGeneratedYaml(entry.contents, rows, error)) { error = location + ": " + error; return false; }
@@ -283,6 +295,43 @@ namespace GameData
 						Count(row, 3);
 						candidate.m_itemDefinition.push_back({Number(row, L"ItemId"),
 							Number(row, L"NameTextKey"), Number(row, L"MaxStack")});
+					}
+					else if (tableName == "CharacterCombat.yaml")
+					{
+						Count(row, 5);
+						CombatUpperBounds(row, {L"Strength", L"Dexterity", L"Intelligence", L"Luck"});
+						candidate.m_characterCombat.push_back({Number(row, L"CharacterId"), Number(row, L"Strength"),
+							Number(row, L"Dexterity"),
+							Number(row, L"Intelligence"), Number(row, L"Luck")});
+					}
+					else if (tableName == "MonsterDefinition.yaml")
+					{
+						Count(row, 10);
+						CombatUpperBounds(row, {L"MonsterId", L"MaxHp", L"Attack", L"Defense",
+							L"Strength", L"Dexterity", L"Intelligence", L"Luck"});
+						candidate.m_monsterDefinition.push_back({Number(row, L"MonsterId"), Number(row, L"NameTextKey"),
+							Number(row, L"ArtId"),
+							Number(row, L"MaxHp"), Number(row, L"Attack"), Number(row, L"Defense"),
+							Number(row, L"Strength"), Number(row, L"Dexterity"), Number(row, L"Intelligence"),
+							Number(row, L"Luck")});
+					}
+					else if (tableName == "CombatRule.yaml")
+					{
+						Count(row, 25);
+						CombatUpperBounds(row, {L"RuleId", L"MonsterId", L"Scale", L"StrengthDefense", L"DexteritySpeed",
+							L"BaseSpeed", L"LuckCritical", L"CriticalCap", L"CriticalMultiplier", L"MinimumDamage",
+							L"StrengthCoefficient", L"DexterityCoefficient", L"IntelligenceCoefficient", L"LuckCoefficient",
+							L"MaxStat", L"MaxRounds"});
+						candidate.m_combatRule.push_back({Number(row, L"RuleId"), Number(row, L"MonsterId"), Number(row, L"BattleSceneId"),
+							Number(row, L"TownSceneId"), Number(row, L"Scale"), Number(row, L"StrengthDefense"),
+							Number(row, L"DexteritySpeed"), Number(row, L"BaseSpeed"), Number(row, L"LuckCritical"),
+							Number(row, L"CriticalCap"), Number(row, L"CriticalMultiplier"), Number(row, L"MinimumDamage"),
+							Number(row, L"StrengthCoefficient"), Number(row, L"DexterityCoefficient"),
+							Number(row, L"IntelligenceCoefficient"),
+							Number(row, L"LuckCoefficient"), Number(row, L"MaxStat"), Number(row, L"MaxRounds"),
+							Number(row, L"HealOnReturn"), Number(row, L"HitTextKey"), Number(row, L"CriticalTextKey"),
+							Number(row, L"VictoryTextKey"), Number(row, L"DefeatTextKey"), Number(row, L"ReadyTextKey"),
+							Number(row, L"RoundTextKey")});
 					}
 					else if (tableName == "AchievementDefinition.yaml")
 					{
@@ -419,6 +468,73 @@ namespace GameData
 					if (row.targetCount == 0) throw std::runtime_error("TargetCount must be positive");
 				}
 			}
+			location = "Combat catalog cohort";
+			std::size_t combatTables = 0;
+			for (const auto* name : {"CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml"})
+				if (tables.contains(name)) ++combatTables;
+			if (combatTables != 0 && (combatTables != 3 || catalogTables != 5))
+				throw std::runtime_error("partial combat cohort");
+			if (combatTables != 0)
+			{
+				Unique(candidate.m_characterCombat, [](const auto& row)
+				{
+					return row.characterId;
+				}, "CharacterCombat/CharacterId");
+				Unique(candidate.m_monsterDefinition, [](const auto& row)
+				{
+					return row.monsterId;
+				}, "MonsterDefinition/MonsterId");
+				Unique(candidate.m_combatRule, [](const auto& row)
+				{
+					return row.ruleId;
+				}, "CombatRule/RuleId");
+				if (candidate.m_characterCombat.empty() || candidate.m_monsterDefinition.empty() || candidate.m_combatRule.empty())
+					throw std::runtime_error("combat cohort requires character, monster and rule rows");
+				for (const auto& row : candidate.m_characterCombat)
+					if (!candidate.FindCharacterDefinition(row.characterId))
+						throw std::runtime_error("CharacterCombat reference is missing");
+				for (const auto& row : candidate.m_monsterDefinition)
+				{
+					if (!candidate.FindLocalization(row.nameTextKey) || !candidate.FindTextArt(row.artId))
+						throw std::runtime_error("MonsterDefinition display reference is missing");
+					const auto* art = candidate.FindTextArt(row.artId);
+					if (row.maxHp == 0 || art->width != 36 || art->height != 36)
+						throw std::runtime_error("MonsterDefinition HP or art dimensions are invalid");
+				}
+				std::set<std::uint32_t> battleScenes;
+				for (const auto& rule : candidate.m_combatRule)
+				{
+					const auto* battle = candidate.FindScene(rule.battleSceneId);
+					const auto* town = candidate.FindScene(rule.townSceneId);
+					if (!battle || battle->sceneType != Common::ESceneType::BattleField ||
+						!town || town->sceneType != Common::ESceneType::Town || !candidate.FindMonsterDefinition(rule.monsterId) ||
+						!battleScenes.insert(rule.battleSceneId).second)
+						throw std::runtime_error("CombatRule encounter reference is invalid or ambiguous");
+					if (rule.scale == 0 || rule.baseSpeed == 0 || rule.minimumDamage == 0 || rule.maxStat == 0 ||
+						rule.maxRounds == 0 || rule.criticalCap > rule.scale || rule.criticalMultiplier < rule.scale ||
+						rule.healOnReturn > 1)
+						throw std::runtime_error("CombatRule bounds are invalid");
+					const auto monsterHp = candidate.FindMonsterDefinition(rule.monsterId)->maxHp;
+					// 몫과 나머지로 계산해 hp + minimumDamage - 1의 오버플로를 피한다.
+					const auto requiredRounds = monsterHp / rule.minimumDamage + (monsterHp % rule.minimumDamage != 0 ? 1U : 0U);
+					if (rule.maxRounds < requiredRounds)
+						throw std::runtime_error("CombatRule MaxRounds cannot guarantee termination");
+					for (const auto textKey : {rule.hitTextKey, rule.criticalTextKey, rule.victoryTextKey,
+						rule.defeatTextKey, rule.readyTextKey, rule.roundTextKey})
+						if (!candidate.FindLocalization(textKey)) throw std::runtime_error("CombatRule log reference is missing");
+					for (const auto& row : candidate.m_characterCombat)
+						if (row.strength > rule.maxStat || row.dexterity > rule.maxStat ||
+							row.intelligence > rule.maxStat || row.luck > rule.maxStat)
+							throw std::runtime_error("CharacterCombat stats exceed rule limit");
+					for (const auto& row : candidate.m_monsterDefinition)
+						if (row.strength > rule.maxStat || row.dexterity > rule.maxStat ||
+							row.intelligence > rule.maxStat || row.luck > rule.maxStat)
+							throw std::runtime_error("MonsterDefinition stats exceed rule limit");
+				}
+			}
+			m_characterCombat.swap(candidate.m_characterCombat);
+			m_monsterDefinition.swap(candidate.m_monsterDefinition);
+			m_combatRule.swap(candidate.m_combatRule);
 			m_characterDefinition.swap(candidate.m_characterDefinition);
 			m_levelDefinition.swap(candidate.m_levelDefinition);
 			m_newGameProfile.swap(candidate.m_newGameProfile);
@@ -440,6 +556,25 @@ namespace GameData
 		}
 	}
 
+	const CharacterCombat::SCharacterCombatData* FGameDataStore::FindCharacterCombat(std::uint32_t key) const noexcept
+	{
+		for (const auto& row : m_characterCombat) if (row.characterId == key) return &row;
+		return nullptr;
+	}
+	const MonsterDefinition::SMonsterDefinitionData* FGameDataStore::FindMonsterDefinition(std::uint32_t key) const noexcept
+	{
+		for (const auto& row : m_monsterDefinition) if (row.monsterId == key) return &row;
+		return nullptr;
+	}
+	const CombatRule::SCombatRuleData* FGameDataStore::FindCombatRule(std::uint32_t key) const noexcept
+	{
+		for (const auto& row : m_combatRule) if (row.ruleId == key) return &row;
+		return nullptr;
+	}
+	const std::vector<CombatRule::SCombatRuleData>& FGameDataStore::GetCombatRules() const noexcept
+	{
+		return m_combatRule;
+	}
 	const CharacterDefinition::SCharacterDefinitionData* FGameDataStore::FindCharacterDefinition(std::uint32_t key) const noexcept
 	{
 		for (const auto& row : m_characterDefinition) if (row.characterId == key) return &row;

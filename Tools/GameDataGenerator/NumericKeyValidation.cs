@@ -8,6 +8,9 @@ internal static class FNumericKeyValidation
         ["ItemDefinition"] = "ItemId",
         ["AchievementDefinition"] = "AchievementId",
         ["Localization"] = "TextKey",
+        ["CharacterCombat"] = "CharacterId",
+        ["MonsterDefinition"] = "MonsterId",
+        ["CombatRule"] = "RuleId",
     };
 
     private static readonly (string Table, string Field, string Target, string Key)[] References =
@@ -18,6 +21,18 @@ internal static class FNumericKeyValidation
         ("NewGameProfile", "InitialLevel", "LevelDefinition", "Level"),
         ("ItemDefinition", "NameTextKey", "Localization", "TextKey"),
         ("AchievementDefinition", "NameTextKey", "Localization", "TextKey"),
+        ("CharacterCombat", "CharacterId", "CharacterDefinition", "CharacterId"),
+        ("MonsterDefinition", "NameTextKey", "Localization", "TextKey"),
+        ("MonsterDefinition", "ArtId", "TextArt", "ArtId"),
+        ("CombatRule", "MonsterId", "MonsterDefinition", "MonsterId"),
+        ("CombatRule", "BattleSceneId", "Scene", "SceneId"),
+        ("CombatRule", "TownSceneId", "Scene", "SceneId"),
+        ("CombatRule", "HitTextKey", "Localization", "TextKey"),
+        ("CombatRule", "CriticalTextKey", "Localization", "TextKey"),
+        ("CombatRule", "VictoryTextKey", "Localization", "TextKey"),
+        ("CombatRule", "DefeatTextKey", "Localization", "TextKey"),
+        ("CombatRule", "ReadyTextKey", "Localization", "TextKey"),
+        ("CombatRule", "RoundTextKey", "Localization", "TextKey"),
     ];
 
     public static bool IsKey(string table, FGameDataField field) => field.IsPrimaryKey || field.Reference != null ||
@@ -33,7 +48,8 @@ internal static class FNumericKeyValidation
                 RequireField(table, name, primary: true, diagnostics);
             foreach (var reference in References.Where(reference => reference.Table == table.Name))
             {
-                FGameDataField? field = RequireField(table, reference.Field, primary: false, diagnostics);
+                bool primary = PrimaryKeys.TryGetValue(table.Name, out string? key) && key == reference.Field;
+                FGameDataField? field = RequireField(table, reference.Field, primary, diagnostics);
                 if (field == null) continue;
                 string targetName = reference.Target + "." + reference.Key;
                 if (field.Reference != targetName)

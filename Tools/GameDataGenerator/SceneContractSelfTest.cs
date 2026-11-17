@@ -16,6 +16,11 @@ internal static class FSceneContractSelfTest
         Check(testRoot, "NumericKey_RemovedItemNameReference", workbook =>
             Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"], ["uint32", "uint32", "uint32"], [[1, 1, 99]]), "GD2120");
         CheckNumericKeys(testRoot);
+        CheckCombatContracts(testRoot);
+        CheckCombatBounds(testRoot);
+        Check(testRoot, "Combat_PartialCohort", workbook =>
+            Add(workbook, "CharacterCombat", ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
+                ["uint32", "uint32", "uint32", "uint32", "uint32"], [[1, 5, 5, 3, 5]]), "GD2201");
         Check(testRoot, "StaticSceneThreeFieldsWithoutLegacyAssets", _ => { }, null);
         foreach (string field in new[] { "PlayerArtId", "ContentArtId", "TitleTextKey", "RegionTextKey" })
             Check(testRoot, "Scene_ForbiddenPresentation_" + field, workbook =>
@@ -294,7 +299,159 @@ internal static class FSceneContractSelfTest
         Console.WriteLine("PASS SceneContract/GEN05_StdQualification");
     }
 
-    private static void Check(string testRoot, string name, Action<XLWorkbook> mutate, string? expectedCode, bool nested = false, Action<string>? mutateAssets = null, string? expectedCell = null)
+    private static void AddCombatCohort(XLWorkbook workbook)
+    {
+        Add(workbook, "CharacterDefinition", ["CharacterId", "NameTextKey", "ArtId"],
+            ["uint32", "uint32", "uint32"], [[1, 1, 2]]);
+        Add(workbook, "LevelDefinition", ["Level", "RequiredExperience", "MaxHp", "Attack", "Defense"],
+            Enumerable.Repeat("uint32", 5).ToArray(), [[1, 0, 100, 10, 5]]);
+        Add(workbook, "NewGameProfile", ["ProfileId", "CharacterId", "InitialLevel", "InitialExperience", "InitialGold",
+            "InitialMaxHpBonus", "InitialAttackBonus", "InitialDefenseBonus", "ContentVersion", "IsDefault"],
+            Enumerable.Repeat("uint32", 9).Append("bool").ToArray(), [[1, 1, 1, 0, 0, 0, 0, 0, 1, true]]);
+        Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"],
+            ["uint32", "uint32", "uint32"], [[1, 1, 99]]);
+        Add(workbook, "AchievementDefinition", ["AchievementId", "NameTextKey", "TargetCount"],
+            ["uint32", "uint32", "uint32"], [[1, 1, 1]]);
+        Add(workbook, "CharacterCombat", ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
+            Enumerable.Repeat("uint32", 5).ToArray(), [[1, 5, 5, 3, 5]]);
+        Add(workbook, "MonsterDefinition", ["MonsterId", "NameTextKey", "ArtId", "MaxHp", "Attack", "Defense",
+            "Strength", "Dexterity", "Intelligence", "Luck"], Enumerable.Repeat("uint32", 10).ToArray(),
+            [[1, 1, 2, 45, 7, 2, 3, 4, 0, 3]]);
+        Add(workbook, "CombatRule", ["RuleId", "MonsterId", "BattleSceneId", "TownSceneId", "Scale", "StrengthDefense",
+            "DexteritySpeed", "BaseSpeed", "LuckCritical", "CriticalCap", "CriticalMultiplier", "MinimumDamage",
+            "StrengthCoefficient", "DexterityCoefficient", "IntelligenceCoefficient", "LuckCoefficient", "MaxStat", "MaxRounds",
+            "HealOnReturn", "HitTextKey", "CriticalTextKey", "VictoryTextKey", "DefeatTextKey", "ReadyTextKey", "RoundTextKey"],
+            Enumerable.Repeat("uint32", 25).ToArray(),
+            [[1, 1, 3, 2, 10000, 10000, 10000, 1, 100, 5000, 15000, 1, 10000, 2000, 0, 0, 1000000, 1000000, 1, 1, 1, 1, 1, 1, 1]]);
+        foreach ((string table, string column, string target) in new[]
+        {
+            ("CharacterDefinition", "C", "Localization.TextKey"), ("CharacterDefinition", "D", "TextArt.ArtId"),
+            ("NewGameProfile", "C", "CharacterDefinition.CharacterId"), ("NewGameProfile", "D", "LevelDefinition.Level"),
+            ("ItemDefinition", "C", "Localization.TextKey"), ("AchievementDefinition", "C", "Localization.TextKey"),
+            ("CharacterCombat", "B", "CharacterDefinition.CharacterId"),
+            ("MonsterDefinition", "C", "Localization.TextKey"), ("MonsterDefinition", "D", "TextArt.ArtId"),
+            ("CombatRule", "C", "MonsterDefinition.MonsterId"), ("CombatRule", "D", "Scene.SceneId"),
+            ("CombatRule", "E", "Scene.SceneId"),
+        }) workbook.Worksheet(table).Cell(column + "12").Value = target;
+        for (int column = 21; column <= 26; column++)
+            workbook.Worksheet("CombatRule").Cell(12, column).Value = "Localization.TextKey";
+    }
+
+    private static void CheckCombatContracts(string testRoot)
+    {
+        Check(testRoot, "Combat_CompletePositive", _ => { }, null, combat: true);
+        Check(testRoot, "Combat_WholeCohortAbsent", workbook =>
+        {
+            foreach (string table in new[] { "CharacterCombat", "MonsterDefinition", "CombatRule" })
+                workbook.Worksheet(table).Delete();
+        }, null, combat: true);
+        foreach ((string cell, int value) in new[] { ("D14", 2), ("E14", 3) })
+            Check(testRoot, "Combat_SceneRole_" + cell, workbook =>
+                workbook.Worksheet("CombatRule").Cell(cell).Value = value, "GD2207",
+                expectedCell: cell, expectedSheet: "CombatRule", combat: true);
+        Check(testRoot, "Combat_MonsterLogoSlot", workbook =>
+            workbook.Worksheet("MonsterDefinition").Cell("D14").Value = 1, "GD2208",
+            expectedCell: "D14", expectedSheet: "MonsterDefinition", combat: true);
+        Check(testRoot, "Combat_CharacterReferenceDeleted", workbook =>
+            workbook.Worksheet("CharacterCombat").Cell("B12").Value = "", "GD2120",
+            expectedCell: "B12", expectedSheet: "CharacterCombat", combat: true);
+        Check(testRoot, "Combat_CharacterMembershipWithoutReference", workbook =>
+        {
+            workbook.Worksheet("CharacterCombat").Cell("B12").Value = "";
+            workbook.Worksheet("CharacterCombat").Cell("B14").Value = 999;
+        }, "GD2122", expectedCell: "B14", expectedSheet: "CharacterCombat", combat: true);
+        Check(testRoot, "Combat_CharacterReferenceWrongTarget", workbook =>
+            workbook.Worksheet("CharacterCombat").Cell("B12").Value = "ItemDefinition.ItemId", "GD2120",
+            expectedCell: "B12", expectedSheet: "CharacterCombat", combat: true);
+        foreach ((string cell, string value) in new[] { ("B4", ""), ("B5", "Client") })
+            Check(testRoot, "Combat_CharacterPrimaryRole_" + cell, workbook =>
+                workbook.Worksheet("CharacterCombat").Cell(cell).Value = value, "GD2101", combat: true);
+        foreach ((string table, int count) in new[] { ("CharacterCombat", 5), ("MonsterDefinition", 10), ("CombatRule", 25) })
+        {
+            for (int column = 2; column <= count + 1; column++)
+            foreach (string scope in new[] { "Ignore", "Server" })
+            {
+                int fieldColumn = column;
+                Check(testRoot, $"Combat_Visibility_{table}_{column}_{scope}", workbook =>
+                    workbook.Worksheet(table).Cell(5, fieldColumn).Value = scope, "GD2202",
+                    expectedCell: FCellAddress.ToA1(5, column), expectedSheet: table, combat: true);
+            }
+            Check(testRoot, "Combat_TargetServer_" + table, workbook =>
+                workbook.Worksheet(table).Cell("B2").Value = "Server", "GD2202",
+                expectedCell: "B2", expectedSheet: table, combat: true);
+            Check(testRoot, "Combat_TargetShared_" + table, workbook =>
+                workbook.Worksheet(table).Cell("B2").Value = "Shared", null, combat: true);
+        }
+        Check(testRoot, "Combat_SharedFieldsPositive", workbook =>
+        {
+            foreach (string table in new[] { "CharacterCombat", "MonsterDefinition", "CombatRule" })
+                for (int column = 2; column <= workbook.Worksheet(table).LastColumnUsed()!.ColumnNumber(); column++)
+                    workbook.Worksheet(table).Cell(5, column).Value = "Shared";
+        }, null, combat: true);
+        Check(testRoot, "GenericIgnorePreserved", workbook =>
+        {
+            Add(workbook, "Independent", ["Id", "Value"], ["uint32", "uint32"], [[1, 2]]);
+            workbook.Worksheet("Independent").Cell("C5").Value = "Ignore";
+        }, null);
+        Check(testRoot, "GenericServerPreserved", workbook =>
+        {
+            Add(workbook, "Independent", ["Id", "Value"], ["uint32", "uint32"], [[1, 2]]);
+            workbook.Worksheet("Independent").Cell("C5").Value = "Server";
+        }, "GD1902");
+    }
+
+    private static void CheckCombatBounds(string testRoot)
+    {
+        string input = Path.Combine(testRoot, "CombatBounds", "Excel");
+        Directory.CreateDirectory(input);
+        using var workbook = new XLWorkbook();
+        Add(workbook, "CharacterCombat", ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
+            Enumerable.Repeat("uint32", 5).ToArray(), [[1, 5, 5, 3, 5]]);
+        Add(workbook, "MonsterDefinition", ["MonsterId", "NameTextKey", "ArtId", "MaxHp", "Attack", "Defense",
+            "Strength", "Dexterity", "Intelligence", "Luck"], Enumerable.Repeat("uint32", 10).ToArray(),
+            [[1, 37, 3, 45, 7, 2, 3, 4, 0, 3]]);
+        Add(workbook, "CombatRule", ["RuleId", "MonsterId", "BattleSceneId", "TownSceneId", "Scale", "StrengthDefense",
+            "DexteritySpeed", "BaseSpeed", "LuckCritical", "CriticalCap", "CriticalMultiplier", "MinimumDamage",
+            "StrengthCoefficient", "DexterityCoefficient", "IntelligenceCoefficient", "LuckCoefficient", "MaxStat", "MaxRounds",
+            "HealOnReturn", "HitTextKey", "CriticalTextKey", "VictoryTextKey", "DefeatTextKey", "ReadyTextKey", "RoundTextKey"],
+            Enumerable.Repeat("uint32", 25).ToArray(),
+            [[1, 1, 3, 2, 10000, 10000, 10000, 1, 100, 5000, 15000, 1, 10000, 2000, 0, 0, 1000000, 1000000, 1, 38, 39, 40, 41, 42, 43]]);
+        // 이 컴포넌트 검사는 도메인 검증기를 검사하며 전체 카탈로그는 실제 CLI/native 회귀에서 검증한다.
+        foreach (string table in new[] { "CharacterDefinition", "LevelDefinition", "NewGameProfile", "ItemDefinition", "AchievementDefinition" })
+            Add(workbook, table, ["Id"], ["uint32"], [[1]]);
+        Add(workbook, "Scene", ["SceneId", "SceneType", "IsStartupScene"],
+            ["uint32", "enum<SceneType>", "bool"], [[2, "Town", false], [3, "BattleField", false]]);
+        Add(workbook, "TextArt", ["ArtId", "AssetPath", "Width", "Height"],
+            ["uint32", "string", "uint32", "uint32"], [[3, "Asset/square.txt", 36, 36]]);
+        void CheckDomain(string label, string? expected)
+        {
+            workbook.SaveAs(Path.Combine(input, "Combat.xlsx"));
+            var diagnostics = new FDiagnosticBag();
+            IReadOnlyList<FGameDataTable> tables = FWorkbookParser.ParseDirectory(input, diagnostics);
+            if (diagnostics.HasErrors) throw new InvalidOperationException("Combat component parser control failed: " + label);
+            FCombatDataValidation.Validate(tables, diagnostics);
+            SGameDataDiagnostic[] actual = diagnostics.GetSorted().ToArray();
+            if (expected is null ? actual.Length != 0 : actual.Length != 1 || actual[0].Code != expected)
+                throw new InvalidOperationException("Combat component diagnostic mismatch: " + label + " " + string.Join('\n', actual.AsEnumerable()));
+            Console.WriteLine("PASS CombatBounds/" + label);
+        }
+        CheckDomain("CompletePositive", null);
+        workbook.Worksheet("CombatRule").Cell("S14").Value = 1;
+        CheckDomain("CapOne", "GD2205");
+        workbook.Worksheet("CombatRule").Cell("M14").Value = 2;
+        workbook.Worksheet("CombatRule").Cell("S14").Value = 23;
+        CheckDomain("CeilingExact", null);
+        workbook.Worksheet("CombatRule").Cell("S14").Value = 22;
+        CheckDomain("CeilingOneBelow", "GD2205");
+        workbook.Worksheet("CombatRule").Cell("S14").Value = 1000000;
+        workbook.Worksheet("MonsterDefinition").Cell("F14").Value = 1000000;
+        CheckDomain("AttackMaximum", null);
+        workbook.Worksheet("MonsterDefinition").Cell("F14").Value = 1000001;
+        CheckDomain("AttackMaximumPlusOne", "GD2206");
+    }
+
+    private static void Check(string testRoot, string name, Action<XLWorkbook> mutate, string? expectedCode, bool nested = false,
+        Action<string>? mutateAssets = null, string? expectedCell = null, string expectedSheet = "Scene", bool combat = false)
     {
         string root = Path.Combine(testRoot, name);
         string input = Path.Combine(root, "Excel");
@@ -309,6 +466,7 @@ internal static class FSceneContractSelfTest
         string path = Path.Combine(workbookRoot, "Scene.xlsx");
         using (XLWorkbook workbook = CreateWorkbook())
         {
+            if (combat) AddCombatCohort(workbook);
             mutate(workbook);
             workbook.SaveAs(path);
         }
@@ -326,9 +484,10 @@ internal static class FSceneContractSelfTest
         string fixtureLink = Path.Combine(root, "Asset", "link");
         if (Directory.Exists(fixtureLink)) Directory.Delete(fixtureLink);
         bool success = expectedCode == null ? !diagnostics.HasErrors : diagnostics.GetSorted().Any(item => item.Code == expectedCode &&
-            (expectedCell == null || (item.Location.FilePath == path && item.Location.SheetName == "Scene" && item.Location.CellAddress == expectedCell)));
-        if (!success) throw new InvalidOperationException($"Scene self-test {name}: expected {expectedCode ?? "valid"}{(expectedCell == null ? "" : " [Scene] " + expectedCell)}; actual:\n{messages}");
-        if (diagnostics.HasErrors && (name.StartsWith("NumericKey_", StringComparison.Ordinal) ||
+            (expectedCell == null || (item.Location.FilePath == path && item.Location.SheetName == expectedSheet &&
+                item.Location.CellAddress == expectedCell)));
+        if (!success) throw new InvalidOperationException($"Scene self-test {name}: expected {expectedCode ?? "valid"}{(expectedCell == null ? "" : $" [{expectedSheet}] {expectedCell}")}; actual:\n{messages}");
+        if (diagnostics.HasErrors && (combat || name.StartsWith("NumericKey_", StringComparison.Ordinal) ||
             name is "GEN01_ClientFields" or "GEN02_NoOptionConfig" or "UI_UnknownTextWithoutReference" or "Art_MissingFile" or "Art_ExactCellWidth"))
         {
             byte[] inputBefore = File.ReadAllBytes(path);
@@ -340,12 +499,16 @@ internal static class FSceneContractSelfTest
                 File.WriteAllText(Path.Combine(output, ".gamedata-output"), "GameDataGenerator owned output v1\n");
                 File.WriteAllText(Path.Combine(output, "sentinel.txt"), "previous output must survive");
             }
-            if (Program.Main(["--input-root", input, "--output-root", cpp, "--yaml-output-root", yaml]) != 1 ||
-                !File.ReadAllBytes(path).SequenceEqual(inputBefore) ||
-                new[] { cpp, yaml }.Any(output => Directory.GetFiles(output, "*", SearchOption.AllDirectories).Length != 2 ||
-                    File.ReadAllText(Path.Combine(output, "sentinel.txt")) != "previous output must survive" ||
-                    File.ReadAllText(Path.Combine(output, ".gamedata-output")) != "GameDataGenerator owned output v1\n"))
-                throw new InvalidOperationException("Failed Scene CLI changed previous output: " + name);
+            foreach (string mode in combat ? new[] { "", "--validate-only", "--check" } : new[] { "" })
+            {
+                string[] arguments = ["--input-root", input, "--output-root", cpp, "--yaml-output-root", yaml];
+                if (mode.Length != 0) arguments = [.. arguments, mode];
+                if (Program.Main(arguments) != 1 || !File.ReadAllBytes(path).SequenceEqual(inputBefore) ||
+                    new[] { cpp, yaml }.Any(output => Directory.GetFiles(output, "*", SearchOption.AllDirectories).Length != 2 ||
+                        File.ReadAllText(Path.Combine(output, "sentinel.txt")) != "previous output must survive" ||
+                        File.ReadAllText(Path.Combine(output, ".gamedata-output")) != "GameDataGenerator owned output v1\n"))
+                    throw new InvalidOperationException("Failed Scene CLI changed previous output: " + name + " " + mode);
+            }
             Console.WriteLine($"PASS SceneContract/PreservedOutputs_{name}");
         }
         if (diagnostics.GetSorted().Any(item => item.Location.FilePath != path || string.IsNullOrWhiteSpace(item.Location.SheetName) || string.IsNullOrWhiteSpace(item.Location.CellAddress)))

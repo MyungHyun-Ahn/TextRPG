@@ -4,6 +4,7 @@
 #include "InGameData.h"
 #include "FSaveDataStore.h"
 #include "FGameSession.h"
+#include "Combat/FCombat.h"
 #include "Scene/FDataScene.h"
 #include "Scene/TSceneManager.h"
 #include "Scene/FTextRPGSceneManager.h"
@@ -195,6 +196,49 @@ namespace TextRPG
 		if (m_pendingAutosave && !Save(error)) return EGameStartResult::StartedSaveFailed;
 		error.clear();
 		return EGameStartResult::Started;
+	}
+
+	bool FGameSession::Travel(std::uint32_t sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error)
+	{
+		if (!m_progress || m_hasPendingStart || scenes.HasPendingTransition() || scenes.IsQuitting())
+		{
+			error = "Travel conflicts with absent progress or a pending operation";
+			return false;
+		}
+		try
+		{
+			SPlainBuffer plain;
+			std::unique_ptr<InGameData> candidate;
+			if (!m_progress->Serialize(plain.Bytes, error) || !InGameData::Deserialize(plain.Bytes, m_store, candidate, error) ||
+				!FCombat::Travel(m_store, *candidate, sceneId, error)) return false;
+			std::unique_ptr<FDataScene> scene;
+			std::wstring sceneError;
+			if (!scenes.PrepareSceneById(sceneId, ui, candidate.get(), scene, sceneError) ||
+				!scenes.CommitProgress(scene, m_progress, candidate, sceneError))
+			{
+				CopySceneError(sceneError, error);
+				return false;
+			}
+			m_hasPendingStart = true;
+			m_pendingAutosave = false;
+			error.clear();
+			return true;
+		}
+		catch (const std::exception& exception)
+		{
+			error = exception.what();
+			return false;
+		}
+	}
+
+	bool FGameSession::BasicAttack(FTextRPGSceneManager& scenes, std::string& error)
+	{
+		if (!m_progress || m_hasPendingStart || scenes.HasPendingTransition() || scenes.IsQuitting())
+		{
+			error = "Attack conflicts with absent progress or a pending operation";
+			return false;
+		}
+		return FCombat::BasicAttack(m_store, *m_progress, error);
 	}
 
 	bool FGameSession::Save(std::string& error) const

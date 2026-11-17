@@ -16,13 +16,17 @@ namespace GameData::InGameData
 		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field2,
 		::std::uint32_t _field3,
 		::std::vector<::GameData::InGameData::SInventoryItemProgress> _field4,
-		::std::vector<::GameData::InGameData::SAchievementProgress> _field5)
+		::GameData::InGameData::SBasicStats _field5,
+		::GameData::InGameData::SBattleProgress _field6,
+		::std::vector<::GameData::InGameData::SAchievementProgress> _field7)
 		: m_contentVersion(::std::move(_field0))
 		, m_sceneId(::std::move(_field1))
 		, m_character(::std::move(_field2))
 		, m_gold(::std::move(_field3))
 		, m_inventory(::std::move(_field4))
-		, m_achievements(::std::move(_field5))
+		, m_basicBonuses(::std::move(_field5))
+		, m_battle(::std::move(_field6))
+		, m_achievements(::std::move(_field7))
 	{
 	}
 
@@ -33,6 +37,8 @@ namespace GameData::InGameData
 			this->m_character == _other.m_character &&
 			this->m_gold == _other.m_gold &&
 			this->m_inventory == _other.m_inventory &&
+			this->m_basicBonuses == _other.m_basicBonuses &&
+			this->m_battle == _other.m_battle &&
 			this->m_achievements == _other.m_achievements;
 	}
 
@@ -48,6 +54,8 @@ namespace GameData::InGameData
 		if (!_writer.Field("m_character", this->m_character, _error)) return false;
 		if (!_writer.Field("m_gold", this->m_gold, _error)) return false;
 		if (!_writer.Field("m_inventory", this->m_inventory, _error)) return false;
+		if (!_writer.Field("m_basicBonuses", this->m_basicBonuses, _error)) return false;
+		if (!_writer.Field("m_battle", this->m_battle, _error)) return false;
 		if (!_writer.Field("m_achievements", this->m_achievements, _error)) return false;
 		return true;
 	}
@@ -59,6 +67,10 @@ namespace GameData::InGameData
 		if (!_reader.Field("m_character", this->m_character, _error, true)) return false;
 		if (!_reader.Field("m_gold", this->m_gold, _error, true)) return false;
 		if (!_reader.Field("m_inventory", this->m_inventory, _error, true)) return false;
+		if (_reader.GetSchemaVersion() < 3u) this->m_basicBonuses = ::GameData::InGameData::SBasicStats{};
+		if (!_reader.Field("m_basicBonuses", this->m_basicBonuses, _error, _reader.GetSchemaVersion() >= 3u)) return false;
+		if (_reader.GetSchemaVersion() < 3u) this->m_battle = ::GameData::InGameData::SBattleProgress{};
+		if (!_reader.Field("m_battle", this->m_battle, _error, _reader.GetSchemaVersion() >= 3u)) return false;
 		if (!_reader.Field("m_achievements", this->m_achievements, _error, true)) return false;
 		return true;
 	}

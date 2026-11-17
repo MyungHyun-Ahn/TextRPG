@@ -187,4 +187,10 @@
     <None Include="Tests\InGameData\Schema\SharedGraph.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
     <None Include="Tests\InGameData\Schema\CompatibilityV1.yaml"><Filter>Tests\InGameData\Schema</Filter></None>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="TextRPG\Combat" />
+    <ClCompile Include="TextRPG\Combat\FCombat.cpp"><Filter>TextRPG\Combat</Filter></ClCompile>
+    <ClInclude Include="TextRPG\Combat\FCombat.h"><Filter>TextRPG\Combat</Filter></ClInclude>
+    <ClCompile Include="Tests\InGameData\Combat.cpp"><Filter>Tests\InGameData</Filter></ClCompile>
+  </ItemGroup>
 </Project>

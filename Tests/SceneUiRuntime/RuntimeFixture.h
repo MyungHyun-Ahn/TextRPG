@@ -10,7 +10,9 @@ inline void LoadRuntimeFixture(GameData::FGameDataStore& store, const std::files
 	{
 		const auto name = path.filename().string();
 		return name == "TextArt.yaml" || name == "CharacterDefinition.yaml" || name == "LevelDefinition.yaml" ||
-			name == "NewGameProfile.yaml" || name == "ItemDefinition.yaml" || name == "AchievementDefinition.yaml";
+			name == "NewGameProfile.yaml" || name == "ItemDefinition.yaml" || name == "AchievementDefinition.yaml" ||
+			name == "CharacterCombat.yaml" ||
+			name == "MonsterDefinition.yaml" || name == "CombatRule.yaml";
 	};
 	for (const auto& entry : std::filesystem::directory_iterator(yamlRoot.empty() ? dataRoot / "Data/Client" : yamlRoot))
 	{

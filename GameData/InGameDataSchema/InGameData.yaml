@@ -1,5 +1,5 @@
 # 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
-schema_version: 2
+schema_version: 3
 types:
   - name: SCharacterStats
     fields:
@@ -15,6 +15,78 @@ types:
         type: 'uint32'
         missing: reject
         since: 1
+  - name: SBasicStats
+    fields:
+      - name: Strength
+        type: 'uint32'
+        missing: default
+        since: 3
+      - name: Dexterity
+        type: 'uint32'
+        missing: default
+        since: 3
+      - name: Intelligence
+        type: 'uint32'
+        missing: default
+        since: 3
+      - name: Luck
+        type: 'uint32'
+        missing: default
+        since: 3
+  - name: SBattleProgress
+    fields:
+      - name: RuleId
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: MonsterId
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: MonsterHp
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: Round
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: Outcome
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: Seed
+        type: 'uint64'
+        missing: reject
+        since: 3
+      - name: RandCount
+        type: 'uint64'
+        missing: reject
+        since: 3
+      - name: FirstIsPlayer
+        type: 'bool'
+        missing: reject
+        since: 3
+      - name: FirstDamage
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: SecondDamage
+        type: 'uint32'
+        missing: reject
+        since: 3
+      - name: FirstCritical
+        type: 'bool'
+        missing: reject
+        since: 3
+      - name: SecondCritical
+        type: 'bool'
+        missing: reject
+        since: 3
+      - name: HitCount
+        type: 'uint32'
+        missing: reject
+        since: 3
   - name: SCharacterProgress
     fields:
       - name: CharacterId
@@ -87,6 +159,14 @@ types:
         type: 'vector<SInventoryItemProgress>'
         missing: reject
         since: 1
+      - name: m_basicBonuses
+        type: 'SBasicStats'
+        missing: default
+        since: 3
+      - name: m_battle
+        type: 'SBattleProgress'
+        missing: default
+        since: 3
       - name: m_achievements
         type: 'vector<SAchievementProgress>'
         missing: reject

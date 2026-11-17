@@ -54,7 +54,8 @@ namespace GameData::Common
 		Attack = 10,
 		Skill = 11,
 		Item = 12,
-		Defend = 13
+		Defend = 13,
+		ReturnTown = 14
 	};
 
 	enum class ESceneId : ::std::uint32_t
@@ -107,6 +108,14 @@ namespace GameData::Common
 		InGameData_Item_Token_Name = 32,
 		InGameData_Achievement_Journey_Name = 33,
 		InGameData_Ui_NewGameFailed = 34,
-		InGameData_Ui_NewGameSaveFailed = 35
+		InGameData_Ui_NewGameSaveFailed = 35,
+		Battle_Return = 36,
+		Battle_Monster = 37,
+		Battle_Hit = 38,
+		Battle_Critical = 39,
+		Battle_Victory = 40,
+		Battle_Defeat = 41,
+		Battle_Ready = 42,
+		Battle_Round = 43
 	};
 }

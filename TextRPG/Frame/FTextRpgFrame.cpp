@@ -8,7 +8,7 @@
 #include "Rendering/FConsoleRenderer.h"
 #include "Scene/TSceneManager.h"
 #include "Scene/FTextRPGSceneManager.h"
-#include "System/GameDataPaths.h"
+#include "GameData/GameDataPaths.h"
 #include "UI/FUIManager.h"
 #include "UI/FGameUiBridge.h"
 #include "Input/FConsoleInput.h"
@@ -83,7 +83,7 @@ namespace TextRPG
 		auto& session = m_state->Session;
 		auto& uiManager = m_state->UiManager;
 		auto& sceneManager = m_state->SceneManager;
-		if (!ResolveGameDataPackagePath(packagePath, errorMessage))
+		if (!GameData::ResolveGameDataPackagePath(packagePath, errorMessage))
 		{
 			std::wcerr << errorMessage << L'\n';
 			RequestExit(1);
@@ -174,6 +174,15 @@ namespace TextRPG
 					sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::InGameData_Ui_NewGameFailed));
 					std::cerr << "New-game operation: " << dataError << '\n';
 				}
+			}
+			else if (action.Type == ESceneAction::Travel)
+			{
+				if (!session.Travel(action.TargetSceneId, sceneManager, m_state->UiManager, dataError))
+					std::cerr << "Travel operation: " << dataError << '\n';
+			}
+			else if (action.Type == ESceneAction::BasicAttack)
+			{
+				if (!session.BasicAttack(sceneManager, dataError)) std::cerr << "Combat operation: " << dataError << '\n';
 			}
 			else if (action.Type == ESceneAction::Continue)
 			{

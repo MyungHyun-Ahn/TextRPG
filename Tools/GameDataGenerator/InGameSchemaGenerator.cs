@@ -266,7 +266,8 @@ internal static class FInGameSchemaGenerator
         var _registry = new StringBuilder("#include \"GameData/pch.h\"\n#include \"Serialization/FSerializationArchive.h\"\n#include \"InGameDataAll.h\"\n\nnamespace GameData::InGameData\n{\n\tbool RegisterInGameDataTypes(::TextRPG::FSerializableTypeRegistry& _registry, ::std::string& _error)\n\t{\n");
         if (schema.Types.Count == 0) _registry.Append("\t\tstatic_cast<void>(_registry);\n\t\tstatic_cast<void>(_error);\n");
         foreach (var type in schema.Types)
-            _registry.Append($"\t\tif (!_registry.Register<{type.Name}>({type.Name}::kTypeName, []() {{ return ::std::make_unique<{type.Name}>(); }}, _error)) return false;\n");
+            _registry.Append($"\t\tif (!_registry.Register<{type.Name}>({type.Name}::kTypeName,\n" +
+                $"\t\t\t[]()\n\t\t\t{{\n\t\t\t\treturn ::std::make_unique<{type.Name}>();\n\t\t\t}}, _error)) return false;\n");
         _registry.Append("\t\treturn true;\n\t}\n}\n");
         files.Add(new("InGameDataRegistry.g.cpp", _registry.ToString()));
         return files.Select(file => file with { Content = file.Content.Replace("namespace GameData::InGameData", "namespace " + namespaceName, StringComparison.Ordinal) }).ToArray();

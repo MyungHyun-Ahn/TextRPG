@@ -33,6 +33,7 @@
     <ClCompile Include="Runtime\GameData\FGameDataPackage.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Runtime\GameData\FGameDataStore.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Runtime\GameData\FGeneratedYaml.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
+    <ClCompile Include="Runtime\GameData\GameDataPaths.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Runtime\GameData\pch.cpp"><Filter>Runtime\GameData</Filter></ClCompile>
     <ClCompile Include="Generated\InGameData\*.g.cpp"><Filter>Generated\InGameData</Filter></ClCompile>
   </ItemGroup>
@@ -54,6 +55,7 @@
     <ClInclude Include="Runtime\GameData\FGameDataPackage.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\FGameDataStore.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\FGeneratedYaml.h"><Filter>Runtime\GameData</Filter></ClInclude>
+    <ClInclude Include="Runtime\GameData\GameDataPaths.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\GameDataPch.h"><Filter>Runtime\GameData</Filter></ClInclude>
     <ClInclude Include="Runtime\GameData\pch.h"><Filter>Runtime\GameData</Filter></ClInclude>
   </ItemGroup>
@@ -99,10 +101,23 @@
     <None Include="Data\Client\SceneTypeConfig.yaml"><Filter>Data\Client</Filter></None>
     <None Include="Data\Client\TextArt.yaml"><Filter>Data\Client</Filter></None>
     <None Include="Excel\InGameData.xlsx"><Filter>Excel</Filter></None>
+    <None Include="Excel\README.md"><Filter>Excel</Filter></None>
     <None Include="Excel\Scene.xlsx"><Filter>Excel</Filter></None>
     <None Include="Excel\Templates\GameDataTableTemplate.xlsx"><Filter>Excel\Templates</Filter></None>
     <None Include="README.md" />
     <None Include="Generated\InGameData\.ingamedata-output"><Filter>Generated\InGameData</Filter></None>
     <None Include="InGameDataSchema\InGameData.yaml"><Filter>InGameDataSchema</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Excel\Combat.xlsx"><Filter>Excel</Filter></None>
+    <Filter Include="Generated\GameData\CharacterCombat" />
+    <ClInclude Include="Generated\GameData\CharacterCombat\CharacterCombatData.g.h"><Filter>Generated\GameData\CharacterCombat</Filter></ClInclude>
+    <None Include="Data\Client\CharacterCombat.yaml"><Filter>Data\Client</Filter></None>
+    <Filter Include="Generated\GameData\MonsterDefinition" />
+    <ClInclude Include="Generated\GameData\MonsterDefinition\MonsterDefinitionData.g.h"><Filter>Generated\GameData\MonsterDefinition</Filter></ClInclude>
+    <None Include="Data\Client\MonsterDefinition.yaml"><Filter>Data\Client</Filter></None>
+    <Filter Include="Generated\GameData\CombatRule" />
+    <ClInclude Include="Generated\GameData\CombatRule\CombatRuleData.g.h"><Filter>Generated\GameData\CombatRule</Filter></ClInclude>
+    <None Include="Data\Client\CombatRule.yaml"><Filter>Data\Client</Filter></None>
   </ItemGroup>
 </Project>

@@ -22,6 +22,11 @@
 #include "GameData/FGameDataPackage.h"
 #include "GameData/FGameDataStore.h"
 
+namespace TextRPGTest
+{
+	void TestCombat(const GameData::FGameDataStore& store, const std::filesystem::path& source, const std::filesystem::path& work);
+}
+
 namespace
 {
 	namespace Graph = TextRPGTest::InGameData;
@@ -32,7 +37,7 @@ namespace
 	using TextRPG::FSerializableTypeRegistry;
 	using TextRPG::FSerializationArchive;
 
-	static_assert(GameData::InGameData::kSchemaVersion == 2);
+	static_assert(GameData::InGameData::kSchemaVersion == 3);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SCharacterProgress::CharacterId), std::uint32_t>);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SInventoryItemProgress::ItemId), std::uint32_t>);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SAchievementProgress::AchievementId), std::uint32_t>);
@@ -605,6 +610,8 @@ namespace
 
 int main(int argc, char** argv)
 {
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+	_set_abort_behavior(0, _CALL_REPORTFAULT | _WRITE_ABORT_MSG);
 	assert(argc == 3);
 	TestGeneratedEnums();
 	TestGeneratedSharedGraph();
@@ -642,6 +649,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	std::cout << "PASS complete Excel-defined progress catalog loads transactionally\n";
+	TextRPGTest::TestCombat(store, source, work);
 
 	const auto yaml = work / "yaml";
 	std::filesystem::copy(source / "Data/Client", yaml, std::filesystem::copy_options::recursive);
@@ -737,6 +745,10 @@ int main(int argc, char** argv)
 	}
 
 	for (const auto* table : cohort) reject(table, nullptr, "", "cohort", catalogLocation + "partial catalog cohort");
+	for (const auto* table : {"CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml"})
+		reject(table, nullptr, "", "combat cohort", "Combat catalog cohort: partial combat cohort");
+	reject("CombatRule.yaml", "\"Scale\": 10000", "\"Scale\": 0", "combat scale",
+		"Combat catalog cohort: CombatRule bounds are invalid");
 	reject("NewGameProfile.yaml", "\"IsDefault\": true", "\"IsDefault\": false", "default",
 		catalogLocation + "exactly one default profile is required");
 	reject("NewGameProfile.yaml", "\"CharacterId\": 1", "\"CharacterId\": 4294967295", "CharacterId",
@@ -815,7 +827,17 @@ int main(int argc, char** argv)
 	reject("NewGameProfile.yaml", "# TextRPG.GameData 1\n", ("# TextRPG.GameData 1\n" + extraProfile).c_str(), "default",
 		catalogLocation + "exactly one default profile is required");
 	restore();
+	for (const auto* table : {"CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml"})
+		std::filesystem::remove(yaml / table);
+	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, source / "Asset"));
+	GameData::FGameDataStore preCombat;
+	assert(preCombat.Load(package, key, error) && preCombat.GetDefaultNewGameProfile());
+	assert(preCombat.GetCombatRules().empty());
+	std::cout << "PASS complete original progress cohort without combat remains supported\n";
+	restore();
 	for (const auto* table : cohort) std::filesystem::remove(yaml / table);
+	for (const auto* table : {"CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml"})
+		std::filesystem::remove(yaml / table);
 	std::filesystem::remove(yaml / "TextArt.yaml");
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, source / "Asset"));
 	GameData::FGameDataStore legacy;
@@ -971,7 +993,7 @@ int main(int argc, char** argv)
 	assert(dynamic_cast<const TextRPG::FCharacterInGameData*>(&migrated->GetCharacter()));
 	std::vector<std::uint8_t> migratedBytes;
 	assert(migrated->Serialize(migratedBytes, error) && migratedBytes == framedBytes);
-	RequireFramedOutput(migratedBytes, 2);
+	RequireFramedOutput(migratedBytes, GameData::InGameData::kSchemaVersion);
 	const auto rejectOldFramed = [&](const char* diagnostic)
 	{
 		std::vector<std::uint8_t> badOld;
@@ -1004,7 +1026,7 @@ int main(int argc, char** argv)
 	oldRoot.Achievements[0].IsCompleted = true;
 	oldRoot.Character.reset();
 	rejectOldFramed("Character progress is missing");
-	std::cout << "PASS independent CGSA schema1 string IDs migrate all values to schema2 and reject unknown IDs transactionally\n";
+	std::cout << "PASS independent CGSA schema1 string IDs migrate all values to current schema3 and reject unknown IDs transactionally\n";
 
 	std::unique_ptr<TextRPG::InGameData> restored;
 	assert(TextRPG::InGameData::Deserialize(framedBytes, store, restored, error));
@@ -1267,5 +1289,5 @@ int main(int argc, char** argv)
 	assert(edge->Serialize(encoded, error));
 	assert(TextRPG::InGameData::Deserialize(encoded, limits, fromAlternate, error));
 	assert(fromAlternate->GetCharacter() == edge->GetCharacter() && fromAlternate->GetInventory() == highInventory);
-	std::cout << "PASS uint32 maximum static key roundtrips through numeric schema two\n";
+	std::cout << "PASS uint32 maximum static key roundtrips through numeric schema three\n";
 }

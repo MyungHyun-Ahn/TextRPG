@@ -17,12 +17,70 @@
 #include "Scene/SceneData.g.h"
 #include "SceneOption/SceneOptionData.g.h"
 #include "SceneTypeConfig/SceneTypeConfigData.g.h"
+#include "InGameDataAll.h"
+#include "InGameData/InGameData.h"
 
 namespace TextRPG
 {
 	using ETextKey = GameData::Common::ETextKey;
 	namespace
 	{
+		class FCombatOptionButton final : public FUiButton
+		{
+		public:
+			FCombatOptionButton(SCellRect rect, std::wstring text, std::function<void()> activate, int shortcut,
+				const InGameData* progress, GameData::Common::ESceneActionType action)
+				: FUiButton(rect, text, std::move(activate), shortcut)
+				, m_text(std::move(text))
+				, m_progress(progress)
+				, m_action(action)
+			{
+			}
+			bool IsEnabled() const noexcept override
+			{
+				if (!FUiButton::IsEnabled()) return false;
+				if (m_action == GameData::Common::ESceneActionType::Attack)
+					return m_progress && m_progress->GetBattle().RuleId != 0 && m_progress->GetBattle().Outcome == 0;
+				if (m_action == GameData::Common::ESceneActionType::ReturnTown)
+					return m_progress && m_progress->GetBattle().RuleId != 0 && m_progress->GetBattle().Outcome != 0;
+				return true;
+			}
+			bool IsAvailable(FUiId id) const noexcept override
+			{
+				return id == GetId() && IsVisible() && IsEnabled();
+			}
+			void CollectFocusable(std::vector<IUI*>& output, bool includeInactive) override
+			{
+				if (includeInactive || (IsVisible() && IsEnabled())) output.push_back(this);
+			}
+			EUiReply OnKeyDown(const SInputEvent& event) override
+			{
+				return IsEnabled() ? FUiButton::OnKeyDown(event) : EUiReply::Unhandled;
+			}
+			EUiReply OnClick(const SInputEvent& event) override
+			{
+				return IsEnabled() ? FUiButton::OnClick(event) : EUiReply::Unhandled;
+			}
+			void SetFocused(bool focused) override
+			{
+				m_isFocused = focused;
+			}
+			void Render(const SUiRenderContext& context) const override
+			{
+				if (!IsVisible()) return;
+				const auto rect = GetOuterRect(context);
+				const std::uint16_t attributes = !IsEnabled() ? 8 : (m_isFocused ? 0x1E : 7);
+				context.DrawBorder(rect, {}, attributes);
+				const SUiRenderContext clipped{context.Frame, context.OriginX, context.OriginY, rect.Intersect(context.Clip)};
+				clipped.DrawText(rect.X + 1, rect.Y + 1, m_text, attributes, rect.Width - 2);
+			}
+		private:
+			std::wstring m_text;
+			const InGameData* m_progress;
+			GameData::Common::ESceneActionType m_action;
+			bool m_isFocused = false;
+		};
+
 		// 사용자 virtual callback이 예외로 빠져도 framework 작업 상태는 원래 값으로 돌아간다.
 		class SUiFlagScope final
 		{
@@ -194,10 +252,15 @@ namespace TextRPG
 			}
 			const bool isImplemented = option.ActionType == GameData::Common::ESceneActionType::StartGame ||
 									   option.ActionType == GameData::Common::ESceneActionType::Quit ||
-				(option.ActionType == GameData::Common::ESceneActionType::Continue && m_canContinue);
+				(option.ActionType == GameData::Common::ESceneActionType::Continue && m_canContinue) ||
+				(m_progress && option.ActionType == GameData::Common::ESceneActionType::Move &&
+					scene->sceneType == GameData::Common::ESceneType::Town) ||
+				(m_progress && scene->sceneType == GameData::Common::ESceneType::BattleField &&
+					(option.ActionType == GameData::Common::ESceneActionType::Attack ||
+					 option.ActionType == GameData::Common::ESceneActionType::ReturnTown));
 			option.IsEnabled = option.IsEnabled && isImplemented;
 			const int top = isMainMenu ? 3 + static_cast<int>(index) * 9 : 2 + static_cast<int>(index) * 7;
-			auto button = std::make_unique<FUiButton>(
+			auto button = std::make_unique<FCombatOptionButton>(
 				SCellRect{2, top, 38, 3}, std::to_wstring(option.OptionOrder) + L". " + option.Text,
 				[this, option]()
 				{
@@ -211,13 +274,24 @@ namespace TextRPG
 						m_pendingAction = {ESceneAction::Continue, {}};
 						DiscardUiLayerCommands();
 					}
+					else if (option.ActionType == GameData::Common::ESceneActionType::Move ||
+						option.ActionType == GameData::Common::ESceneActionType::ReturnTown)
+					{
+						m_pendingAction = {ESceneAction::Travel, option.TargetSceneId};
+						DiscardUiLayerCommands();
+					}
+					else if (option.ActionType == GameData::Common::ESceneActionType::Attack)
+					{
+						m_pendingAction = {ESceneAction::BasicAttack, {}};
+						DiscardUiLayerCommands();
+					}
 					else if (option.ActionType == GameData::Common::ESceneActionType::Quit)
 					{
 						m_pendingAction = {ESceneAction::Quit, {}};
 						DiscardUiLayerCommands();
 					}
 				},
-				static_cast<int>(option.OptionOrder));
+				static_cast<int>(option.OptionOrder), m_progress, option.ActionType);
 			button->SetEnabled(option.IsEnabled);
 			optionPanel->AddChild(std::move(button));
 		}

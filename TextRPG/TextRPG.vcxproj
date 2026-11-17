@@ -171,6 +171,7 @@
     <ClCompile Include="InGameData\FGameSession.cpp" />
     <ClCompile Include="UI\InGameData\FInGameStatusUi.cpp" />
     <ClCompile Include="InGameData\InGameData.cpp" />
+    <ClCompile Include="Combat\FCombat.cpp" />
     <ClCompile Include="CustomInGameData\FCharacterInGameData.cpp" />
     <ClCompile Include="InGameData\FSaveDataStore.cpp" />
     <ClCompile Include="UI\Common\FUiTextArt.cpp" />
@@ -178,12 +179,13 @@
     <ClCompile Include="Scene\FDataScene.cpp" />
     <ClCompile Include="Scene\FTextRPGSceneManager.cpp" />
     <ClCompile Include="Localization\Localization.cpp" />
-    <ClCompile Include="System\GameDataPaths.cpp" />
+
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Frame\FTextRpgFrame.h" />
     <ClInclude Include="InGameData\InGameData.h" />
+    <ClInclude Include="Combat\FCombat.h" />
     <ClInclude Include="CustomInGameData\FCharacterInGameData.h" />
     <ClInclude Include="InGameData\FGameSession.h" />
     <ClInclude Include="UI\InGameData\FInGameStatusUi.h" />
@@ -194,7 +196,7 @@
     <ClInclude Include="Scene\FDataScene.h" />
     <ClInclude Include="Scene\FTextRPGSceneManager.h" />
     <ClInclude Include="Localization\Localization.h" />
-    <ClInclude Include="System\GameDataPaths.h" />
+
   </ItemGroup>
   <ItemDefinitionGroup>
     <Link>

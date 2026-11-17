@@ -82,6 +82,7 @@
     <ClCompile Include="Runtime\GameData\FGameDataPackage.cpp" />
     <ClCompile Include="Runtime\GameData\FGameDataStore.cpp" />
     <ClCompile Include="Runtime\GameData\FGeneratedYaml.cpp" />
+    <ClCompile Include="Runtime\GameData\GameDataPaths.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Runtime\GameData\pch.h" />
@@ -89,6 +90,7 @@
     <ClInclude Include="Runtime\GameData\FGameDataPackage.h" />
     <ClInclude Include="Runtime\GameData\FGameDataStore.h" />
     <ClInclude Include="Runtime\GameData\FGeneratedYaml.h" />
+    <ClInclude Include="Runtime\GameData\GameDataPaths.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Asset\Character\Character_Swordswoman.txt" />
@@ -122,6 +124,9 @@
     <None Include="Generated\GameData\.gamedata-output" />
     <ClInclude Include="Generated\GameData\AchievementDefinition\AchievementDefinitionData.g.h" />
     <ClInclude Include="Generated\GameData\CharacterDefinition\CharacterDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\CharacterCombat\CharacterCombatData.g.h" />
+    <ClInclude Include="Generated\GameData\MonsterDefinition\MonsterDefinitionData.g.h" />
+    <ClInclude Include="Generated\GameData\CombatRule\CombatRuleData.g.h" />
     <ClInclude Include="Generated\GameData\Common\GameDataEnums.g.h" />
     <ClInclude Include="Generated\GameData\GameDataAll.h" />
     <ClInclude Include="Generated\GameData\ItemDefinition\ItemDefinitionData.g.h" />
@@ -135,6 +140,9 @@
     <None Include="Data\.gamedata-output" />
     <None Include="Data\Client\AchievementDefinition.yaml" />
     <None Include="Data\Client\CharacterDefinition.yaml" />
+    <None Include="Data\Client\CharacterCombat.yaml" />
+    <None Include="Data\Client\MonsterDefinition.yaml" />
+    <None Include="Data\Client\CombatRule.yaml" />
     <None Include="Data\Client\ItemDefinition.yaml" />
     <None Include="Data\Client\LevelDefinition.yaml" />
     <None Include="Data\Client\Localization.yaml" />
@@ -144,6 +152,8 @@
     <None Include="Data\Client\SceneTypeConfig.yaml" />
     <None Include="Data\Client\TextArt.yaml" />
     <None Include="Excel\InGameData.xlsx" />
+    <None Include="Excel\Combat.xlsx" />
+    <None Include="Excel\README.md" />
     <None Include="Excel\Scene.xlsx" />
     <None Include="Excel\Templates\GameDataTableTemplate.xlsx" />
     <None Include="README.md" />

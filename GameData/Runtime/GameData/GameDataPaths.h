@@ -1,6 +1,6 @@
 #pragma once
 
-namespace TextRPG
+namespace GameData
 {
 	[[nodiscard]] bool ResolveGameDataPackagePath(std::filesystem::path& packagePath, std::wstring& errorMessage);
 }

@@ -1,0 +1,27 @@
+# TextRPG.GameData 1
+"CombatRule1":
+  "RuleId": 1
+  "MonsterId": 1
+  "BattleSceneId": 3
+  "TownSceneId": 2
+  "Scale": 10000
+  "StrengthDefense": 10000
+  "DexteritySpeed": 10000
+  "BaseSpeed": 1
+  "LuckCritical": 100
+  "CriticalCap": 5000
+  "CriticalMultiplier": 15000
+  "MinimumDamage": 1
+  "StrengthCoefficient": 10000
+  "DexterityCoefficient": 2000
+  "IntelligenceCoefficient": 0
+  "LuckCoefficient": 0
+  "MaxStat": 1000000
+  "MaxRounds": 1000000
+  "HealOnReturn": 1
+  "HitTextKey": 38
+  "CriticalTextKey": 39
+  "VictoryTextKey": 40
+  "DefeatTextKey": 41
+  "ReadyTextKey": 42
+  "RoundTextKey": 43

@@ -20,12 +20,16 @@ namespace GameData::InGameData
 			::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field2,
 			::std::uint32_t _field3,
 			::std::vector<::GameData::InGameData::SInventoryItemProgress> _field4,
-			::std::vector<::GameData::InGameData::SAchievementProgress> _field5);
+			::GameData::InGameData::SBasicStats _field5,
+			::GameData::InGameData::SBattleProgress _field6,
+			::std::vector<::GameData::InGameData::SAchievementProgress> _field7);
 		::std::uint32_t m_contentVersion{};
 		::std::uint32_t m_sceneId{};
 		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> m_character{};
 		::std::uint32_t m_gold{};
 		::std::vector<::GameData::InGameData::SInventoryItemProgress> m_inventory{};
+		::GameData::InGameData::SBasicStats m_basicBonuses{};
+		::GameData::InGameData::SBattleProgress m_battle{};
 		::std::vector<::GameData::InGameData::SAchievementProgress> m_achievements{};
 		bool operator==(const SRootInGameData& _other) const;
 		::std::string_view GetSerializableTypeName() const noexcept final;

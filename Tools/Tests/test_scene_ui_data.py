@@ -181,7 +181,8 @@ class SceneUiDataTests(unittest.TestCase):
 
     def test_unimplemented_actions_are_visible_but_disabled(self):
         for option in table_records(self.workbook["SceneOption"]):
-            self.assertEqual(option["ActionType"] in {"StartGame", "Continue", "Quit"}, option["IsEnabled"])
+            self.assertEqual(option["ActionType"] in {"StartGame", "Continue", "Quit", "Move", "Attack", "ReturnTown"},
+                             option["IsEnabled"])
         main = sorted((row for row in table_records(self.workbook["SceneOption"]) if row["SceneType"] == "MainMenu"),
                       key=lambda row: row["OptionOrder"])
         self.assertEqual([1, 2, 3, 5], [row["OptionId"] for row in main])

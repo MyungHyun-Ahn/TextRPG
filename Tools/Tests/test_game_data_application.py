@@ -5,6 +5,7 @@ from ctypes import wintypes as w
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import shutil
@@ -137,7 +138,7 @@ def scene_matches(value, scene, labels, changed=False, previous_menu=None):
     rows = value.split("\n")
     if len(rows) != 43 or any(len(row) != 132 for row in rows):
         return False
-    if scene not in ("MainMenu", "Town") or len(labels.get(scene, [])) != 4:
+    if scene not in ("MainMenu", "Town", "BattleField") or len(labels.get(scene, [])) != 4:
         return False
 
     def box_matches(x, y, width, height, title=""):
@@ -163,6 +164,65 @@ def scene_matches(value, scene, labels, changed=False, previous_menu=None):
     return all(box_matches(89, y, 38, 3)
                and rows[y + 1][90:126] == physical_text(label, 36)
                for y, label in zip(button_rows, labels[scene]))
+
+
+def combat_expectations(client, assets):
+    tables = {name: generated_rows((client / (name + ".yaml")).read_bytes()) for name in
+              ("CharacterDefinition", "LevelDefinition", "NewGameProfile", "MonsterDefinition", "CombatRule", "Localization", "TextArt")}
+    localized = {row["TextKey"]: row["KoKR"] for row in tables["Localization"]}
+    profile, = [row for row in tables["NewGameProfile"] if row["IsDefault"]]
+    character, = [row for row in tables["CharacterDefinition"] if row["CharacterId"] == profile["CharacterId"]]
+    level, = [row for row in tables["LevelDefinition"] if row["Level"] == profile["InitialLevel"]]
+    rule, = tables["CombatRule"]
+    monster, = [row for row in tables["MonsterDefinition"] if row["MonsterId"] == rule["MonsterId"]]
+    art, = [row for row in tables["TextArt"] if row["ArtId"] == monster["ArtId"]]
+    art_path = Path(art["AssetPath"])
+    assert art_path.parts[0] == "Asset" and (art["Width"], art["Height"]) == (36, 36)
+    pixels = (assets.joinpath(*art_path.parts[1:])).read_text(encoding="utf-8-sig").splitlines()
+    assert len(pixels) == 36 and all(len(row) == 36 for row in pixels)
+    return {"playerName": localized[character["NameTextKey"]], "monsterName": localized[monster["NameTextKey"]],
+            "playerMaxHp": level["MaxHp"] + profile["InitialMaxHpBonus"], "monsterMaxHp": monster["MaxHp"],
+            "hpLabel": localized[22], "roundLabel": localized[rule["RoundTextKey"]],
+            "ready": localized[rule["ReadyTextKey"]], "hit": localized[rule["HitTextKey"]],
+            "critical": localized[rule["CriticalTextKey"]], "victory": localized[rule["VictoryTextKey"]],
+            "defeat": localized[rule["DefeatTextKey"]], "monsterPixels": pixels}
+
+
+def combat_frame(value, labels, content):
+    """정확한 슬롯/원본 아트/HP와 현지화 로그만 전투 증거로 인정한다."""
+    if not scene_matches(value, "BattleField", labels):
+        return None
+    rows = value.split("\n")
+    if rows[1][45:83] != physical_text(content["monsterName"], 38):
+        return None
+    if [row[46:82] for row in rows[6:42]] != content["monsterPixels"]:
+        return None
+    def number(x, y, label, width, hp=False):
+        prefix = physical_text(label + ": ", width).rstrip(" ") + " "
+        match = re.fullmatch(re.escape(prefix) + (r"(\d+)/(\d+) *" if hp else r"(\d+) *"), rows[y][x:x + width])
+        return tuple(map(int, match.groups())) if match else None
+    player = number(2, 2, content["hpLabel"], 38, True)
+    monster = number(45, 2, content["hpLabel"], 38, True)
+    round_value = number(45, 3, content["roundLabel"], 38)
+    if not player or not monster or not round_value:
+        return None
+    if player[1] != content["playerMaxHp"] or monster[1] != content["monsterMaxHp"]:
+        return None
+    if not (0 <= player[0] <= player[1] and 0 <= monster[0] <= monster[1]):
+        return None
+    outcome = "victory" if monster[0] == 0 else ("defeat" if player[0] == 0 else None)
+    if outcome and rows[8][88:130] != physical_text(content[outcome], 42):
+        return None
+    if round_value[0] == 0:
+        if rows[1][88:130] != physical_text(content["ready"], 42):
+            return None
+    else:
+        if rows[1][88:130] not in [physical_text(content[name], 42) for name in ("playerName", "monsterName")]:
+            return None
+        damage = number(88, 2, content["hit"], 42) or number(88, 2, content["critical"], 42)
+        if not damage or damage[0] <= 0:
+            return None
+    return {"playerHp": player[0], "monsterHp": monster[0], "round": round_value[0], "outcome": outcome}
 
 
 def progress_matches(value, expected, labels):
@@ -332,7 +392,7 @@ def screen_oracle_controls(work):
 
 def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, expected_options=None,
                   verify_newgame_save=False, scenario="newgame", expected_progress=None, progress_labels=None, expected_error=None,
-                  game_arguments=()):
+                  game_arguments=(), combat_content=None):
     """사용자 콘솔에 붙지 않고 새로 만든 소유 최소화 콘솔만 제어한다."""
     env = env.copy()
     env.setdefault("TEXT_RPG_SAVE_ROOT", str(directory.resolve() / "save-root"))
@@ -353,6 +413,7 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
                                creationflags=subprocess.CREATE_NEW_CONSOLE)
     handles = []
     read_only_save = None
+    last_attributes = []
 
     def require(value, label):
         if not value:
@@ -368,12 +429,14 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
         assert written.value == 2
 
     def read_grid(name):
+        nonlocal last_attributes
         info = Info()
         require(kernel.GetConsoleScreenBufferInfo(handles[0], c.byref(info)), "owned console info")
         cells = (Cell * (info.size.X * info.size.Y))()
         area = Rect(0, 0, info.size.X - 1, info.size.Y - 1)
         require(kernel.ReadConsoleOutputW(handles[0], cells, info.size, Coord(0, 0), c.byref(area)), "owned console cell read")
         assert (area.Left, area.Top, area.Right, area.Bottom) == (0, 0, info.size.X - 1, info.size.Y - 1)
+        last_attributes = [cell.attributes for cell in cells]
         # CharacterW는 한글의 trailing 셀을 생략한다. 물리 좌표 검사는 CHAR_INFO의 셀 간격을 보존한다.
         value = "\n".join("".join(cells[y * info.size.X + x].character.unicode or " "
                                   for x in range(info.size.X)) for y in range(info.size.Y))
@@ -448,6 +511,51 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
         assert scene_matches(town, "Town", labels), "Town exact four option cells/layout"
         if expected_progress is not None:
             assert progress_matches(town, expected_progress, progress_labels), "restored progress readout differs from production fixture"
+        if scenario == "combat":
+            assert combat_content is not None
+            def buttons(expected):
+                for index, enabled in enumerate(expected):
+                    attribute = last_attributes[(15 + index * 7) * 132 + 90] & 0xFF
+                    assert (attribute != 8) == enabled, "combat option availability differs from phase1 contract"
+            buttons((False, False, False, True))
+            key(handles[1], 0x34)
+            battle = wait_grid("combat-ready", lambda value: combat_frame(value, labels, combat_content) is not None)
+            state = combat_frame(battle, labels, combat_content)
+            assert state["round"] == 0 and state["monsterHp"] == combat_content["monsterMaxHp"]
+            buttons((True, False, False, False))
+            initial_player_hp = state["playerHp"]
+            history = [state]
+            for turn in range(1, 101):
+                key(handles[1], 0x31)
+                battle = wait_grid("combat-round-" + str(turn), lambda value:
+                                   (combat_frame(value, labels, combat_content) or {}).get("round") == turn)
+                next_state = combat_frame(battle, labels, combat_content)
+                assert next_state["monsterHp"] < state["monsterHp"] or next_state["outcome"] == "defeat"
+                assert next_state["playerHp"] <= state["playerHp"]
+                history.append(next_state)
+                state = next_state
+                if state["outcome"] is not None:
+                    break
+            assert state["outcome"] is not None, "combat did not finish within bounded input count"
+            assert state["playerHp"] < initial_player_hp, "no visible enemy retaliation/player HP change"
+            buttons((False, False, False, True))
+            key(handles[1], 0x31)
+            for attempt in range(5):
+                time.sleep(0.05)
+                unchanged = read_grid("combat-finished-extra-" + str(attempt))
+                assert unchanged == battle, "finished combat accepted extra attack or changed visible result"
+            key(handles[1], 0x34)
+            returned = wait_grid("combat-return-town", lambda value: scene_matches(value, "Town", labels))
+            buttons((False, False, False, True))
+            assert returned != battle
+            key(handles[1], 0x34)
+            fresh = wait_grid("combat-reenter", lambda value:
+                              (combat_frame(value, labels, combat_content) or {}).get("round") == 0)
+            fresh_state = combat_frame(fresh, labels, combat_content)
+            assert fresh_state["monsterHp"] == combat_content["monsterMaxHp"]
+            assert fresh_state["playerHp"] == combat_content["playerMaxHp"]
+            buttons((True, False, False, False))
+            (directory / "combat-history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
         before_quit = None
         if verify_newgame_save:
             save_root = Path(env["TEXT_RPG_SAVE_ROOT"])
@@ -498,7 +606,7 @@ def main():
     parser.add_argument("--game", required=True, type=Path)
     parser.add_argument("--packer", required=True, type=Path)
     parser.add_argument("--scratch-root", required=True, type=Path)
-    parser.add_argument("--only", choices=["missing-package", "screen-oracle", "ingamedata-newgame", "ingamedata"])
+    parser.add_argument("--only", choices=["missing-package", "screen-oracle", "ingamedata-newgame", "ingamedata", "combat"])
     parser.add_argument("--progress-fixture", type=Path, help="existing SceneUiRuntime native test executable")
     parser.add_argument("--frame-mode", choices=["basic", "fixed-update", "frame-skip"],
                         help="select the game's immutable startup Frame mode")
@@ -515,7 +623,7 @@ def main():
                        {key: value for key, value in summary.items() if key != "results"})
         return
     results = []
-    progress_scope = args.only in ("ingamedata-newgame", "ingamedata")
+    progress_scope = args.only in ("ingamedata-newgame", "ingamedata", "combat")
     if progress_scope:
         (work / "results.json").write_text(json.dumps({
             "passed": False, "status": "incomplete", "cases": 0, "results": results,
@@ -569,13 +677,13 @@ def run_application(args, work, results):
         return str(path)
 
     def positive_console(name, directory, changed=False, expected_logo=None, expected_options=None,
-                         verify_newgame_save=False, scenario="newgame"):
+                         verify_newgame_save=False, scenario="newgame", combat_content=None):
         watch = FileActivityWatch([app, unrelated, runtime_temp])
         try:
             with watch:
                 # console_smoke의 finally가 자식을 완전히 회수한 뒤 health/drain한다.
                 console_smoke(game, unrelated, env, directory, changed, expected_logo, expected_options,
-                              verify_newgame_save, scenario=scenario, game_arguments=game_arguments)
+                              verify_newgame_save, scenario=scenario, game_arguments=game_arguments, combat_content=combat_content)
         finally:
             report = save_watch(name, watch)
         watch.assert_clean()
@@ -644,6 +752,19 @@ def run_application(args, work, results):
 
     baseline_options = pack("baseline", capture_options=True)
     good = dat.read_bytes()
+    if args.only == "combat":
+        directory = work / "combat"
+        directory.mkdir()
+        content = combat_expectations(source, ROOT / "GameData/Asset")
+        (work / "combat-expected.json").write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
+        report = positive_console("combat", directory, expected_logo=logo_bytes, expected_options=baseline_options,
+                                  verify_newgame_save=True, scenario="combat", combat_content=content)
+        results.append({"name": "combat-visible-cycle-result-return-reentry", "passed": True, "fileActivityReport": report})
+        if [row.get("name") for row in results] != ["missing-package", "combat-visible-cycle-result-return-reentry"]:
+            raise RuntimeError("combat acceptance cases incomplete")
+        summary = {"passed": True, "status": "complete", "cases": len(results), "results": results,
+                   "exeSha256": identity, "frameMode": frame_mode or "basic"}
+        return summary, summary
     if args.only in ("ingamedata-newgame", "ingamedata"):
         directory = work / "ingamedata-newgame"
         directory.mkdir()
@@ -744,7 +865,7 @@ def run_application(args, work, results):
     reject("missing-required-table", ["SceneTypeConfig", "missing", "required"])
     has_progress_catalog = (source / "CharacterDefinition.yaml").is_file()
     progress_tables = ("CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
-                       "ItemDefinition.yaml", "AchievementDefinition.yaml")
+                       "ItemDefinition.yaml", "AchievementDefinition.yaml", "CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml")
     if has_progress_catalog:
         # 진행 정의의 필수 ArtId만 끊은 전체 콘텐츠는 더 이상 유효한 optional fixture가 아니다.
         pack("required-character-art-catalog", omit="TextArt.yaml")

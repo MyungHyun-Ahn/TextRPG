@@ -20,6 +20,7 @@ internal static partial class FGameDataValidator
         FNumericKeyValidation.Validate(tables, diagnostics);
         ValidateClientOnly(tables, enumDefinitions, diagnostics);
         FSceneDataValidation.Validate(tables, enumDefinitions, diagnostics);
+        FCombatDataValidation.Validate(tables, diagnostics);
         return enumDefinitions;
     }
 

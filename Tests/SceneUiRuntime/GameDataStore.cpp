@@ -12,6 +12,9 @@
 #include "NewGameProfile/NewGameProfileData.g.h"
 #include "ItemDefinition/ItemDefinitionData.g.h"
 #include "AchievementDefinition/AchievementDefinitionData.g.h"
+#include "CharacterCombat/CharacterCombatData.g.h"
+#include "MonsterDefinition/MonsterDefinitionData.g.h"
+#include "CombatRule/CombatRuleData.g.h"
 #include "GameData/FGameDataPackage.h"
 #include "GameData/FGeneratedYaml.h"
 #include "GameData/FGameDataStore.h"
@@ -80,6 +83,23 @@ namespace
 	{
 		return std::make_tuple(row.achievementId, row.nameTextKey, row.targetCount);
 	}
+	auto Values(const CharacterCombat::SCharacterCombatData& row)
+	{
+		return std::make_tuple(row.characterId, row.strength, row.dexterity, row.intelligence, row.luck);
+	}
+	auto Values(const MonsterDefinition::SMonsterDefinitionData& row)
+	{
+		return std::make_tuple(row.monsterId, row.nameTextKey, row.artId, row.maxHp, row.attack,
+			row.defense, row.strength, row.dexterity, row.intelligence, row.luck);
+	}
+	auto Values(const CombatRule::SCombatRuleData& row)
+	{
+		return std::make_tuple(row.ruleId, row.monsterId, row.battleSceneId, row.townSceneId, row.scale,
+			row.strengthDefense, row.dexteritySpeed, row.baseSpeed, row.luckCritical, row.criticalCap,
+			row.criticalMultiplier, row.minimumDamage, row.strengthCoefficient, row.dexterityCoefficient, row.intelligenceCoefficient,
+			row.luckCoefficient, row.maxStat, row.maxRounds, row.healOnReturn, row.hitTextKey,
+			row.criticalTextKey, row.victoryTextKey, row.defeatTextKey, row.readyTextKey, row.roundTextKey);
+	}
 	struct SFixtureTable final
 	{
 		const char* name;
@@ -87,7 +107,7 @@ namespace
 		std::size_t rows{};
 		std::size_t checks{};
 	};
-	bool HasCompleteSnapshot(const std::array<SFixtureTable, 10>& tables)
+	bool HasCompleteSnapshot(const std::array<SFixtureTable, 13>& tables)
 	{
 		return std::all_of(tables.begin(), tables.end(), [](const auto& table)
 		{
@@ -184,10 +204,10 @@ int main(int argc, char** argv)
 	// 게시된 모든 행의 포인터와 전체 필드를 보존하는지 모든 음성 변형 뒤 확인한다.
 	std::vector<std::function<void()>> publishedChecks;
 	std::size_t publishedRowCount = 0;
-	std::array<SFixtureTable, 10> tables{{
+	std::array<SFixtureTable, 13> tables{{
 		{"Scene.yaml"}, {"SceneOption.yaml"}, {"SceneTypeConfig.yaml"}, {"Localization.yaml"}, {"TextArt.yaml"},
 		{"CharacterDefinition.yaml"}, {"LevelDefinition.yaml"}, {"NewGameProfile.yaml"},
-		{"ItemDefinition.yaml"}, {"AchievementDefinition.yaml"}
+		{"ItemDefinition.yaml"}, {"AchievementDefinition.yaml"}, {"CharacterCombat.yaml"}, {"MonsterDefinition.yaml"}, {"CombatRule.yaml"}
 	}};
 	for (const auto& [file, bytes] : baseline)
 	{
@@ -257,6 +277,30 @@ int main(int argc, char** argv)
 			{
 				const auto id = row.fields.at(L"AchievementId").number;
 				Remember(publishedChecks, [&store, id]() { return store.FindAchievementDefinition(id); });
+			}
+			else if (file == "CharacterCombat.yaml")
+			{
+				const auto id = row.fields.at(L"CharacterId").number;
+				Remember(publishedChecks, [&store, id]()
+				{
+					return store.FindCharacterCombat(id);
+				});
+			}
+			else if (file == "MonsterDefinition.yaml")
+			{
+				const auto id = row.fields.at(L"MonsterId").number;
+				Remember(publishedChecks, [&store, id]()
+				{
+					return store.FindMonsterDefinition(id);
+				});
+			}
+			else if (file == "CombatRule.yaml")
+			{
+				const auto id = row.fields.at(L"RuleId").number;
+				Remember(publishedChecks, [&store, id]()
+				{
+					return store.FindCombatRule(id);
+				});
 			}
 			else assert(false);
 			assert(publishedChecks.size() == checksBeforeRow + 1);
@@ -683,7 +727,8 @@ int main(int argc, char** argv)
 	std::cout << "PASS successful data-only reload preserves escaped Korean supplementary UTF-16 text\n";
 	// TextArt 헤더 유무와 관계없이 선택 카탈로그가 없는 패키지도 정상이다.
 	for (const auto* table : {"TextArt.yaml", "CharacterDefinition.yaml", "LevelDefinition.yaml", "NewGameProfile.yaml",
-		"ItemDefinition.yaml", "AchievementDefinition.yaml"}) std::filesystem::remove(yaml / table);
+		"ItemDefinition.yaml", "AchievementDefinition.yaml", "CharacterCombat.yaml", "MonsterDefinition.yaml", "CombatRule.yaml"})
+		std::filesystem::remove(yaml / table);
 	assert(GameData::BuildEncryptedPackage(yaml, package, key, error, assets));
 	assert(store.Load(package, key, error));
 	assert(store.FindTextArt(kMainLogoArtId) == nullptr && store.FindScene(kMainMenuSceneId));

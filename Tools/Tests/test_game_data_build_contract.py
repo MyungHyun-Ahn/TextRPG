@@ -237,9 +237,21 @@ class GameDataBuildContract(unittest.TestCase):
         self.assertIn("'$(NativeTestSuite)'=='SaveData'", creator.get('Condition', ''))
         self.assertIn("'$(NativeTestSuite)'=='InGameData'", creator.get('Condition', ''))
 
+    def test_package_path_resolver_is_owned_by_gamedata(self):
+        library = ET.parse(ROOT / 'GameData/GameData.vcxproj').getroot()
+        game = ET.parse(ROOT / 'TextRPG/TextRPG.vcxproj').getroot()
+        for kind, suffix in (('ClCompile', '.cpp'), ('ClInclude', '.h')):
+            moved = 'Runtime\\GameData\\GameDataPaths' + suffix
+            self.assertEqual(sum(item.get('Include') == moved for item in registered_items(library, kind)), 1)
+            self.assertFalse(any('GameDataPaths' in item.get('Include', '') for item in registered_items(game, kind)))
+            self.assertFalse((ROOT / ('TextRPG/System/GameDataPaths' + suffix)).exists())
+        caller = (ROOT / 'TextRPG/Frame/FTextRpgFrame.cpp').read_text(encoding='utf-8-sig')
+        self.assertIn('#include "GameData/GameDataPaths.h"', caller)
+        self.assertIn('GameData::ResolveGameDataPackagePath(packagePath, errorMessage)', caller)
+
     def test_retired_loose_root_and_unused_input_state_are_absent(self):
-        header = (ROOT / 'TextRPG/System/GameDataPaths.h').read_text(encoding='utf-8-sig')
-        source = (ROOT / 'TextRPG/System/GameDataPaths.cpp').read_text(encoding='utf-8-sig')
+        header = (ROOT / 'GameData/Runtime/GameData/GameDataPaths.h').read_text(encoding='utf-8-sig')
+        source = (ROOT / 'GameData/Runtime/GameData/GameDataPaths.cpp').read_text(encoding='utf-8-sig')
         self.assertIn('ResolveGameDataPackagePath', header)
         self.assertIn('ResolveGameDataPackagePath', source)
         for text in (header, source):

@@ -1,7 +1,7 @@
-#include "pch.h"
+#include "GameData/pch.h"
 #include "GameDataPaths.h"
 
-namespace TextRPG
+namespace GameData
 {
 	bool ResolveGameDataPackagePath(std::filesystem::path& packagePath, std::wstring& errorMessage)
 	{

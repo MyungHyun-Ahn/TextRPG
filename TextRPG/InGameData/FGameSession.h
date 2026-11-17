@@ -31,6 +31,8 @@ namespace TextRPG
 		// NewGame/Continue는 요청만 수락한다. EndFrame 후 실제 게시/저장 결과를 한 번 받는다.
 		[[nodiscard]] EGameStartResult TakeStartResult(FTextRPGSceneManager& scenes, std::string& error);
 		[[nodiscard]] bool Save(std::string& error) const;
+		[[nodiscard]] bool Travel(std::uint32_t sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error);
+		[[nodiscard]] bool BasicAttack(FTextRPGSceneManager& scenes, std::string& error);
 
 	private:
 		const GameData::FGameDataStore& m_store;

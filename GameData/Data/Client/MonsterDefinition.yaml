@@ -1,0 +1,12 @@
+# TextRPG.GameData 1
+"MonsterDefinition1":
+  "MonsterId": 1
+  "NameTextKey": 37
+  "ArtId": 3
+  "MaxHp": 45
+  "Attack": 7
+  "Defense": 2
+  "Strength": 3
+  "Dexterity": 4
+  "Intelligence": 0
+  "Luck": 3

@@ -139,3 +139,35 @@
   "TextKey": 35
   "KoKR": "새 게임을 시작했지만 저장하지 못했습니다."
   "EnUS": "New game started, but saving failed."
+"Localization36":
+  "TextKey": 36
+  "KoKR": "마을로 돌아가기"
+  "EnUS": "Return to town"
+"Localization37":
+  "TextKey": 37
+  "KoKR": "어린 용"
+  "EnUS": "Young dragon"
+"Localization38":
+  "TextKey": 38
+  "KoKR": "공격 피해"
+  "EnUS": "Attack damage"
+"Localization39":
+  "TextKey": 39
+  "KoKR": "치명타 피해"
+  "EnUS": "Critical damage"
+"Localization40":
+  "TextKey": 40
+  "KoKR": "승리"
+  "EnUS": "Victory"
+"Localization41":
+  "TextKey": 41
+  "KoKR": "패배"
+  "EnUS": "Defeat"
+"Localization42":
+  "TextKey": 42
+  "KoKR": "전투 준비"
+  "EnUS": "Battle ready"
+"Localization43":
+  "TextKey": 43
+  "KoKR": "라운드"
+  "EnUS": "Round"

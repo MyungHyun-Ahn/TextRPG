@@ -6,10 +6,13 @@
 #include <string>
 #include "Common/GameDataEnums.g.h"
 #include "AchievementDefinition/AchievementDefinitionData.g.h"
+#include "CharacterCombat/CharacterCombatData.g.h"
 #include "CharacterDefinition/CharacterDefinitionData.g.h"
+#include "CombatRule/CombatRuleData.g.h"
 #include "ItemDefinition/ItemDefinitionData.g.h"
 #include "LevelDefinition/LevelDefinitionData.g.h"
 #include "Localization/LocalizationData.g.h"
+#include "MonsterDefinition/MonsterDefinitionData.g.h"
 #include "NewGameProfile/NewGameProfileData.g.h"
 #include "Scene/SceneData.g.h"
 #include "SceneOption/SceneOptionData.g.h"

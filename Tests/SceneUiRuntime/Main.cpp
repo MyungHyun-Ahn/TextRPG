@@ -1774,6 +1774,90 @@ static std::vector<std::uint8_t> ReadSaveBytes(const std::filesystem::path& path
 	return {(std::istreambuf_iterator<char>(stream)), {}};
 }
 
+static void TestCombatSession(GameData::FGameDataStore& store, const std::filesystem::path& work)
+{
+	SSaveRootScope environment(std::filesystem::absolute(work / "combat-saves"));
+	FGameSession session(store);
+	FGameUiBridge ui;
+	FTextRPGSceneManager scenes(store);
+	std::string error;
+	std::wstring sceneError;
+	assert(scenes.LoadStartupScene(ui, sceneError));
+	PublishTestFrame(scenes);
+	assert(session.NewGame(FindNewGameScene(store), scenes, ui, error) == EGameStartResult::Queued);
+	PublishTestFrame(scenes);
+	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+	const auto* town = session.GetProgress();
+	SInputEvent input{};
+	input.ScreenWidth = 132;
+	input.ScreenHeight = 43;
+	input.Type = EInputEventType::KeyDown;
+	input.Key = EInputKey::Digit4;
+	input.BatchId = 910;
+	const auto move = scenes.HandleInput(input);
+	assert(move.Type == ESceneAction::Travel);
+	assert(session.Travel(move.TargetSceneId, scenes, ui, error));
+	assert(session.GetProgress() == town && session.GetProgress()->GetBattle().RuleId == 0);
+	assert(!session.BasicAttack(scenes, error));
+	PublishTestFrame(scenes);
+	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+	assert(session.GetProgress()->GetSceneId() == move.TargetSceneId);
+	assert(session.GetProgress()->GetBattle().MonsterHp > 0 && session.GetProgress()->GetBattle().Round == 0);
+	input.Type = EInputEventType::KeyUp;
+	input.BatchId = 911;
+	(void)scenes.HandleInput(input);
+	input.Type = EInputEventType::KeyDown;
+	input.Key = EInputKey::Digit1;
+	input.BatchId = 912;
+	const auto attack = scenes.HandleInput(input);
+	assert(attack.Type == ESceneAction::BasicAttack && session.BasicAttack(scenes, error));
+	const auto* stable = session.GetProgress();
+	const auto savedBattle = stable->GetBattle();
+	const auto savedHp = stable->GetCharacter().CurrentHp;
+	assert(savedBattle.Round == 1 && savedBattle.RandCount > 0 && savedBattle.HitCount >= 1);
+	FFrameBuffer frame(132, 43);
+	scenes.Render(frame);
+	const auto rendered = frame.GetCells();
+	{
+		std::ofstream snapshot(work / "combat-round1.utf16", std::ios::binary);
+		snapshot.write(reinterpret_cast<const char*>(rendered.data()), static_cast<std::streamsize>(rendered.size() * sizeof(wchar_t)));
+		assert(snapshot);
+	}
+	assert(session.Save(error) && session.CanContinue(scenes, ui, error));
+	assert(session.Continue(scenes, ui, error));
+	PublishTestFrame(scenes);
+	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+	assert(session.GetProgress()->GetBattle() == savedBattle && session.GetProgress()->GetCharacter().CurrentHp == savedHp);
+	assert(session.BasicAttack(scenes, error));
+	std::uint32_t attempts = 0;
+	while (session.GetProgress()->GetBattle().Outcome == 0 && attempts++ < 100)
+		assert(session.BasicAttack(scenes, error));
+	assert(session.GetProgress()->GetBattle().Outcome != 0);
+	const auto finished = session.GetProgress()->GetBattle();
+	const auto finalHp = session.GetProgress()->GetCharacter().CurrentHp;
+	assert(!session.BasicAttack(scenes, error));
+	assert(session.GetProgress()->GetBattle() == finished && session.GetProgress()->GetCharacter().CurrentHp == finalHp);
+	scenes.Render(frame);
+	assert(frame.GetCells() != rendered);
+	input.Key = EInputKey::Digit4;
+	input.Type = EInputEventType::KeyUp;
+	input.BatchId = 913;
+	(void)scenes.HandleInput(input);
+	input.Type = EInputEventType::KeyDown;
+	input.BatchId = 914;
+	const auto back = scenes.HandleInput(input);
+	assert(back.Type == ESceneAction::Travel && session.Travel(back.TargetSceneId, scenes, ui, error));
+	PublishTestFrame(scenes);
+	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+	assert(session.GetProgress()->GetBattle().RuleId == 0);
+	assert(session.GetProgress()->GetCharacter().CurrentHp > 0);
+	assert(session.Travel(move.TargetSceneId, scenes, ui, error));
+	PublishTestFrame(scenes);
+	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
+	assert(session.GetProgress()->GetBattle().Round == 0 && session.GetProgress()->GetBattle().RandCount == 0);
+	std::cout << "PASS IGD combat producer Store UI travel EndFrame round archive Continue result return reentry\n";
+}
+
 static void TestProgressSession(GameData::FGameDataStore& store, const std::filesystem::path& work)
 {
 	const auto saveRoot = std::filesystem::absolute(work / "progress-saves");
@@ -1813,6 +1897,16 @@ static void TestProgressSession(GameData::FGameDataStore& store, const std::file
 	PublishTestFrame(scenes);
 	assert(session.GetProgress() == initial && ui.GetBoundScene()->GetProgress() == initial);
 	assert(session.CanContinue(scenes, ui, error));
+	SInputEvent moveInput{};
+	moveInput.Type = EInputEventType::KeyDown;
+	moveInput.Key = EInputKey::Digit4;
+	moveInput.BatchId = 901;
+	moveInput.ScreenWidth = 132;
+	moveInput.ScreenHeight = 43;
+	const auto moveAction = scenes.HandleInput(moveInput);
+	assert(moveAction && "Town Move must produce a playable travel action");
+	moveInput.Type = EInputEventType::KeyUp;
+	(void)scenes.HandleInput(moveInput);
 
 	std::unique_ptr<InGameData> changed;
 	assert(InGameData::CreateNew(store, target, changed, error));
@@ -1944,7 +2038,7 @@ static void TestLegacyProgressSession(GameData::FGameDataStore& gameData, const 
 		std::vector<std::uint8_t> current;
 		assert(slot.Load(current, error) && current.size() >= 12);
 		assert(current[0] == 'C' && current[1] == 'G' && current[2] == 'S' && current[3] == 'A');
-		assert(current[8] == 2 && current[9] == 0 && current[10] == 0 && current[11] == 0);
+		assert(current[8] == 3 && current[9] == 0 && current[10] == 0 && current[11] == 0);
 		std::unique_ptr<InGameData> restored;
 		assert(InGameData::Deserialize(current, gameData, restored, error));
 		assert(restored->GetGold() == 54321 && restored->GetCharacter().CurrentHp == 7);
@@ -3750,6 +3844,7 @@ try
 		TestGenericFrameInvalidation();
 		TestEndFrameGenericStages();
 		TestEndFrameCallbackLifetime(store);
+		TestCombatSession(store, work);
 		TestProgressSession(store, work);
 		TestLegacyProgressSession(store, work);
 		TestNewerProgressSlotProtection(store, work);

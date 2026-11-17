@@ -1,0 +1,7 @@
+# TextRPG.GameData 1
+"CharacterCombat1":
+  "CharacterId": 1
+  "Strength": 5
+  "Dexterity": 5
+  "Intelligence": 3
+  "Luck": 5

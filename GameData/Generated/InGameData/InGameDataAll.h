@@ -22,8 +22,10 @@
 
 namespace GameData::InGameData
 {
-	inline constexpr ::std::uint32_t kSchemaVersion = 2u;
+	inline constexpr ::std::uint32_t kSchemaVersion = 3u;
 	struct SAchievementProgress;
+	struct SBasicStats;
+	struct SBattleProgress;
 	struct SCharacterStats;
 	struct SCharacterProgress;
 	struct SInventoryItemProgress;
@@ -31,6 +33,8 @@ namespace GameData::InGameData
 }
 
 #include "SAchievementProgress.g.h"
+#include "SBasicStats.g.h"
+#include "SBattleProgress.g.h"
 #include "SCharacterStats.g.h"
 #include "SCharacterProgress.g.h"
 #include "SInventoryItemProgress.g.h"

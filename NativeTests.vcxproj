@@ -131,6 +131,12 @@
     </ClCompile>
     <ClCompile Include="TextRPG\CustomInGameData\FCharacterInGameData.cpp" />
     <ClCompile Include="TextRPG\InGameData\InGameData.cpp" />
+    <ClCompile Include="TextRPG\Combat\FCombat.cpp" />
+    <ClCompile Include="Tests\InGameData\Combat.cpp" Condition="'$(NativeTestSuite)'=='InGameData'">
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>GameData/pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)GameData.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup Condition="'$(NativeTestSuite)'=='GameDataStore'">
     <ClCompile Include="Tests\SceneUiRuntime\GameDataStore.cpp">
@@ -178,6 +184,7 @@
     <ClInclude Include="GameData\Runtime\GameData\pch.h" />
     <ClInclude Include="TextRPG\InGameData\FSaveDataStore.h" />
     <ClInclude Include="TextRPG\InGameData\InGameData.h" />
+    <ClInclude Include="TextRPG\Combat\FCombat.h" />
     <ClInclude Include="TextRPG\CustomInGameData\FCharacterInGameData.h" />
     <ClInclude Include="TextRPG\InGameData\FGameSession.h" />
     <ClInclude Include="TextRPG\UI\InGameData\FInGameStatusUi.h" />

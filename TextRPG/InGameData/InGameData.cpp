@@ -10,6 +10,7 @@
 #include "InGameDataAll.h"
 #include "CustomInGameData/FCharacterInGameData.h"
 #include "InGameData.h"
+#include "Combat/FCombat.h"
 
 
 namespace
@@ -308,6 +309,10 @@ namespace TextRPG
 		if (!m_data.m_character) std::terminate();
 		return *m_data.m_character;
 	}
+	const GameData::InGameData::SBattleProgress& InGameData::GetBattle() const noexcept
+	{
+		return m_data.m_battle;
+	}
 	std::uint32_t InGameData::GetGold() const noexcept { return m_data.m_gold; }
 	std::uint32_t InGameData::GetSceneId() const noexcept { return m_data.m_sceneId; }
 	const std::vector<SInventoryItemProgress>& InGameData::GetInventory() const noexcept { return m_data.m_inventory; }
@@ -417,6 +422,11 @@ namespace TextRPG
 		SCharacterStats stats;
 		if (!GetStats(store, stats, error)) return false;
 		if (hp > stats.MaxHp) { error = "CurrentHp exceeds derived MaxHp"; return false; }
+		if (m_data.m_battle.RuleId != 0 && hp != m_data.m_character->CurrentHp)
+		{
+			error = "Active combat HP changes require a combat action";
+			return false;
+		}
 		m_data.m_character->CurrentHp = hp;
 		error.clear();
 		return true;
@@ -434,6 +444,8 @@ namespace TextRPG
 			if (!Validate(store, error)) return false;
 			CheckBounds(sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
 			if (!store.FindScene(sceneId)) throw std::runtime_error("SceneId definition is missing");
+			if (m_data.m_battle.RuleId != 0 && sceneId != m_data.m_sceneId)
+				throw std::runtime_error("Active combat scene changes require travel");
 			m_data.m_sceneId = sceneId;
 			error.clear();
 			return true;
@@ -501,6 +513,7 @@ namespace TextRPG
 			error = "Character level/experience mismatch";
 			return false;
 		}
+		if (!FCombat::Validate(store, *this, error)) return false;
 		if (m_data.m_character->CurrentHp > stats.MaxHp)
 		{
 			error = "CurrentHp exceeds derived MaxHp";

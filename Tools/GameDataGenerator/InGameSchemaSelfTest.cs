@@ -54,6 +54,9 @@ internal static class FInGameSchemaSelfTest
             Require(header.Contains("struct " + name + " :", StringComparison.Ordinal) &&
                 header.Contains("kTypeName = \"" + name + "\"", StringComparison.Ordinal), "positive identity must not be normalized: " + name);
         }
+        string registry = File.ReadAllText(Path.Combine(output, "InGameDataRegistry.g.cpp"));
+        Require(registry.Split('\n').All(line => line.Replace("\t", "    ", StringComparison.Ordinal).Length <= 140),
+            "registry registration rows must wrap at 140 columns with tab width four");
         string before = TreeSnapshot(output);
         string[] reservedNames = ["kTypeName", "SerializeFields", "DeserializeFields", "GetSerializableTypeName",
             "ingamedataregistry", "InGameDataRegistry", "INGAMEDATAREGISTRY", "iNgAmEdAtArEgIsTrY",
