@@ -1,5 +1,20 @@
 # TextRPG 작업 로드맵
 
+### Random 콘텐츠별 재현·가중치 선택 — 컴포넌트 로컬 구현·실행·검토 완료
+
+- 계획/구현 기록: [014 Random 가중치 선택·재현](GameDesign/014_Random가중치선택및재현계획.md), 현재 API: [Random 사용법](../ConsoleGameCore/Math/Random/README.md). 사용자 작성 FSelector/PCH/프로젝트의 틀을 기반으로 승인된 범위만 구현했다.
+- 콘텐츠마다 독립 FSelector를 사용하고, 정적 가중치 표는 로드 단계에 준비한 불변 표로 공유한다. AddProc 내부 등록과 외부 표 전달을 함께 제공한다. key/개별 weight는 uint32, seed/원시 엔진 출력 count/checked 누적합은 uint64를 사용한다.
+- 사용자 정정: 랜덤 콘텐츠가 FSelector를 멤버 컴포넌트로 보유하고 기존 SaveFile Load 시 저장된 seed/randCount로 복원한다. 엔진 옵션은 복원 시 동일하게 적용한다. 행동별 자동 저장·보상 트랜잭션·결과 공개 순서 재설계는 이번 범위에서 제외한다.
+- [x] RNG-D01 현재 stub·요구·소유권·복원/표/저장 계약 및 구현 순서 문서화. **문서 완료이며 코드/실행 완료가 아님.**
+- [x] RNG-01 네 엔진 옵션·64비트 seed/count 초기화/복원과 실제 RED/GREEN. 정상 사용으로 저장한 큰 count도 복원하도록 임시 상한을 제거했다.
+- [x] RNG-02 AddProc·외부 map/준비된 공유 표·결정적 정수 가중치 선택 및 실패 시 상태 보존.
+- [x] RNG-03 GameData 없는 실제 Core lib 소비자와 기존 NativeTests/runner·프로젝트/PCH 연결.
+- [ ] RNG-04 운영 Excel 가챠/강화 표와 실제 콘텐츠 연결은 해당 콘텐츠 정의 시 진행한다. 현재는 로드 단계 전체 등록/Prepare/const 공유 API와 통제된 데이터 fixture·콘텐츠 멤버 사용을 구현·검증했다. 임의 운영 확률·규칙·workbook은 추가하지 않았다.
+- [x] RNG-05 기존 archive·실제 인증 암호화 SaveFile에 콘텐츠 멤버 seed/count를 연결한 fixture와 별도 프로세스 Load 검증. 제품에 없는 가챠/강화 진행 필드를 임의로 추가한 것은 아니다.
+- [x] RNG-06 RNG-03/05 통합 후보의 필요한 네 구성 Build/분석 경고0·영향 회귀·독립 소스 검토·문서 마감. RNG-04 운영 콘텐츠 연결은 별도 후속으로 유지한다.
+
+최초 계획 단계와 후속 구현 실행은 [014 §9](GameDesign/014_Random가중치선택및재현계획.md#9-실제-로컬-구현과-검증)로 구분한다. 최종 네 구성 solution Build와 각 구성 Core39/Save31 checkpoint group 분석·실행이 경고0으로 통과했다. 불변 제품 코드 분석·Scene99 회귀·Core 역의존 경계는 해당 v1 증거를 재사용한다. 최초 소스 FAIL 두 항목은 repair1의 실제 RED/GREEN으로 보완하고 변경4경로의 독립 집중 재검토 PASS와 불변8경로의 기존 검사 범위를 조합하여 수용했다. 원본 Excel·아트·사용자 세이브/전용 키와 최초 실패 이력은 보존하며 커밋·푸시는 하지 않았다.
+
 ### Excel 데이터 키 숫자 통일 — 로컬 구현·검증·소스 검토 완료
 
 - 사용자 정정: item_id/skill_id를 포함한 모든 Excel 데이터 PK/FK는 숫자 정수다. 이름·문구·경로와 숫자 ID를 분리하며 문자열 ID를 운영 키로 쓰지 않는다. [작성 규칙](../GameData/Excel/README.md)을 단일 기준으로 원본·템플릿·생성기·런타임·검사를 함께 이관한다.

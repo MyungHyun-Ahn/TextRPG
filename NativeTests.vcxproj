@@ -93,6 +93,7 @@
       <ExcludedFromBuild Condition="'$(NativeTestSuite)'=='SaveData'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Tests\SaveData\Main.cpp" Condition="'$(NativeTestSuite)'=='SaveData'" />
+    <ClCompile Include="Tests\SaveData\Random.cpp" Condition="'$(NativeTestSuite)'=='SaveData'" />
   </ItemGroup>
   <ItemGroup Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
     <ClCompile Include="TextRPG\pch.cpp" Condition="'$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
@@ -215,7 +216,7 @@
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)ConsoleGameCore</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore' or '$(NativeTestSuite)'=='InputManager' or '$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData'">
+  <ItemGroup Condition="'$(NativeTestSuite)'=='ConsoleGameCore' or '$(NativeTestSuite)'=='InputManager' or '$(NativeTestSuite)'=='SceneUiRuntime' or '$(NativeTestSuite)'=='InGameData' or '$(NativeTestSuite)'=='SaveData'">
     <ProjectReference Include="ConsoleGameCore\ConsoleGameCore.vcxproj">
       <Project>{99FC8F07-316A-425E-8325-FCE918FB7E0F}</Project>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>

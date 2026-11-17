@@ -37,6 +37,12 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <random>
+#include <variant>
+#include <stdexcept>
+#include <vector>
+#include <map>
+#include <unordered_map>
 
 // 안정적인 공통 인터페이스만 포함한다. 구체 클래스와 생성 데이터는 .cpp에서 포함한다.
 #include "Objects/IObject.h"

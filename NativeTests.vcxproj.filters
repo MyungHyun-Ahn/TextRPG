@@ -68,6 +68,9 @@
     <ClCompile Include="Tests\SaveData\Main.cpp">
       <Filter>Tests\SaveData</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\SaveData\Random.cpp">
+      <Filter>Tests\SaveData</Filter>
+    </ClCompile>
     <ClCompile Include="TextRPG\CustomInGameData\FCharacterInGameData.cpp"><Filter>TextRPG\CustomInGameData</Filter></ClCompile>
     <ClCompile Include="GameData\Generated\InGameData\*.g.cpp"><Filter>GameData\Generated\InGameData</Filter></ClCompile>
     <ClCompile Include="TextRPG\pch.cpp">

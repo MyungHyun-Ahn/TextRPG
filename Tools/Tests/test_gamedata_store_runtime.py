@@ -28,6 +28,7 @@ def main():
                     ('FGameDataPackage.cpp', 'FGameDataStore.cpp', 'FGeneratedYaml.cpp')]
         if args.suite == 'SaveData':
             sources = [ROOT / name for name in ('Tests/SaveData/Main.cpp', 'TextRPG/InGameData/FSaveDataStore.cpp',
+                                               'Tests/SaveData/Random.cpp',
                                                'TextRPG/InGameData/FSaveDataStore.h', 'TextRPG/pch.h',
                                                'TextRPG/pch.cpp', 'NativeTests.vcxproj', 'NativeTests.vcxproj.filters',
                                                'Tools/Tests/native_build.py', 'Tools/Tests/test_gamedata_store_runtime.py')]

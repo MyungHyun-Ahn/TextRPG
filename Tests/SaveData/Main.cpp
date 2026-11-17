@@ -5,6 +5,8 @@
 // 실제 원본/실제 암호화를 유지하고 Win32 실패 반환만 결정적으로 주입한다.
 namespace SaveTest
 {
+	int RandomContentChild(int argc, wchar_t* argv[]);
+	void RandomContentRoundTrip(const std::filesystem::path& directory, const wchar_t* executable);
 	extern const std::vector<std::uint8_t> kOriginal;
 	bool publishLateWinner = false;
 	bool lateWinnerPublished = false;
@@ -606,6 +608,10 @@ int wmain(int argc, wchar_t* argv[])
 {
 	try
 	{
+		if (argc >= 2 && std::wstring_view(argv[1]) == L"--random-state-check")
+		{
+			return SaveTest::RandomContentChild(argc, argv);
+		}
 		if (argc == 4 && std::wstring_view(argv[1]) == L"--child-save")
 		{
 			HANDLE gate = OpenEventW(SYNCHRONIZE, FALSE, argv[3]);
@@ -629,6 +635,7 @@ int wmain(int argc, wchar_t* argv[])
 		SaveTest::TransientPublish(directory);
 		SaveTest::LateWinner(directory);
 		SaveTest::Race(argv[0], directory);
+		SaveTest::RandomContentRoundTrip(directory, argv[0]);
 		return 0;
 	}
 	catch (const std::exception& error)

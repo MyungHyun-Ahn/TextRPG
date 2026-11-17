@@ -16,6 +16,8 @@
 #include "Frame/FrameTypes.h"
 #include "Frame/IFrameClock.h"
 #include "Frame/FFrame.h"
+#include "Math/Random/FSelector.h"
+#include "Math/Random/RandomRange.h"
 #include <cassert>
 #include <cstdlib>
 #include <crtdbg.h>
@@ -57,6 +59,482 @@ namespace TextRPG
 using namespace TextRPG;
 namespace
 {
+	void CheckRandomMovedSource(FProcTable& source, const FProcTable& destination)
+	{
+		std::string error;
+		assert(!source.IsPrepared() && source.GetEntryCount() == 0 && source.GetTotalWeight() == 0);
+		assert(!source.Prepare(error) && error == "Random: empty or all-zero table");
+		FSelector selector(123, 7);
+		auto control = std::make_unique<FSelector>(selector);
+		const auto before = selector.GetState();
+		SSelectResult result{77, 88};
+		assert(!selector.SelectKey(source, result, error) && error == "Random: table not prepared");
+		assert(result.key == 77 && result.nextRandCount == 88);
+		assert(selector.GetState().seed == before.seed && selector.GetState().randCount == before.randCount);
+		SSelectResult expected;
+		assert(selector.SelectKey(destination, result, error) && control->SelectKey(destination, expected, error));
+		assert(result.key == expected.key && result.nextRandCount == expected.nextRandCount);
+		assert(source.AddProc(31, 1, error) && source.Prepare(error));
+		assert(selector.SelectKey(source, result, error) && result.key == 31);
+	}
+
+	void TestRandomTableMoves()
+	{
+		std::string error;
+		FProcTable source;
+		assert(source.Build({{4, 7}, {9, 3}, {2, 0}}, error));
+		const FProcTable copied(source);
+		FProcTable moved(std::move(source));
+		CheckRandomMovedSource(source, moved);
+		FProcTable assigned;
+		assert(assigned.Build({{77, 1}}, error));
+		assert(&((assigned = std::move(moved))) == &assigned);
+		CheckRandomMovedSource(moved, assigned);
+		FProcTable copyAssigned;
+		copyAssigned = assigned;
+		auto* alias = &assigned;
+		auto& selfMoved = assigned = std::move(*alias);
+		assert(&selfMoved == alias);
+		assert(selfMoved.IsPrepared() && selfMoved.GetEntryCount() == 3 && selfMoved.GetTotalWeight() == 10);
+		assert(copied.IsPrepared() && copyAssigned.IsPrepared());
+		FSelector actual(456, 0);
+		auto expected = std::make_unique<FSelector>(456, 0);
+		auto copyExpected = std::make_unique<FSelector>(456, 0);
+		for (int index = 0; index < 50; ++index)
+		{
+			SSelectResult result, control, copyControl;
+			assert(actual.SelectKey(selfMoved, result, error) && expected->SelectKey(copied, control, error));
+			assert(copyExpected->SelectKey(copyAssigned, copyControl, error));
+			assert(result.key == control.key && result.nextRandCount == control.nextRandCount);
+			assert(result.key == copyControl.key && result.nextRandCount == copyControl.nextRandCount);
+		}
+		std::cout << "PASS RNG-08 table moves reset sources reject preserve reuse copies self-move sequence\n";
+	}
+
+	void TestRandomPrepared()
+	{
+		TestRandomTableMoves();
+		std::string error;
+		FProcTable table;
+		assert(table.AddProc(9, 3, error) && table.AddProc(2, 0, error) && table.AddProc(4, 7, error));
+		assert(table.Prepare(error));
+		assert(table.IsPrepared() && table.GetTotalWeight() == 10);
+		SSelectResult result{99, 88};
+		FSelector first(0x1234567887654321ULL, 0);
+		FSelector second(0x1234567887654321ULL, 0);
+		assert(first.AddProc(4, 7) && first.AddProc(9, 3) && first.AddProc(2, 0));
+		for (int index = 0; index < 50; ++index)
+		{
+			SSelectResult internal;
+			assert(first.SelectKey(internal, error) && second.SelectKey(table, result, error));
+			assert(internal.key == result.key && internal.nextRandCount == result.nextRandCount);
+			assert(result.key == 4 || result.key == 9);
+		}
+		const auto state = first.GetState();
+		assert(second.Restore(state, error));
+		SSelectResult next;
+		assert(first.SelectKey(next, error) && second.SelectKey(table, result, error));
+		assert(next.key == result.key && next.nextRandCount == result.nextRandCount);
+		std::cout << "PASS RNG-02 prepared shared table sorted internal and restore\n";
+	}
+
+	template<class TEngine>
+	std::uint64_t ReferenceRandom(TEngine& engine, std::uint64_t total, std::uint64_t& count)
+	{
+		constexpr auto kSpan = static_cast<std::uint64_t>(TEngine::max()) - TEngine::min();
+		constexpr unsigned chunk = kSpan == UINT64_MAX ? 64U : static_cast<unsigned>(std::bit_width(kSpan + 1) - 1);
+		unsigned needed = 0;
+		for (auto largest = total - 1; largest != 0; largest /= 2) ++needed;
+		needed = std::max(needed, 1U);
+		for (;;)
+		{
+			std::uint64_t value = 0;
+			unsigned offset = 0;
+			while (offset < needed)
+			{
+				const auto raw = static_cast<std::uint64_t>(engine()) - TEngine::min();
+				++count;
+				if constexpr (chunk < 64)
+				{
+					if (raw >= (std::uint64_t{1} << chunk)) continue;
+				}
+				const auto take = std::min(chunk, needed - offset);
+				const auto digit = take == 64 ? raw : raw % (std::uint64_t{1} << take);
+				value += digit << offset;
+				offset += take;
+			}
+			if (total == 1 || value < total) return total == 1 ? 0 : value;
+		}
+	}
+
+	template<class TEngine>
+	void CheckRandomEngine(ERandomEngine kind)
+	{
+		constexpr std::uint64_t kSeed = 0x1234567887654321ULL;
+		std::seed_seq sequence{0x87654321U, 0x12345678U};
+		TEngine reference(sequence);
+		std::uint64_t referenceCount = 0;
+		auto selectorOwner = std::make_unique<FSelector>(kSeed, 0, kind);
+		auto& selector = *selectorOwner;
+		auto interleavedOwner = std::make_unique<FSelector>(555, 0, kind);
+		auto& interleaved = *interleavedOwner;
+		FProcTable table;
+		std::string error;
+		assert(table.Build({{UINT32_MAX, UINT32_MAX}, {3, 1}, {2, 0}}, error));
+		assert(selector.AddProc(3, 1) && selector.AddProc(UINT32_MAX, UINT32_MAX) && selector.AddProc(2, 0));
+		bool sawRejection = false;
+		for (int index = 0; index < 100; ++index)
+		{
+			const auto before = referenceCount;
+			const auto expected = ReferenceRandom(reference, 0x100000000ULL, referenceCount);
+			SSelectResult result;
+			assert(selector.SelectKey(table, result, error));
+			assert(result.key == (expected == 0 ? 3U : UINT32_MAX));
+			assert(result.nextRandCount == referenceCount);
+			if (referenceCount - before > 2) sawRejection = true;
+			SSelectResult unrelated;
+			assert(interleaved.SelectKey(table, unrelated, error));
+			const auto saved = selector.GetState();
+			auto restoredOwner = std::make_unique<FSelector>(saved.seed, saved.randCount, kind);
+			auto& restored = *restoredOwner;
+			assert(restored.GetEngineKind() == kind);
+			SSelectResult resumed;
+			auto controlOwner = std::make_unique<FSelector>(selector);
+			auto& control = *controlOwner;
+			assert(restored.SelectKey(table, resumed, error) && control.SelectKey(table, result, error));
+			assert(resumed.key == result.key && resumed.nextRandCount == result.nextRandCount);
+		}
+		if (kind == ERandomEngine::MinStdRand) assert(sawRejection);
+		auto highOwner = std::make_unique<FSelector>(kSeed, 0, kind);
+		auto& highSeed = *highOwner;
+		auto lowOwner = std::make_unique<FSelector>(0x87654321ULL, 0, kind);
+		auto& lowSeed = *lowOwner;
+		FProcTable broad;
+		for (std::uint32_t key = 1; key <= 32; ++key) assert(broad.AddProc(key, 1, error));
+		assert(broad.Prepare(error));
+		// 독립 STL 엔진/정수 참조 오라클로 확인한 규약 1의 고정 key/count다.
+		constexpr std::array<std::array<std::uint32_t, 8>, 4> kGoldenKeys =
+		{{
+			{24, 30, 24, 32, 29, 4, 4, 11},
+			{1, 29, 30, 22, 23, 7, 31, 3},
+			{15, 7, 31, 18, 20, 13, 24, 12},
+			{29, 26, 10, 11, 16, 23, 21, 7}
+		}};
+		constexpr std::array<std::array<std::uint64_t, 8>, 4> kGoldenCounts =
+		{{
+			{1, 2, 3, 4, 5, 6, 7, 8},
+			{1, 2, 3, 4, 5, 6, 7, 8},
+			{3, 4, 6, 11, 12, 14, 15, 16},
+			{1, 2, 3, 4, 5, 6, 7, 8}
+		}};
+		TEngine broadReference(sequence);
+		std::uint64_t broadCount = 0;
+		bool different = false;
+		for (int index = 0; index < 32; ++index)
+		{
+			SSelectResult high, low;
+			const auto expected = ReferenceRandom(broadReference, 32, broadCount);
+			assert(highSeed.SelectKey(broad, high, error) && lowSeed.SelectKey(broad, low, error));
+			assert(high.key == expected + 1 && high.nextRandCount == broadCount);
+			if (index < 8)
+			{
+				const auto engineIndex = static_cast<std::size_t>(kind);
+				const auto sampleIndex = static_cast<std::size_t>(index);
+				assert(high.key == kGoldenKeys[engineIndex][sampleIndex]);
+				assert(high.nextRandCount == kGoldenCounts[engineIndex][sampleIndex]);
+			}
+			different = different || high.key != low.key;
+		}
+		assert(different);
+		// 범위 rejection으로 버린 출력도 정확히 복원한다.
+		FProcTable rejecting;
+		assert(rejecting.Build({{1, 1}, {2, 2}}, error));
+		bool rejected = false;
+		for (int index = 0; index < 100; ++index)
+		{
+			const auto before = selector.GetState();
+			SSelectResult result, replay;
+			const auto expected = ReferenceRandom(reference, 3, referenceCount);
+			assert(selector.SelectKey(rejecting, result, error));
+			assert(result.key == (expected == 0 ? 1U : 2U) && result.nextRandCount == referenceCount);
+			rejected = rejected || result.nextRandCount - before.randCount > 1;
+			auto restoredOwner = std::make_unique<FSelector>(before.seed, before.randCount, kind);
+			auto& restored = *restoredOwner;
+			assert(restored.SelectKey(rejecting, replay, error));
+			assert(result.key == replay.key && result.nextRandCount == replay.nextRandCount);
+		}
+		assert(rejected);
+		constexpr std::uint64_t kRestorePosition = 1'000'001;
+		assert(selector.Restore(SRandomState(kSeed, kRestorePosition), error));
+		auto longReference = std::make_unique<TEngine>(sequence);
+		longReference->discard(kRestorePosition);
+		auto longCount = kRestorePosition;
+		const auto expectedLong = ReferenceRandom(*longReference, 3, longCount);
+		SSelectResult continued;
+		assert(selector.SelectKey(rejecting, continued, error));
+		assert(continued.key == (expectedLong == 0 ? 1U : 2U) && continued.nextRandCount == longCount);
+		const auto savedLong = selector.GetState();
+		auto restoredLong = std::make_unique<FSelector>(savedLong.seed, savedLong.randCount, kind);
+		SSelectResult resumed, uninterrupted;
+		assert(selector.SelectKey(rejecting, uninterrupted, error) && restoredLong->SelectKey(rejecting, resumed, error));
+		assert(resumed.key == uninterrupted.key && resumed.nextRandCount == uninterrupted.nextRandCount);
+		assert(selector.GetEngineKind() == kind);
+	}
+
+	struct STinyRandom
+	{
+		std::vector<std::uint64_t> values;
+		std::size_t index = 0;
+		static constexpr std::uint64_t min() noexcept
+		{
+			return 1;
+		}
+		static constexpr std::uint64_t max() noexcept
+		{
+			return 6;
+		}
+		std::uint64_t operator()()
+		{
+			assert(index < values.size());
+			return values[index++];
+		}
+	};
+
+	struct SWideRandom
+	{
+		std::uint64_t value;
+		static constexpr std::uint64_t min() noexcept
+		{
+			return 0;
+		}
+		static constexpr std::uint64_t max() noexcept
+		{
+			return UINT64_MAX;
+		}
+		std::uint64_t operator()() const noexcept
+		{
+			return value;
+		}
+	};
+
+	void TestRandomRange()
+	{
+		std::string error;
+		std::uint64_t count = 0, value = 99;
+		STinyRandom tiny{{6, 4, 3}};
+		assert(RandomDetail::DrawBelow(tiny, 3, count, value, error));
+		assert(value == 2 && count == 3 && tiny.index == 3);
+		std::array<int, 3> frequencies{};
+		for (std::uint64_t raw = 1; raw <= 6; ++raw)
+		{
+			STinyRandom source{{raw, 1}};
+			count = 0;
+			assert(RandomDetail::DrawBelow(source, 3, count, value, error));
+			assert(value < 3 && count == (raw <= 3 ? 1ULL : 2ULL));
+			if (raw <= 3) ++frequencies[static_cast<std::size_t>(value)];
+		}
+		assert((frequencies == std::array<int, 3>{1, 1, 1}));
+		STinyRandom combined{{2, 3}};
+		count = 0;
+		assert(RandomDetail::DrawBelow(combined, 16, count, value, error) && value == 9 && count == 2);
+		SWideRandom wide{UINT64_MAX - 1};
+		count = 0;
+		assert(RandomDetail::DrawBelow(wide, UINT64_MAX, count, value, error) && value == UINT64_MAX - 1 && count == 1);
+		wide.value = 0;
+		count = UINT64_MAX;
+		value = 77;
+		assert(!RandomDetail::DrawBelow(wide, 2, count, value, error));
+		assert(error == "Random: randCount overflow" && value == 77 && count == UINT64_MAX);
+		count = UINT64_MAX - 1;
+		wide.value = 3;
+		assert(!RandomDetail::DrawBelow(wide, 3, count, value, error));
+		assert(error == "Random: randCount overflow" && value == 77 && count == UINT64_MAX);
+		count = 0;
+		assert(!RandomDetail::DrawBelow(wide, 0, count, value, error) && count == 0 && value == 77);
+		assert(RandomDetail::DrawBelow(wide, 1, count, value, error) && value == 0 && count == 1);
+		std::cout << "PASS RNG-03 tiny exhaustive min-offset rejection chunks full64 count overflow\n";
+	}
+
+	void TestRandomEngines()
+	{
+		CheckRandomEngine<std::mt19937>(ERandomEngine::Mt19937);
+		CheckRandomEngine<std::mt19937_64>(ERandomEngine::Mt19937_64);
+		CheckRandomEngine<std::minstd_rand>(ERandomEngine::MinStdRand);
+		CheckRandomEngine<std::ranlux48>(ERandomEngine::Ranlux48);
+		bool threw = false;
+		try
+		{
+			FSelector invalid(1, 0, static_cast<ERandomEngine>(99));
+		}
+		catch (const std::invalid_argument&)
+		{
+			threw = true;
+		}
+		assert(threw);
+		std::cout << "PASS RNG-04 all four engines raw reference independent streams seed64 large-count restore\n";
+	}
+
+	void TestRandomErrors()
+	{
+		std::string error;
+		FSelector selector(987, 0);
+		SSelectResult result{77, 88};
+		assert(!selector.SelectKey(result, error));
+		assert(result.key == 77 && result.nextRandCount == 88 && selector.GetState().randCount == 0);
+		assert(selector.SelectKey() == 0);
+		FProcTable table;
+		assert(!table.Prepare(error));
+		assert(!table.AddProc(0, 1, error));
+		assert(table.GetEntryCount() == 0);
+		assert(table.AddProc(1, 0, error) && !table.Prepare(error));
+		assert(!selector.SelectKey(table, result, error));
+		assert(table.AddProc(UINT32_MAX, UINT32_MAX, error));
+		assert(table.AddProc(2, UINT32_MAX, error) && table.Prepare(error));
+		assert(table.GetTotalWeight() == 0x1fffffffeULL);
+		assert(!table.AddProc(2, 9, error) && table.IsPrepared() && table.GetEntryCount() == 3);
+		assert(!table.Build({{0, 1}}, error) && table.IsPrepared() && table.GetTotalWeight() == 0x1fffffffeULL);
+		assert(!table.Build({}, error) && !table.Build({{1, 0}}, error));
+		assert(table.IsPrepared() && table.GetEntryCount() == 3);
+		assert(selector.SelectKey(table, result, error) && (result.key == 2 || result.key == UINT32_MAX));
+		auto controlOwner = std::make_unique<FSelector>(selector);
+		auto& control = *controlOwner;
+		const auto saved = selector.GetState();
+		result = {77, 88};
+		assert(!selector.SelectKey(std::unordered_map<std::uint32_t, std::uint32_t>{{0, 1}}, result, error));
+		assert(result.key == 77 && result.nextRandCount == 88);
+		assert(selector.GetState().seed == saved.seed && selector.GetState().randCount == saved.randCount);
+		SSelectResult expected;
+		assert(selector.SelectKey(table, result, error) && control.SelectKey(table, expected, error));
+		assert(result.key == expected.key && result.nextRandCount == expected.nextRandCount);
+		auto convenienceOwner = std::make_unique<FSelector>(saved.seed, saved.randCount);
+		auto& convenience = *convenienceOwner;
+		assert(convenience.SelectKey(std::unordered_map<std::uint32_t, std::uint32_t>{{1, 0}, {2, UINT32_MAX},
+			{UINT32_MAX, UINT32_MAX}}, expected, error));
+		assert(result.key == expected.key && result.nextRandCount == expected.nextRandCount);
+		FSelector one(1, 0);
+		assert(one.AddProc(1, 0) && one.AddProc(2, 1));
+		assert(!one.AddProc(2, 3) && !one.AddProc(0, 9));
+		assert(one.SelectKey(result, error) && result.key == 2 && result.nextRandCount >= 1);
+		std::cout << "PASS RNG-05 invalid tables rollback zero weights uint64 totals map convenience\n";
+	}
+
+	struct SRandomMissingCount final : ISerializable
+	{
+		std::string_view GetSerializableTypeName() const noexcept override
+		{
+			return SRandomState::kTypeName;
+		}
+		bool SerializeFields(FBinaryWriter& writer, std::string& error) const override
+		{
+			return writer.Field("seed", std::uint64_t{42}, error);
+		}
+		bool DeserializeFields(FBinaryReader&, std::string&) override
+		{
+			return false;
+		}
+	};
+
+#ifdef _DEBUG
+	int g_randomAllocations = 0;
+	bool g_randomFailNext = false;
+	std::size_t g_randomFailBytes = 0;
+	int __cdecl RandomAllocationHook(int type, void*, std::size_t size, int block, long, const unsigned char*, int)
+	{
+		if (type == _HOOK_ALLOC && block == _NORMAL_BLOCK)
+		{
+			++g_randomAllocations;
+			if (g_randomFailNext && (g_randomFailBytes == 0 || size == g_randomFailBytes))
+			{
+				g_randomFailNext = false;
+				return 0;
+			}
+		}
+		return 1;
+	}
+#endif
+
+	void TestRandomAllocations()
+	{
+#ifdef _DEBUG
+		std::string error;
+		error.reserve(200);
+		FProcTable table;
+		assert(table.Build({{1, 1}, {2, 2}}, error));
+		FSelector selector(5, 0);
+		SSelectResult result;
+		g_randomAllocations = 0;
+		const auto previous = _CrtSetAllocHook(RandomAllocationHook);
+		bool success = true;
+		for (int index = 0; index < 50; ++index) success = selector.SelectKey(table, result, error) && success;
+		(void)_CrtSetAllocHook(previous);
+		std::cout << "TRACE RNG allocation selection=" << g_randomAllocations << " success=" << success << '\n';
+		assert(success && g_randomAllocations == 0 && table.IsPrepared() && table.GetTotalWeight() == 3);
+		FProcTable empty;
+		g_randomAllocations = 0;
+		g_randomFailNext = true;
+		(void)_CrtSetAllocHook(RandomAllocationHook);
+		const bool added = empty.AddProc(1, 1, error);
+		(void)_CrtSetAllocHook(previous);
+		std::cout << "TRACE RNG allocation added=" << added << " count=" << g_randomAllocations << " error=" << error << '\n';
+		assert(!added && !g_randomFailNext && g_randomAllocations == 1);
+		assert(error == "Random: table allocation failed" && empty.GetEntryCount() == 0);
+		assert(empty.AddProc(1, 1, error));
+		g_randomAllocations = 0;
+		g_randomFailNext = true;
+		(void)_CrtSetAllocHook(RandomAllocationHook);
+		const bool prepared = empty.Prepare(error);
+		(void)_CrtSetAllocHook(previous);
+		std::cout << "TRACE RNG allocation prepared=" << prepared << " count=" << g_randomAllocations << " error=" << error << '\n';
+		assert(!prepared && !g_randomFailNext && g_randomAllocations == 1);
+		assert(error == "Random: table preparation failed" && !empty.IsPrepared() && empty.GetEntryCount() == 1);
+		assert(empty.Prepare(error));
+		const auto state = selector.GetState();
+		g_randomFailBytes = sizeof(std::uint32_t); // seed_seq 입력 저장소만 주입, STL Debug proxy의 noexcept 생성은 제외한다.
+		g_randomAllocations = 0;
+		g_randomFailNext = true;
+		(void)_CrtSetAllocHook(RandomAllocationHook);
+		const bool restored = selector.Restore(SRandomState(91, 1), error);
+		(void)_CrtSetAllocHook(previous);
+		std::cout << "TRACE RNG allocation restored=" << restored << " count=" << g_randomAllocations << " error=" << error << '\n';
+		assert(!restored && !g_randomFailNext && g_randomAllocations >= 2);
+		assert(error == "Random: engine initialization failed");
+		assert(selector.GetState().seed == state.seed && selector.GetState().randCount == state.randCount);
+		assert(selector.Restore(state, error));
+#else
+		std::cout << "SCOPE RNG-07 CRT allocation hooks Debug-only\n";
+#endif
+		std::cout << "PASS RNG-07 prepared selection zero allocations table restore allocation fault rollback\n";
+	}
+
+	void TestRandomSerialization()
+	{
+		std::string error;
+		SRandomState source(0xfedcba9876543210ULL, 0x100000001ULL), restored;
+		assert(restored.seed == 0 && restored.randCount == 0);
+		std::vector<std::uint8_t> bytes;
+		assert(FSerializationArchive::Serialize(source, bytes, error));
+		assert(FSerializationArchive::Deserialize(bytes, restored, error));
+		assert(restored.seed == source.seed && restored.randCount == source.randCount);
+		for (std::size_t cut = 0; cut < bytes.size(); ++cut)
+		{
+			const std::vector<std::uint8_t> partial(bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(cut));
+			assert(!FSerializationArchive::Deserialize(partial, restored, error));
+			assert(restored.seed == source.seed && restored.randCount == source.randCount);
+		}
+		SRandomMissingCount missing;
+		std::vector<std::uint8_t> incomplete;
+		assert(FSerializationArchive::Serialize(missing, incomplete, error));
+		assert(!FSerializationArchive::Deserialize(incomplete, restored, error));
+		assert(restored.seed == source.seed && restored.randCount == source.randCount);
+		FSelector generated;
+		const auto saved = generated.GetState();
+		assert(saved.randCount == 0);
+		assert(generated.AddProc(1, 1));
+		assert(generated.SelectKey() == 1 && generated.GetState().seed == saved.seed);
+		assert(generated.Restore(saved, error) && generated.GetState().seed == saved.seed);
+		std::cout << "PASS RNG-06 state archive u64 roundtrip prefix rollback default saved seed restore\n";
+	}
+
 	struct SScalar : ISerializable
 	{
 		static constexpr std::string_view kTypeName = "SScalar";
@@ -1663,6 +2141,20 @@ int main()
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
 	std::cout << std::unitbuf;
+	FSelector randomSelector(123, 0);
+	const bool randomAdded = randomSelector.AddProc(7, 10);
+	std::cout << "TRACE RNG-01 AddProc positive=" << randomAdded << '\n';
+	assert(randomAdded);
+	std::cout << "PASS RNG-01 positive AddProc\n";
+	assert(randomSelector.SelectKey() == 7);
+	assert(!randomSelector.AddProc(0, 1));
+	assert(!randomSelector.AddProc(7, 1));
+	TestRandomPrepared();
+	TestRandomRange();
+	TestRandomEngines();
+	TestRandomErrors();
+	TestRandomSerialization();
+	TestRandomAllocations();
 	TestSceneManager();
 	TestSceneManagerDerivedShutdown();
 	TestSceneManagerTermination();

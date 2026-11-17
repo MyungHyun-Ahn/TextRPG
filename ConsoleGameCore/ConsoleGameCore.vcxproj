@@ -62,6 +62,7 @@
   <ItemGroup>
     <ClCompile Include="Input\FConsoleInput.cpp" />
     <ClCompile Include="Input\FInputManager.cpp" />
+    <ClCompile Include="Math\Random\FSelector.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -77,6 +78,8 @@
     <ClCompile Include="UI\FUIManager.cpp" />
     <ClCompile Include="Frame\FFrame.cpp" />
     <ClCompile Include="Serialization\FSerializationArchive.cpp" />
+    <ClInclude Include="Math\Random\FSelector.h" />
+    <ClInclude Include="Math\Random\RandomRange.h" />
     <ClInclude Include="Serialization\ISerializable.h" />
     <ClInclude Include="Serialization\FSerializationArchive.h" />
     <ClInclude Include="Frame\FrameTypes.h" />

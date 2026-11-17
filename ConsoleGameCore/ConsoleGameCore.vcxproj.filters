@@ -25,6 +25,12 @@
     <Filter Include="UI\Common">
       <UniqueIdentifier>{41581788-B26E-54E1-A5D2-53D045A1709E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{65760ca1-9a90-41af-972b-e860a669c790}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math\Random">
+      <UniqueIdentifier>{a07e817d-d095-4d3b-8bdd-4923b8eab8c3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Input\FConsoleInput.cpp">
@@ -63,6 +69,9 @@
     </ClCompile>
     <ClCompile Include="UI\FUIManager.cpp">
       <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Random\FSelector.cpp">
+      <Filter>Math\Random</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -139,8 +148,22 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Serialization\FSerializationArchive.cpp"><Filter>Serialization</Filter></ClCompile>
-    <ClInclude Include="Serialization\ISerializable.h"><Filter>Serialization</Filter></ClInclude>
-    <ClInclude Include="Serialization\FSerializationArchive.h"><Filter>Serialization</Filter></ClInclude>
+    <ClCompile Include="Serialization\FSerializationArchive.cpp">
+      <Filter>Serialization</Filter>
+    </ClCompile>
+    <ClInclude Include="Serialization\ISerializable.h">
+      <Filter>Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="Serialization\FSerializationArchive.h">
+      <Filter>Serialization</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Math\Random\FSelector.h">
+      <Filter>Math\Random</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Random\RandomRange.h">
+      <Filter>Math\Random</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

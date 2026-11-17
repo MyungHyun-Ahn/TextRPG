@@ -3,6 +3,7 @@
 Windows/C++20 정적 라이브러리다. 기존 중립 API의 `TextRPG` namespace는 소스 호환을 위해 유지하지만, 이 프로젝트는 TextRPG 콘텐츠/생성 헤더/GameData.lib를 참조하지 않는다.
 
 - `Input/`: 기기 프레임 상태와 Win32 입력 정규화.
+- `Math/Random/`: 콘텐츠 멤버 FSelector의 독립 seed/count·네 STL 엔진과 공유 FProcTable 가중치 선택. [사용법](Math/Random/README.md)을 따른다. Core가 Excel·GameData·파일 저장을 직접 소유하지 않는다.
 - `Rendering/`: 문자 셀 framebuffer와 콘솔 출력.
 - `UI/`: IUI/FUiElement 상속, Panel/Button/TextArtView 조합, 포커스/캡처/기하, 중립 입력 대상에 연결하는 FUIManager.
 - `Scene/`: TSceneManager<TAction>가 현재/후보 Scene 소유·final 공개 실행·EndFrame 전환/지연 파괴를 통제한다. TScene/FSceneLifetime/FSceneHost의 직접/관리 수명·최초 busy query·재귀 guard를 재사용한다. 행동 타입의 bool 변환은 처리 완료만 뜻하며 게임 명령을 해석하지 않는다.
