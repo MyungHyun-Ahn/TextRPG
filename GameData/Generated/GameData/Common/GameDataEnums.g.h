@@ -9,6 +9,32 @@ namespace GameData::Common
 	{
 		Journey = 1
 	};
+	inline bool IsValidAchievementId(EAchievementId value) noexcept
+	{
+		return value == EAchievementId::Journey;
+	}
+	inline bool TryParseAchievementId(const wchar_t* text, EAchievementId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"Journey";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EAchievementId::Journey;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class EArtId : ::std::uint32_t
 	{
@@ -17,27 +43,248 @@ namespace GameData::Common
 		MonsterDragon = 3,
 		TownWindwood = 4
 	};
+	inline bool IsValidArtId(EArtId value) noexcept
+	{
+		return value == EArtId::MainLogo ||
+			value == EArtId::PlayerSwordswoman ||
+			value == EArtId::MonsterDragon ||
+			value == EArtId::TownWindwood;
+	}
+	inline bool TryParseArtId(const wchar_t* text, EArtId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"MainLogo";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EArtId::MainLogo;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"PlayerSwordswoman";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EArtId::PlayerSwordswoman;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"MonsterDragon";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EArtId::MonsterDragon;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"TownWindwood";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EArtId::TownWindwood;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class ECharacterId : ::std::uint32_t
 	{
 		Swordswoman = 1
 	};
+	inline bool IsValidCharacterId(ECharacterId value) noexcept
+	{
+		return value == ECharacterId::Swordswoman;
+	}
+	inline bool TryParseCharacterId(const wchar_t* text, ECharacterId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"Swordswoman";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ECharacterId::Swordswoman;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	enum class ECurrencyType : ::std::uint32_t
+	{
+		Gold = 1
+	};
+	inline bool IsValidCurrencyType(ECurrencyType value) noexcept
+	{
+		return value == ECurrencyType::Gold;
+	}
+	inline bool TryParseCurrencyType(const wchar_t* text, ECurrencyType& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"Gold";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ECurrencyType::Gold;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class EItemId : ::std::uint32_t
 	{
 		Token = 1
 	};
+	inline bool IsValidItemId(EItemId value) noexcept
+	{
+		return value == EItemId::Token;
+	}
+	inline bool TryParseItemId(const wchar_t* text, EItemId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"Token";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EItemId::Token;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class EOptionOverflowPolicy : ::std::uint8_t
 	{
 		NoScroll = 0,
 		Scroll = 1
 	};
+	inline bool IsValidOptionOverflowPolicy(EOptionOverflowPolicy value) noexcept
+	{
+		return value == EOptionOverflowPolicy::NoScroll ||
+			value == EOptionOverflowPolicy::Scroll;
+	}
+	inline bool TryParseOptionOverflowPolicy(const wchar_t* text, EOptionOverflowPolicy& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"NoScroll";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EOptionOverflowPolicy::NoScroll;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Scroll";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EOptionOverflowPolicy::Scroll;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class EProfileId : ::std::uint32_t
 	{
 		Default = 1
 	};
+	inline bool IsValidProfileId(EProfileId value) noexcept
+	{
+		return value == EProfileId::Default;
+	}
+	inline bool TryParseProfileId(const wchar_t* text, EProfileId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"Default";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = EProfileId::Default;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class ESceneActionType : ::std::uint8_t
 	{
@@ -57,6 +304,242 @@ namespace GameData::Common
 		Defend = 13,
 		ReturnTown = 14
 	};
+	inline bool IsValidSceneActionType(ESceneActionType value) noexcept
+	{
+		return value == ESceneActionType::StartGame ||
+			value == ESceneActionType::Continue ||
+			value == ESceneActionType::Settings ||
+			value == ESceneActionType::Credits ||
+			value == ESceneActionType::Quit ||
+			value == ESceneActionType::Move ||
+			value == ESceneActionType::Inventory ||
+			value == ESceneActionType::Shop ||
+			value == ESceneActionType::Rest ||
+			value == ESceneActionType::Talk ||
+			value == ESceneActionType::Attack ||
+			value == ESceneActionType::Skill ||
+			value == ESceneActionType::Item ||
+			value == ESceneActionType::Defend ||
+			value == ESceneActionType::ReturnTown;
+	}
+	inline bool TryParseSceneActionType(const wchar_t* text, ESceneActionType& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"StartGame";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::StartGame;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Continue";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Continue;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Settings";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Settings;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Credits";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Credits;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Quit";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Quit;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Move";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Move;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Inventory";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Inventory;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Shop";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Shop;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Rest";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Rest;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Talk";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Talk;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Attack";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Attack;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Skill";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Skill;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Item";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Item;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Defend";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::Defend;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"ReturnTown";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneActionType::ReturnTown;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class ESceneId : ::std::uint32_t
 	{
@@ -64,6 +547,62 @@ namespace GameData::Common
 		Town = 2,
 		BattleField = 3
 	};
+	inline bool IsValidSceneId(ESceneId value) noexcept
+	{
+		return value == ESceneId::MainMenu ||
+			value == ESceneId::Town ||
+			value == ESceneId::BattleField;
+	}
+	inline bool TryParseSceneId(const wchar_t* text, ESceneId& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"MainMenu";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneId::MainMenu;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneId::Town;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"BattleField";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneId::BattleField;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class ESceneType : ::std::uint8_t
 	{
@@ -71,6 +610,62 @@ namespace GameData::Common
 		Town = 1,
 		BattleField = 2
 	};
+	inline bool IsValidSceneType(ESceneType value) noexcept
+	{
+		return value == ESceneType::MainMenu ||
+			value == ESceneType::Town ||
+			value == ESceneType::BattleField;
+	}
+	inline bool TryParseSceneType(const wchar_t* text, ESceneType& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"MainMenu";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneType::MainMenu;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneType::Town;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"BattleField";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ESceneType::BattleField;
+				return true;
+			}
+		}
+		return false;
+	}
 
 	enum class ETextKey : ::std::uint32_t
 	{
@@ -116,6 +711,790 @@ namespace GameData::Common
 		Battle_Victory = 40,
 		Battle_Defeat = 41,
 		Battle_Ready = 42,
-		Battle_Round = 43
+		Battle_Round = 43,
+		Reward_Experience = 44,
+		Reward_Max = 45,
+		Reward_Granted = 46,
+		Reward_Uncredited = 47,
+		Reward_LevelChange = 48,
+		Reward_SaveFailed = 49,
+		Reward_RetrySave = 50,
+		Reward_LegacyExcluded = 51
 	};
+	inline bool IsValidTextKey(ETextKey value) noexcept
+	{
+		return value == ETextKey::MainMenu_NewGame ||
+			value == ETextKey::MainMenu_Continue ||
+			value == ETextKey::MainMenu_Settings ||
+			value == ETextKey::MainMenu_Credits ||
+			value == ETextKey::MainMenu_Exit ||
+			value == ETextKey::Town_Move ||
+			value == ETextKey::Town_Inventory ||
+			value == ETextKey::Town_Shop ||
+			value == ETextKey::Town_Rest ||
+			value == ETextKey::System_ScreenTooSmall ||
+			value == ETextKey::Town_Talk ||
+			value == ETextKey::Town_Inn ||
+			value == ETextKey::Battle_Attack ||
+			value == ETextKey::Battle_Skill ||
+			value == ETextKey::Battle_Item ||
+			value == ETextKey::Battle_Defend ||
+			value == ETextKey::Scene_MainMenu_Title ||
+			value == ETextKey::Scene_Town_Title ||
+			value == ETextKey::Scene_Town_Region ||
+			value == ETextKey::Scene_BattleField_Title ||
+			value == ETextKey::InGameData_Ui_Level ||
+			value == ETextKey::InGameData_Ui_Hp ||
+			value == ETextKey::InGameData_Ui_Attack ||
+			value == ETextKey::InGameData_Ui_Defense ||
+			value == ETextKey::InGameData_Ui_Gold ||
+			value == ETextKey::InGameData_Ui_Inventory ||
+			value == ETextKey::InGameData_Ui_Achievements ||
+			value == ETextKey::InGameData_Ui_LoadFailed ||
+			value == ETextKey::InGameData_Ui_SaveFailed ||
+			value == ETextKey::InGameData_Ui_InvalidSaveLocation ||
+			value == ETextKey::InGameData_Character_Swordswoman_Name ||
+			value == ETextKey::InGameData_Item_Token_Name ||
+			value == ETextKey::InGameData_Achievement_Journey_Name ||
+			value == ETextKey::InGameData_Ui_NewGameFailed ||
+			value == ETextKey::InGameData_Ui_NewGameSaveFailed ||
+			value == ETextKey::Battle_Return ||
+			value == ETextKey::Battle_Monster ||
+			value == ETextKey::Battle_Hit ||
+			value == ETextKey::Battle_Critical ||
+			value == ETextKey::Battle_Victory ||
+			value == ETextKey::Battle_Defeat ||
+			value == ETextKey::Battle_Ready ||
+			value == ETextKey::Battle_Round ||
+			value == ETextKey::Reward_Experience ||
+			value == ETextKey::Reward_Max ||
+			value == ETextKey::Reward_Granted ||
+			value == ETextKey::Reward_Uncredited ||
+			value == ETextKey::Reward_LevelChange ||
+			value == ETextKey::Reward_SaveFailed ||
+			value == ETextKey::Reward_RetrySave ||
+			value == ETextKey::Reward_LegacyExcluded;
+	}
+	inline bool TryParseTextKey(const wchar_t* text, ETextKey& output) noexcept
+	{
+		if (!text)
+		{
+			return false;
+		}
+		{
+			const wchar_t* expected = L"MainMenu_NewGame";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::MainMenu_NewGame;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"MainMenu_Continue";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::MainMenu_Continue;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"MainMenu_Settings";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::MainMenu_Settings;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"MainMenu_Credits";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::MainMenu_Credits;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"MainMenu_Exit";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::MainMenu_Exit;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Move";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Move;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Inventory";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Inventory;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Shop";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Shop;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Rest";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Rest;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"System_ScreenTooSmall";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::System_ScreenTooSmall;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Talk";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Talk;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Town_Inn";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Town_Inn;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Attack";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Attack;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Skill";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Skill;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Item";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Item;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Defend";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Defend;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Scene_MainMenu_Title";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Scene_MainMenu_Title;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Scene_Town_Title";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Scene_Town_Title;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Scene_Town_Region";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Scene_Town_Region;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Scene_BattleField_Title";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Scene_BattleField_Title;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Level";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Level;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Hp";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Hp;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Attack";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Attack;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Defense";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Defense;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Gold";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Gold;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Inventory";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Inventory;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_Achievements";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_Achievements;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_LoadFailed";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_LoadFailed;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_SaveFailed";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_SaveFailed;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_InvalidSaveLocation";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_InvalidSaveLocation;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Character_Swordswoman_Name";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Character_Swordswoman_Name;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Item_Token_Name";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Item_Token_Name;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Achievement_Journey_Name";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Achievement_Journey_Name;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_NewGameFailed";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_NewGameFailed;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"InGameData_Ui_NewGameSaveFailed";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::InGameData_Ui_NewGameSaveFailed;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Return";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Return;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Monster";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Monster;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Hit";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Hit;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Critical";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Critical;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Victory";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Victory;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Defeat";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Defeat;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Ready";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Ready;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Battle_Round";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Battle_Round;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_Experience";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_Experience;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_Max";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_Max;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_Granted";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_Granted;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_Uncredited";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_Uncredited;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_LevelChange";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_LevelChange;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_SaveFailed";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_SaveFailed;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_RetrySave";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_RetrySave;
+				return true;
+			}
+		}
+		{
+			const wchar_t* expected = L"Reward_LegacyExcluded";
+			const wchar_t* actual = text;
+			while (*actual && *actual == *expected)
+			{
+				++actual;
+				++expected;
+			}
+			if (*actual == 0 && *expected == 0)
+			{
+				output = ETextKey::Reward_LegacyExcluded;
+				return true;
+			}
+		}
+		return false;
+	}
 }

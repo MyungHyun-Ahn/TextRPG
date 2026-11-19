@@ -11,3 +11,15 @@
   "MaxHp": 120
   "Attack": 12
   "Defense": 6
+"LevelDefinition3":
+  "Level": 3
+  "RequiredExperience": 250
+  "MaxHp": 140
+  "Attack": 14
+  "Defense": 7
+"LevelDefinition4":
+  "Level": 4
+  "RequiredExperience": 450
+  "MaxHp": 160
+  "Attack": 16
+  "Defense": 8

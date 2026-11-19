@@ -8,11 +8,7 @@ internal static class FSceneContractSelfTest
             Add(workbook, "FutureSkill", ["SkillId"], ["string"], [["Fireball"]]), "GD0307");
         Check(testRoot, "NumericKey_TextCellRejected", workbook =>
             Add(workbook, "FutureSkill", ["SkillId"], ["uint32"], [["001"]]), "GD0210");
-        Check(testRoot, "NumericKey_ItemDefinitionPositive", workbook =>
-        {
-            Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"], ["uint32", "uint32", "uint32"], [[1, 1, 99]]);
-            workbook.Worksheet("ItemDefinition").Cell("C12").Value = "Localization.TextKey";
-        }, null);
+        Check(testRoot, "NumericKey_ItemDefinitionPositive", _ => { }, null, combat: true);
         Check(testRoot, "NumericKey_RemovedItemNameReference", workbook =>
             Add(workbook, "ItemDefinition", ["ItemId", "NameTextKey", "MaxStack"], ["uint32", "uint32", "uint32"], [[1, 1, 99]]), "GD2120");
         CheckNumericKeys(testRoot);
@@ -301,6 +297,10 @@ internal static class FSceneContractSelfTest
 
     private static void AddCombatCohort(XLWorkbook workbook)
     {
+        var enums = workbook.Worksheet("Enums");
+        foreach ((int column, object value) in new (int, object)[]
+            { (2, "CurrencyType"), (3, "Shared"), (4, "uint32"), (5, "Gold=1"), (6, 4) })
+            enums.Cell(17, column).Value = XLCellValue.FromObject(value);
         Add(workbook, "CharacterDefinition", ["CharacterId", "NameTextKey", "ArtId"],
             ["uint32", "uint32", "uint32"], [[1, 1, 2]]);
         Add(workbook, "LevelDefinition", ["Level", "RequiredExperience", "MaxHp", "Attack", "Defense"],
@@ -315,8 +315,10 @@ internal static class FSceneContractSelfTest
         Add(workbook, "CharacterCombat", ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
             Enumerable.Repeat("uint32", 5).ToArray(), [[1, 5, 5, 3, 5]]);
         Add(workbook, "MonsterDefinition", ["MonsterId", "NameTextKey", "ArtId", "MaxHp", "Attack", "Defense",
-            "Strength", "Dexterity", "Intelligence", "Luck"], Enumerable.Repeat("uint32", 10).ToArray(),
-            [[1, 1, 2, 45, 7, 2, 3, 4, 0, 3]]);
+            "Strength", "Dexterity", "Intelligence", "Luck",
+            "RewardExperience", "RewardCurrencyType", "RewardAmountMin", "RewardAmountMax"],
+            Enumerable.Repeat("uint32", 11).Append("enum<CurrencyType>").Concat(Enumerable.Repeat("uint32", 2)).ToArray(),
+            [[1, 1, 2, 45, 7, 2, 3, 4, 0, 3, 300, "Gold", 10, 20]]);
         Add(workbook, "CombatRule", ["RuleId", "MonsterId", "BattleSceneId", "TownSceneId", "Scale", "StrengthDefense",
             "DexteritySpeed", "BaseSpeed", "LuckCritical", "CriticalCap", "CriticalMultiplier", "MinimumDamage",
             "StrengthCoefficient", "DexterityCoefficient", "IntelligenceCoefficient", "LuckCoefficient", "MaxStat", "MaxRounds",
@@ -340,9 +342,49 @@ internal static class FSceneContractSelfTest
     private static void CheckCombatContracts(string testRoot)
     {
         Check(testRoot, "Combat_CompletePositive", _ => { }, null, combat: true);
+        foreach (string minimum in new[] { "", "0" })
+        {
+            Check(testRoot, "Reward_PositiveHpRelaxedMin_" + minimum, workbook =>
+                workbook.Worksheet("LevelDefinition").Cell("D8").Value = minimum, null, combat: true);
+            Check(testRoot, "Reward_ZeroHpRelaxedMin_" + minimum, workbook =>
+            {
+                workbook.Worksheet("LevelDefinition").Cell("D8").Value = minimum;
+                workbook.Worksheet("LevelDefinition").Cell("D14").Value = 0;
+            }, "GD2213", expectedCell: "D14", expectedSheet: "LevelDefinition", combat: true);
+        }
+        Check(testRoot, "Reward_LevelHpCannotBeIgnored", workbook =>
+            workbook.Worksheet("LevelDefinition").Cell("D5").Value = "Ignore", "GD2212",
+            expectedCell: "D5", expectedSheet: "LevelDefinition", combat: true);
+        Check(testRoot, "Reward_LevelTableMustBeClientVisible", workbook =>
+            workbook.Worksheet("LevelDefinition").Cell("B2").Value = "Server", "GD2212",
+            expectedCell: "B2", expectedSheet: "LevelDefinition", combat: true);
+        Check(testRoot, "Reward_InvertedRange", workbook =>
+            workbook.Worksheet("MonsterDefinition").Cell("N14").Value = 21, "GD2209",
+            expectedCell: "N14", expectedSheet: "MonsterDefinition", combat: true);
+        Check(testRoot, "Reward_CurrencyTypeNotRegistered", workbook =>
+            workbook.Worksheet("MonsterDefinition").Cell("M14").Value = "Unknown", "GD0911",
+            expectedCell: "M14", expectedSheet: "MonsterDefinition", combat: true);
+        Check(testRoot, "Reward_CurveMustStartAtOne", workbook =>
+            workbook.Worksheet("LevelDefinition").Cell("C14").Value = 1, "GD2210",
+            expectedCell: "B14", expectedSheet: "LevelDefinition", combat: true);
         Check(testRoot, "Combat_WholeCohortAbsent", workbook =>
         {
             foreach (string table in new[] { "CharacterCombat", "MonsterDefinition", "CombatRule" })
+                workbook.Worksheet(table).Delete();
+        }, null, combat: true);
+        string[] progressTables = ["NewGameProfile", "CharacterDefinition", "LevelDefinition", "ItemDefinition", "AchievementDefinition"];
+        foreach (string missing in progressTables)
+        {
+            Check(testRoot, "Progress_PartialWithoutCombat_" + missing, workbook =>
+            {
+                foreach (string table in new[] { "CharacterCombat", "MonsterDefinition", "CombatRule", missing })
+                    workbook.Worksheet(table).Delete();
+            }, "GD2214", expectedCell: "B1",
+                expectedSheet: missing == "AchievementDefinition" ? "CharacterDefinition" : "AchievementDefinition", combat: true);
+        }
+        Check(testRoot, "Progress_WholeFamilyAbsent", workbook =>
+        {
+            foreach (string table in progressTables.Concat(new[] { "CharacterCombat", "MonsterDefinition", "CombatRule" }))
                 workbook.Worksheet(table).Delete();
         }, null, combat: true);
         foreach ((string cell, int value) in new[] { ("D14", 2), ("E14", 3) })
@@ -366,7 +408,7 @@ internal static class FSceneContractSelfTest
         foreach ((string cell, string value) in new[] { ("B4", ""), ("B5", "Client") })
             Check(testRoot, "Combat_CharacterPrimaryRole_" + cell, workbook =>
                 workbook.Worksheet("CharacterCombat").Cell(cell).Value = value, "GD2101", combat: true);
-        foreach ((string table, int count) in new[] { ("CharacterCombat", 5), ("MonsterDefinition", 10), ("CombatRule", 25) })
+        foreach ((string table, int count) in new[] { ("CharacterCombat", 5), ("MonsterDefinition", 14), ("CombatRule", 25) })
         {
             for (int column = 2; column <= count + 1; column++)
             foreach (string scope in new[] { "Ignore", "Server" })
@@ -408,8 +450,10 @@ internal static class FSceneContractSelfTest
         Add(workbook, "CharacterCombat", ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
             Enumerable.Repeat("uint32", 5).ToArray(), [[1, 5, 5, 3, 5]]);
         Add(workbook, "MonsterDefinition", ["MonsterId", "NameTextKey", "ArtId", "MaxHp", "Attack", "Defense",
-            "Strength", "Dexterity", "Intelligence", "Luck"], Enumerable.Repeat("uint32", 10).ToArray(),
-            [[1, 37, 3, 45, 7, 2, 3, 4, 0, 3]]);
+            "Strength", "Dexterity", "Intelligence", "Luck",
+            "RewardExperience", "RewardCurrencyType", "RewardAmountMin", "RewardAmountMax"],
+            Enumerable.Repeat("uint32", 11).Append("enum<CurrencyType>").Concat(Enumerable.Repeat("uint32", 2)).ToArray(),
+            [[1, 37, 3, 45, 7, 2, 3, 4, 0, 3, 300, "Gold", 10, 20]]);
         Add(workbook, "CombatRule", ["RuleId", "MonsterId", "BattleSceneId", "TownSceneId", "Scale", "StrengthDefense",
             "DexteritySpeed", "BaseSpeed", "LuckCritical", "CriticalCap", "CriticalMultiplier", "MinimumDamage",
             "StrengthCoefficient", "DexterityCoefficient", "IntelligenceCoefficient", "LuckCoefficient", "MaxStat", "MaxRounds",
@@ -417,8 +461,10 @@ internal static class FSceneContractSelfTest
             Enumerable.Repeat("uint32", 25).ToArray(),
             [[1, 1, 3, 2, 10000, 10000, 10000, 1, 100, 5000, 15000, 1, 10000, 2000, 0, 0, 1000000, 1000000, 1, 38, 39, 40, 41, 42, 43]]);
         // 이 컴포넌트 검사는 도메인 검증기를 검사하며 전체 카탈로그는 실제 CLI/native 회귀에서 검증한다.
-        foreach (string table in new[] { "CharacterDefinition", "LevelDefinition", "NewGameProfile", "ItemDefinition", "AchievementDefinition" })
+        foreach (string table in new[] { "CharacterDefinition", "NewGameProfile", "ItemDefinition", "AchievementDefinition" })
             Add(workbook, table, ["Id"], ["uint32"], [[1]]);
+        Add(workbook, "LevelDefinition", ["Level", "RequiredExperience", "MaxHp", "Attack", "Defense"],
+            Enumerable.Repeat("uint32", 5).ToArray(), [[1, 0, 100, 10, 5]]);
         Add(workbook, "Scene", ["SceneId", "SceneType", "IsStartupScene"],
             ["uint32", "enum<SceneType>", "bool"], [[2, "Town", false], [3, "BattleField", false]]);
         Add(workbook, "TextArt", ["ArtId", "AssetPath", "Width", "Height"],

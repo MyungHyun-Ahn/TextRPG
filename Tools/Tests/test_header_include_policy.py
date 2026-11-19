@@ -63,7 +63,8 @@ class HeaderIncludePolicyTests(unittest.TestCase):
                     'fstream', 'functional', 'iostream', 'iterator', 'limits', 'map', 'new', 'set',
                     'span', 'stdexcept', 'string', 'string_view', 'system_error', 'tuple',
                     'unordered_map', 'utility', 'vector'}
-        required |= {'bit', 'cmath', 'memory', 'optional', 'type_traits', 'unordered_set'}
+        # 복구 가능한 후보 할당 실패 회귀도 안정적인 CRT 선언을 같은 PCH에서 공급한다.
+        required |= {'bit', 'cmath', 'crtdbg.h', 'memory', 'optional', 'type_traits', 'unordered_set'}
         self.assertEqual(required, dependencies)
         authored = re.findall(r'#\s*include\s*"([^"]+)"', text)
         self.assertEqual(authored, ['Serialization/ISerializable.h'])

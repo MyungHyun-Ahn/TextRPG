@@ -29,15 +29,19 @@ namespace TextRPG
 		{
 		public:
 			FCombatOptionButton(SCellRect rect, std::wstring text, std::function<void()> activate, int shortcut,
-				const InGameData* progress, GameData::Common::ESceneActionType action)
+				const InGameData* progress, GameData::Common::ESceneActionType action,
+				const bool* canRetrySave, std::wstring retryText)
 				: FUiButton(rect, text, std::move(activate), shortcut)
 				, m_text(std::move(text))
 				, m_progress(progress)
 				, m_action(action)
+				, m_canRetrySave(canRetrySave)
+				, m_retryText(std::move(retryText))
 			{
 			}
 			bool IsEnabled() const noexcept override
 			{
+				if (m_canRetrySave) return *m_canRetrySave && m_progress && m_progress->GetBattle().Outcome != 0;
 				if (!FUiButton::IsEnabled()) return false;
 				if (m_action == GameData::Common::ESceneActionType::Attack)
 					return m_progress && m_progress->GetBattle().RuleId != 0 && m_progress->GetBattle().Outcome == 0;
@@ -72,12 +76,14 @@ namespace TextRPG
 				const std::uint16_t attributes = !IsEnabled() ? 8 : (m_isFocused ? 0x1E : 7);
 				context.DrawBorder(rect, {}, attributes);
 				const SUiRenderContext clipped{context.Frame, context.OriginX, context.OriginY, rect.Intersect(context.Clip)};
-				clipped.DrawText(rect.X + 1, rect.Y + 1, m_text, attributes, rect.Width - 2);
+				clipped.DrawText(rect.X + 1, rect.Y + 1, m_canRetrySave && IsEnabled() ? m_retryText : m_text, attributes, rect.Width - 2);
 			}
 		private:
 			std::wstring m_text;
 			const InGameData* m_progress;
 			GameData::Common::ESceneActionType m_action;
+			const bool* m_canRetrySave;
+			std::wstring m_retryText;
 			bool m_isFocused = false;
 		};
 
@@ -264,7 +270,12 @@ namespace TextRPG
 				SCellRect{2, top, 38, 3}, std::to_wstring(option.OptionOrder) + L". " + option.Text,
 				[this, option]()
 				{
-					if (option.ActionType == GameData::Common::ESceneActionType::StartGame)
+					if (option.OptionOrder == 3 && m_progress && m_progress->GetBattle().RuleId != 0 && m_canRetrySave)
+					{
+						m_pendingAction = {ESceneAction::RetrySave, {}};
+						DiscardUiLayerCommands();
+					}
+					else if (option.ActionType == GameData::Common::ESceneActionType::StartGame)
 					{
 						m_pendingAction = {ESceneAction::StartGame, option.TargetSceneId};
 						DiscardUiLayerCommands();
@@ -291,8 +302,12 @@ namespace TextRPG
 						DiscardUiLayerCommands();
 					}
 				},
-				static_cast<int>(option.OptionOrder), m_progress, option.ActionType);
-			button->SetEnabled(option.IsEnabled);
+				static_cast<int>(option.OptionOrder), m_progress, option.ActionType,
+				m_progress && scene->sceneType == GameData::Common::ESceneType::BattleField && option.OptionOrder == 3 ?
+					&m_canRetrySave : nullptr,
+				L"3. " + GetLocalizedText(m_store, static_cast<std::uint32_t>(ETextKey::Reward_RetrySave)));
+			button->SetEnabled(option.IsEnabled || (m_progress && scene->sceneType == GameData::Common::ESceneType::BattleField &&
+				option.OptionOrder == 3));
 			optionPanel->AddChild(std::move(button));
 		}
 		uiRoot->AddBase(std::move(optionPanel));

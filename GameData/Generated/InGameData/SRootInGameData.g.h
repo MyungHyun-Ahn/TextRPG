@@ -15,18 +15,20 @@ namespace GameData::InGameData
 		SRootInGameData(const SRootInGameData& _other) = default;
 		SRootInGameData& operator=(const SRootInGameData& _other) = default;
 		SRootInGameData(
-			::std::uint32_t _field0,
+			::std::vector<::std::uint32_t> _field0,
 			::std::uint32_t _field1,
-			::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field2,
-			::std::uint32_t _field3,
-			::std::vector<::GameData::InGameData::SInventoryItemProgress> _field4,
-			::GameData::InGameData::SBasicStats _field5,
-			::GameData::InGameData::SBattleProgress _field6,
-			::std::vector<::GameData::InGameData::SAchievementProgress> _field7);
+			::std::uint32_t _field2,
+			::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field3,
+			::std::vector<::GameData::InGameData::SCurrencyBalance> _field4,
+			::std::vector<::GameData::InGameData::SInventoryItemProgress> _field5,
+			::GameData::InGameData::SBasicStats _field6,
+			::GameData::InGameData::SBattleProgress _field7,
+			::std::vector<::GameData::InGameData::SAchievementProgress> _field8);
+		::std::vector<::std::uint32_t> m_curveThresholds{};
 		::std::uint32_t m_contentVersion{};
 		::std::uint32_t m_sceneId{};
 		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> m_character{};
-		::std::uint32_t m_gold{};
+		::std::vector<::GameData::InGameData::SCurrencyBalance> m_currencies{};
 		::std::vector<::GameData::InGameData::SInventoryItemProgress> m_inventory{};
 		::GameData::InGameData::SBasicStats m_basicBonuses{};
 		::GameData::InGameData::SBattleProgress m_battle{};

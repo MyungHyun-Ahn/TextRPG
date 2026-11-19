@@ -11,31 +11,34 @@ namespace GameData::InGameData
 	SRootInGameData& SRootInGameData::operator=(SRootInGameData&& _other) noexcept = default;
 
 	SRootInGameData::SRootInGameData(
-		::std::uint32_t _field0,
+		::std::vector<::std::uint32_t> _field0,
 		::std::uint32_t _field1,
-		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field2,
-		::std::uint32_t _field3,
-		::std::vector<::GameData::InGameData::SInventoryItemProgress> _field4,
-		::GameData::InGameData::SBasicStats _field5,
-		::GameData::InGameData::SBattleProgress _field6,
-		::std::vector<::GameData::InGameData::SAchievementProgress> _field7)
-		: m_contentVersion(::std::move(_field0))
-		, m_sceneId(::std::move(_field1))
-		, m_character(::std::move(_field2))
-		, m_gold(::std::move(_field3))
-		, m_inventory(::std::move(_field4))
-		, m_basicBonuses(::std::move(_field5))
-		, m_battle(::std::move(_field6))
-		, m_achievements(::std::move(_field7))
+		::std::uint32_t _field2,
+		::std::shared_ptr<::GameData::InGameData::SCharacterProgress> _field3,
+		::std::vector<::GameData::InGameData::SCurrencyBalance> _field4,
+		::std::vector<::GameData::InGameData::SInventoryItemProgress> _field5,
+		::GameData::InGameData::SBasicStats _field6,
+		::GameData::InGameData::SBattleProgress _field7,
+		::std::vector<::GameData::InGameData::SAchievementProgress> _field8)
+		: m_curveThresholds(::std::move(_field0))
+		, m_contentVersion(::std::move(_field1))
+		, m_sceneId(::std::move(_field2))
+		, m_character(::std::move(_field3))
+		, m_currencies(::std::move(_field4))
+		, m_inventory(::std::move(_field5))
+		, m_basicBonuses(::std::move(_field6))
+		, m_battle(::std::move(_field7))
+		, m_achievements(::std::move(_field8))
 	{
 	}
 
 	bool SRootInGameData::operator==(const SRootInGameData& _other) const
 	{
-		return this->m_contentVersion == _other.m_contentVersion &&
+		return this->m_curveThresholds == _other.m_curveThresholds &&
+			this->m_contentVersion == _other.m_contentVersion &&
 			this->m_sceneId == _other.m_sceneId &&
 			this->m_character == _other.m_character &&
-			this->m_gold == _other.m_gold &&
+			this->m_currencies == _other.m_currencies &&
 			this->m_inventory == _other.m_inventory &&
 			this->m_basicBonuses == _other.m_basicBonuses &&
 			this->m_battle == _other.m_battle &&
@@ -49,10 +52,11 @@ namespace GameData::InGameData
 
 	bool SRootInGameData::SerializeFields(::TextRPG::FBinaryWriter& _writer, ::std::string& _error) const
 	{
+		if (!_writer.Field("m_curveThresholds", this->m_curveThresholds, _error)) return false;
 		if (!_writer.Field("m_contentVersion", this->m_contentVersion, _error)) return false;
 		if (!_writer.Field("m_sceneId", this->m_sceneId, _error)) return false;
 		if (!_writer.Field("m_character", this->m_character, _error)) return false;
-		if (!_writer.Field("m_gold", this->m_gold, _error)) return false;
+		if (!_writer.Field("m_currencies", this->m_currencies, _error)) return false;
 		if (!_writer.Field("m_inventory", this->m_inventory, _error)) return false;
 		if (!_writer.Field("m_basicBonuses", this->m_basicBonuses, _error)) return false;
 		if (!_writer.Field("m_battle", this->m_battle, _error)) return false;
@@ -62,10 +66,12 @@ namespace GameData::InGameData
 
 	bool SRootInGameData::DeserializeFields(::TextRPG::FBinaryReader& _reader, ::std::string& _error)
 	{
+		if (_reader.GetSchemaVersion() < 5u) this->m_curveThresholds = ::std::vector<::std::uint32_t>{};
+		if (!_reader.Field("m_curveThresholds", this->m_curveThresholds, _error, _reader.GetSchemaVersion() >= 5u)) return false;
 		if (!_reader.Field("m_contentVersion", this->m_contentVersion, _error, true)) return false;
 		if (!_reader.Field("m_sceneId", this->m_sceneId, _error, true)) return false;
 		if (!_reader.Field("m_character", this->m_character, _error, true)) return false;
-		if (!_reader.Field("m_gold", this->m_gold, _error, true)) return false;
+		if (!_reader.Field("m_currencies", this->m_currencies, _error, true)) return false;
 		if (!_reader.Field("m_inventory", this->m_inventory, _error, true)) return false;
 		if (_reader.GetSchemaVersion() < 3u) this->m_basicBonuses = ::GameData::InGameData::SBasicStats{};
 		if (!_reader.Field("m_basicBonuses", this->m_basicBonuses, _error, _reader.GetSchemaVersion() >= 3u)) return false;

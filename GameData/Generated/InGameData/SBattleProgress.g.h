@@ -15,19 +15,21 @@ namespace GameData::InGameData
 		SBattleProgress(const SBattleProgress& _other) = default;
 		SBattleProgress& operator=(const SBattleProgress& _other) = default;
 		SBattleProgress(
-			::std::uint32_t _field0,
+			::GameData::InGameData::SBattleRewardProgress _field0,
 			::std::uint32_t _field1,
 			::std::uint32_t _field2,
 			::std::uint32_t _field3,
 			::std::uint32_t _field4,
-			::std::uint64_t _field5,
+			::std::uint32_t _field5,
 			::std::uint64_t _field6,
-			bool _field7,
-			::std::uint32_t _field8,
+			::std::uint64_t _field7,
+			bool _field8,
 			::std::uint32_t _field9,
-			bool _field10,
+			::std::uint32_t _field10,
 			bool _field11,
-			::std::uint32_t _field12);
+			bool _field12,
+			::std::uint32_t _field13);
+		::GameData::InGameData::SBattleRewardProgress Reward{};
 		::std::uint32_t RuleId{};
 		::std::uint32_t MonsterId{};
 		::std::uint32_t MonsterHp{};

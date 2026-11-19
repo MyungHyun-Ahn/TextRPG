@@ -1,5 +1,5 @@
 # 구조 정의만 관리한다. 초기 콘텐츠 값은 Excel 원본에서 공급한다.
-schema_version: 3
+schema_version: 5
 types:
   - name: SCharacterStats
     fields:
@@ -33,8 +33,33 @@ types:
         type: 'uint32'
         missing: default
         since: 3
+  - name: SCurrencyBalance
+    fields:
+      - {name: CurrencyType, type: 'uint32', missing: reject, since: 4}
+      - {name: Amount, type: 'uint32', missing: reject, since: 4}
+  - name: SCurrencyRewardProgress
+    fields:
+      - {name: CurrencyType, type: 'uint32', missing: reject, since: 4}
+      - {name: AmountMin, type: 'uint32', missing: reject, since: 4}
+      - {name: AmountMax, type: 'uint32', missing: reject, since: 4}
+      - {name: RolledAmount, type: 'uint32', missing: reject, since: 4}
+      - {name: GrantedAmount, type: 'uint32', missing: reject, since: 4}
+  - name: SBattleRewardProgress
+    fields:
+      - {name: ExperienceBefore, type: 'uint32', missing: default, since: 5}
+      - {name: ExperienceAfter, type: 'uint32', missing: default, since: 5}
+      - {name: CurveMaxLevel, type: 'uint32', missing: default, since: 5}
+      - {name: State, type: 'uint32', missing: reject, since: 4}
+      - {name: PlannedExperience, type: 'uint32', missing: reject, since: 4}
+      - {name: GrantedExperience, type: 'uint32', missing: reject, since: 4}
+      - {name: LevelBefore, type: 'uint32', missing: reject, since: 4}
+      - {name: LevelAfter, type: 'uint32', missing: reject, since: 4}
+      - {name: CurrencySeed, type: 'uint64', missing: reject, since: 4}
+      - {name: CurrencyRandCount, type: 'uint64', missing: reject, since: 4}
+      - {name: Currencies, type: 'vector<SCurrencyRewardProgress>', missing: reject, since: 4}
   - name: SBattleProgress
     fields:
+      - {name: Reward, type: 'SBattleRewardProgress', missing: default, since: 4}
       - name: RuleId
         type: 'uint32'
         missing: reject
@@ -139,6 +164,7 @@ types:
         since: 1
   - name: SRootInGameData
     fields:
+      - {name: m_curveThresholds, type: 'vector<uint32>', missing: default, since: 5}
       - name: m_contentVersion
         type: 'uint32'
         missing: reject
@@ -151,10 +177,10 @@ types:
         type: 'shared_ptr<SCharacterProgress>'
         missing: reject
         since: 1
-      - name: m_gold
-        type: 'uint32'
+      - name: m_currencies
+        type: 'vector<SCurrencyBalance>'
         missing: reject
-        since: 1
+        since: 4
       - name: m_inventory
         type: 'vector<SInventoryItemProgress>'
         missing: reject

@@ -262,6 +262,77 @@ namespace TextRPG
 		m_data.m_character = std::make_shared<FCharacterInGameData>();
 	}
 
+	std::uint32_t InGameData::ExperienceGrant(std::uint32_t before, std::uint32_t planned, std::uint32_t cap) noexcept
+	{
+		return (std::min)(planned, before >= cap ? 0U : cap - before);
+	}
+
+	std::uint32_t InGameData::ExperienceLevel(const GameData::FGameDataStore& store,
+		std::uint32_t experience, std::uint32_t maximum) noexcept
+	{
+		std::uint32_t result = 0;
+		for (const auto& level : store.GetLevelDefinitions())
+			if (level.level <= maximum && experience >= level.requiredExperience) result = level.level;
+		return result;
+	}
+
+	void InGameData::RestoreCurve(const GameData::FGameDataStore& store, bool legacy)
+	{
+		const auto& levels = store.GetLevelDefinitions();
+		// 레거시 카탈로그 부재의 오류 우선순위는 기존 전체 후보 검증에 맡긴다.
+		if (levels.empty()) return;
+		auto& character = *m_data.m_character;
+		if (legacy)
+		{
+			// 구형은 저장 곡선이 없다. 현재 구간 또는 저장 레벨에서 끝나는 유효 prefix만 추론한다.
+			const auto* level = store.FindLevelDefinition(character.Level);
+			if (!level) throw std::runtime_error("CharacterId or Level definition is missing");
+			if (character.Experience < level->requiredExperience ||
+				(character.Level == 1 && ExperienceLevel(store, character.Experience, levels.back().level) != 1))
+				throw std::runtime_error("Character level/experience mismatch");
+			auto& receipt = m_data.m_battle.Reward;
+			if (receipt.State == 2)
+			{
+				if (receipt.GrantedExperience > character.Experience)
+					throw std::runtime_error("Reward experience receipt is invalid");
+				receipt.ExperienceBefore = character.Experience - receipt.GrantedExperience;
+				receipt.ExperienceAfter = character.Experience;
+				receipt.CurveMaxLevel = 0;
+				for (const auto& cap : levels)
+				{
+					const auto grant = m_data.m_battle.Outcome == 1 ?
+						ExperienceGrant(receipt.ExperienceBefore, receipt.PlannedExperience, cap.requiredExperience) : 0U;
+					if (grant == receipt.GrantedExperience &&
+						ExperienceLevel(store, receipt.ExperienceBefore, cap.level) == receipt.LevelBefore &&
+						ExperienceLevel(store, receipt.ExperienceAfter, cap.level) == receipt.LevelAfter &&
+						receipt.LevelAfter == character.Level)
+					{
+						receipt.CurveMaxLevel = cap.level;
+						break;
+					}
+				}
+				if (receipt.CurveMaxLevel == 0) throw std::runtime_error("Reward experience receipt is invalid");
+			}
+		}
+		else
+		{
+			// 이 벡터는 호환 증거일 뿐이다. 게임 수치·상한은 항상 Store에서만 조회한다.
+			if (m_data.m_curveThresholds.empty() || m_data.m_curveThresholds.size() > levels.size())
+				throw std::runtime_error("Character curve provenance is invalid");
+			for (std::size_t i = 0; i < m_data.m_curveThresholds.size(); ++i)
+				if (m_data.m_curveThresholds[i] != levels[i].requiredExperience)
+					throw std::runtime_error("Character curve provenance is invalid");
+			const auto savedMaximum = static_cast<std::uint32_t>(m_data.m_curveThresholds.size());
+			if (ExperienceLevel(store, character.Experience, savedMaximum) != character.Level)
+				throw std::runtime_error("Character level/experience mismatch");
+			if (m_data.m_battle.Reward.CurveMaxLevel > m_data.m_curveThresholds.size())
+				throw std::runtime_error("Character curve provenance is invalid");
+		}
+		character.Level = ExperienceLevel(store, character.Experience, levels.back().level);
+		m_data.m_curveThresholds.clear();
+		for (const auto& level : levels) m_data.m_curveThresholds.push_back(level.requiredExperience);
+	}
+
 	std::string_view InGameData::GetSerializableTypeName() const noexcept
 	{
 		return GameData::InGameData::SRootInGameData::kTypeName;
@@ -274,7 +345,19 @@ namespace TextRPG
 
 	bool InGameData::DeserializeFields(FBinaryReader& reader, std::string& error)
 	{
-		return ForwardDeserializeFields(m_data, reader, error);
+		if (reader.GetSchemaVersion() >= 4) return ForwardDeserializeFields(m_data, reader, error);
+		// 숫자 schema2/3의 당시 필드를 명시적으로 읽는다. 새 writer에는 구 Gold 원본이 없다.
+		std::uint32_t gold = 0;
+		if (!reader.Field("m_contentVersion", m_data.m_contentVersion, error) ||
+			!reader.Field("m_sceneId", m_data.m_sceneId, error) || !reader.Field("m_character", m_data.m_character, error) ||
+			!reader.Field("m_gold", gold, error) || !reader.Field("m_inventory", m_data.m_inventory, error) ||
+			!reader.Field("m_achievements", m_data.m_achievements, error)) return false;
+		if (reader.GetSchemaVersion() >= 3 &&
+			(!reader.Field("m_basicBonuses", m_data.m_basicBonuses, error) ||
+			 !reader.Field("m_battle", m_data.m_battle, error))) return false;
+		m_data.m_currencies = {{static_cast<std::uint32_t>(GameData::Common::ECurrencyType::Gold), gold}};
+		if (m_data.m_battle.RuleId != 0) m_data.m_battle.Reward.State = 3;
+		return true;
 	}
 	bool InGameData::CreateNew(const GameData::FGameDataStore& store, std::uint32_t sceneId,
 		std::unique_ptr<InGameData>& output, std::string& error)
@@ -288,10 +371,12 @@ namespace TextRPG
 			candidate->m_data.m_sceneId = sceneId;
 			*candidate->m_data.m_character = {profile->characterId, profile->initialLevel, profile->initialExperience, 0,
 				{profile->initialMaxHpBonus, profile->initialAttackBonus, profile->initialDefenseBonus}};
-			candidate->m_data.m_gold = profile->initialGold;
+			candidate->m_data.m_currencies = {{static_cast<std::uint32_t>(GameData::Common::ECurrencyType::Gold), profile->initialGold}};
 			SCharacterStats stats;
 			if (!candidate->GetStats(store, stats, error)) return false;
 			candidate->m_data.m_character->CurrentHp = stats.MaxHp;
+			for (const auto& level : store.GetLevelDefinitions())
+				candidate->m_data.m_curveThresholds.push_back(level.requiredExperience);
 			if (!candidate->Validate(store, error)) return false;
 			output = std::move(candidate);
 			error.clear();
@@ -313,7 +398,12 @@ namespace TextRPG
 	{
 		return m_data.m_battle;
 	}
-	std::uint32_t InGameData::GetGold() const noexcept { return m_data.m_gold; }
+	std::uint32_t InGameData::GetGold() const noexcept { return GetCurrency(GameData::Common::ECurrencyType::Gold); }
+	std::uint32_t InGameData::GetCurrency(GameData::Common::ECurrencyType type) const noexcept
+	{
+		for (const auto& balance : m_data.m_currencies) if (balance.CurrencyType == static_cast<std::uint32_t>(type)) return balance.Amount;
+		return 0;
+	}
 	std::uint32_t InGameData::GetSceneId() const noexcept { return m_data.m_sceneId; }
 	const std::vector<SInventoryItemProgress>& InGameData::GetInventory() const noexcept { return m_data.m_inventory; }
 	const std::vector<SAchievementProgress>& InGameData::GetAchievements() const noexcept { return m_data.m_achievements; }
@@ -328,12 +418,11 @@ namespace TextRPG
 		}
 		constexpr auto maximum = (std::numeric_limits<std::uint32_t>::max)();
 		const auto& bonus = m_data.m_character->StatBonuses;
-		if (bonus.MaxHp > maximum - level->maxHp || bonus.Attack > maximum - level->attack || bonus.Defense > maximum - level->defense)
+		const auto project = [maximum](std::uint32_t base, std::uint32_t increase)
 		{
-			error = "Derived stats overflow";
-			return false;
-		}
-		output = {level->maxHp + bonus.MaxHp, level->attack + bonus.Attack, level->defense + bonus.Defense};
+			return static_cast<std::uint32_t>((std::min)(std::uint64_t{maximum}, static_cast<std::uint64_t>(base) + increase));
+		};
+		output = {project(level->maxHp, bonus.MaxHp), project(level->attack, bonus.Attack), project(level->defense, bonus.Defense)};
 		error.clear();
 		return true;
 	}
@@ -371,7 +460,7 @@ namespace TextRPG
 				const auto& character = *legacyRoot.Character;
 				*candidate->m_data.m_character = {LegacyCharacterId(character.CharacterId), character.Level,
 					character.Experience, character.CurrentHp, character.StatBonuses};
-				candidate->m_data.m_gold = legacyRoot.Gold;
+				candidate->m_data.m_currencies = {{static_cast<std::uint32_t>(GameData::Common::ECurrencyType::Gold), legacyRoot.Gold}};
 				candidate->m_data.m_inventory.reserve(legacyRoot.Inventory.size());
 				for (const auto& item : legacyRoot.Inventory)
 					candidate->m_data.m_inventory.push_back({item.InstanceId, LegacyItemId(item.ItemId), item.Count});
@@ -399,7 +488,7 @@ namespace TextRPG
 				candidate->m_data.m_contentVersion = reader.UInt32();
 				candidate->m_data.m_sceneId = LegacySceneId(reader.Id());
 				*candidate->m_data.m_character = ReadCharacter(reader);
-				candidate->m_data.m_gold = reader.UInt32();
+				candidate->m_data.m_currencies = {{static_cast<std::uint32_t>(GameData::Common::ECurrencyType::Gold), reader.UInt32()}};
 				const auto inventoryCount = reader.Count(18);
 				candidate->m_data.m_inventory.reserve(inventoryCount);
 				for (std::uint32_t i = 0; i < inventoryCount; ++i) candidate->m_data.m_inventory.push_back(ReadItem(reader));
@@ -409,6 +498,13 @@ namespace TextRPG
 					candidate->m_data.m_achievements.push_back(ReadAchievement(reader));
 				if (!reader.IsDone()) throw std::runtime_error("Trailing progress bytes");
 			}
+			// 구형 nullable pointer도 후보 검증 오류다. 마이그레이션 조회가 종료 경계를 우회하지 않는다.
+			if (!candidate->m_data.m_character) throw std::runtime_error("Character progress is missing");
+			candidate->RestoreCurve(store, !isFramed || (bytes.size() >= 12 && bytes[8] < 5));
+			std::sort(candidate->m_data.m_currencies.begin(), candidate->m_data.m_currencies.end(), [](const auto& left, const auto& right)
+			{
+				return left.CurrencyType < right.CurrencyType;
+			});
 			if (!candidate->Validate(store, error)) return false;
 			output = std::move(candidate);
 			error.clear();
@@ -433,9 +529,30 @@ namespace TextRPG
 	}
 	bool InGameData::SetGold(std::uint32_t gold, std::string& error)
 	{
-		m_data.m_gold = gold;
-		error.clear();
-		return true;
+		return SetCurrency(GameData::Common::ECurrencyType::Gold, gold, error);
+	}
+	bool InGameData::SetCurrency(GameData::Common::ECurrencyType type, std::uint32_t amount, std::string& error)
+	{
+		try
+		{
+			if (!GameData::Common::IsValidCurrencyType(type))
+				throw std::runtime_error("Unknown currency type");
+			auto candidate = m_data.m_currencies;
+			const auto found = std::find_if(candidate.begin(), candidate.end(), [type](const auto& row)
+			{
+				return row.CurrencyType == static_cast<std::uint32_t>(type);
+			});
+			if (found == candidate.end()) candidate.push_back({static_cast<std::uint32_t>(type), amount});
+			else found->Amount = amount;
+			std::sort(candidate.begin(), candidate.end(), [](const auto& left, const auto& right)
+			{
+				return left.CurrencyType < right.CurrencyType;
+			});
+			m_data.m_currencies.swap(candidate);
+			error.clear();
+			return true;
+		}
+		catch (const std::exception& exception) { error = exception.what(); return false; }
 	}
 	bool InGameData::SetSceneId(const GameData::FGameDataStore& store, std::uint32_t sceneId, std::string& error)
 	{
@@ -488,6 +605,15 @@ namespace TextRPG
 		{
 			if (!m_data.m_character) throw std::runtime_error("Character progress is missing");
 			CheckBounds(m_data.m_sceneId, *m_data.m_character, m_data.m_inventory, m_data.m_achievements);
+			// 콘텐츠 상한이 아니라 공통 vector codec의 저장 가능 용량을 게시 전에 확인한다.
+			if (m_data.m_curveThresholds.size() > SerializationDetail::kMaxCount)
+				throw std::runtime_error("Character curve provenance exceeds serialization capacity");
+			std::set<std::uint32_t> currencies;
+			for (const auto& balance : m_data.m_currencies)
+			{
+				if (!GameData::Common::IsValidCurrencyType(static_cast<GameData::Common::ECurrencyType>(balance.CurrencyType)) ||
+					!currencies.insert(balance.CurrencyType).second) throw std::runtime_error("Unknown or duplicate currency type");
+			}
 			CheckInventory(store, m_data.m_inventory);
 			CheckAchievements(store, m_data.m_achievements);
 		}

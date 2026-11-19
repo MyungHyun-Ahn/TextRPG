@@ -22,21 +22,27 @@
 
 namespace GameData::InGameData
 {
-	inline constexpr ::std::uint32_t kSchemaVersion = 3u;
+	inline constexpr ::std::uint32_t kSchemaVersion = 5u;
 	struct SAchievementProgress;
 	struct SBasicStats;
+	struct SCurrencyRewardProgress;
+	struct SBattleRewardProgress;
 	struct SBattleProgress;
 	struct SCharacterStats;
 	struct SCharacterProgress;
+	struct SCurrencyBalance;
 	struct SInventoryItemProgress;
 	struct SRootInGameData;
 }
 
 #include "SAchievementProgress.g.h"
 #include "SBasicStats.g.h"
+#include "SCurrencyRewardProgress.g.h"
+#include "SBattleRewardProgress.g.h"
 #include "SBattleProgress.g.h"
 #include "SCharacterStats.g.h"
 #include "SCharacterProgress.g.h"
+#include "SCurrencyBalance.g.h"
 #include "SInventoryItemProgress.g.h"
 #include "SRootInGameData.g.h"
 

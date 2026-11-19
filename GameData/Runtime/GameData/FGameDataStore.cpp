@@ -117,6 +117,13 @@ namespace
 		if (value == L"BattleField") return Common::ESceneType::BattleField;
 		throw std::runtime_error("invalid SceneType enum");
 	}
+	Common::ECurrencyType CurrencyType(const SYamlRow& row)
+	{
+		const auto value = String(row, L"RewardCurrencyType");
+		Common::ECurrencyType output{};
+		if (Common::TryParseCurrencyType(value.c_str(), output)) return output;
+		throw std::runtime_error("invalid RewardCurrencyType enum");
+	}
 	Common::ESceneActionType ActionType(const SYamlRow& row)
 	{
 		const auto value = String(row, L"ActionType");
@@ -306,14 +313,16 @@ namespace GameData
 					}
 					else if (tableName == "MonsterDefinition.yaml")
 					{
-						Count(row, 10);
+						Count(row, 14);
+						CombatUpperBounds(row, {L"RewardExperience", L"RewardAmountMin", L"RewardAmountMax"});
 						CombatUpperBounds(row, {L"MonsterId", L"MaxHp", L"Attack", L"Defense",
 							L"Strength", L"Dexterity", L"Intelligence", L"Luck"});
 						candidate.m_monsterDefinition.push_back({Number(row, L"MonsterId"), Number(row, L"NameTextKey"),
 							Number(row, L"ArtId"),
 							Number(row, L"MaxHp"), Number(row, L"Attack"), Number(row, L"Defense"),
 							Number(row, L"Strength"), Number(row, L"Dexterity"), Number(row, L"Intelligence"),
-							Number(row, L"Luck")});
+							Number(row, L"Luck"), Number(row, L"RewardExperience"), CurrencyType(row),
+							Number(row, L"RewardAmountMin"), Number(row, L"RewardAmountMax")});
 					}
 					else if (tableName == "CombatRule.yaml")
 					{
@@ -432,7 +441,11 @@ namespace GameData
 				for (std::size_t i = 0; i < candidate.m_levelDefinition.size(); ++i)
 				{
 					const auto& row = candidate.m_levelDefinition[i];
-					if (row.level == 0) throw std::runtime_error("Level must be positive");
+					if (row.level != i + 1 || (i == 0 && row.requiredExperience != 0))
+						throw std::runtime_error("Level curve must start at one with zero XP and be contiguous");
+					if (i != 0 && (row.maxHp < candidate.m_levelDefinition[i - 1].maxHp ||
+						row.attack < candidate.m_levelDefinition[i - 1].attack || row.defense < candidate.m_levelDefinition[i - 1].defense))
+						throw std::runtime_error("Level base stats must not decrease");
 					if (row.maxHp == 0) throw std::runtime_error("MaxHp must be positive");
 					if (i != 0 && row.requiredExperience <= candidate.m_levelDefinition[i - 1].requiredExperience)
 						throw std::runtime_error("level experience thresholds must increase");
@@ -498,6 +511,8 @@ namespace GameData
 					if (!candidate.FindLocalization(row.nameTextKey) || !candidate.FindTextArt(row.artId))
 						throw std::runtime_error("MonsterDefinition display reference is missing");
 					const auto* art = candidate.FindTextArt(row.artId);
+					if (row.rewardAmountMin > row.rewardAmountMax)
+						throw std::runtime_error("RewardAmountMin must not exceed RewardAmountMax");
 					if (row.maxHp == 0 || art->width != 36 || art->height != 36)
 						throw std::runtime_error("MonsterDefinition HP or art dimensions are invalid");
 				}

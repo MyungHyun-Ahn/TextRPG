@@ -37,7 +37,7 @@ namespace
 	using TextRPG::FSerializableTypeRegistry;
 	using TextRPG::FSerializationArchive;
 
-	static_assert(GameData::InGameData::kSchemaVersion == 3);
+	static_assert(GameData::InGameData::kSchemaVersion == 5);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SCharacterProgress::CharacterId), std::uint32_t>);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SInventoryItemProgress::ItemId), std::uint32_t>);
 	static_assert(std::is_same_v<decltype(GameData::InGameData::SAchievementProgress::AchievementId), std::uint32_t>);
@@ -522,7 +522,7 @@ namespace
 		GameData::InGameData::SRootInGameData root;
 		assert(FSerializationArchive::Deserialize(framedBytes, root, error, GameData::InGameData::kSchemaVersion, &registry));
 		assert(root.m_character && *root.m_character == progress.GetCharacter());
-		assert(root.m_sceneId == progress.GetSceneId() && root.m_gold == progress.GetGold());
+		assert(root.m_sceneId == progress.GetSceneId() && root.m_currencies.front().Amount == progress.GetGold());
 		assert(root.m_inventory == progress.GetInventory() && root.m_achievements == progress.GetAchievements());
 		assert(dynamic_cast<const TextRPG::FCharacterInGameData*>(&progress.GetCharacter()));
 		assert(FSerializationArchive::Serialize(root, directBytes, error, GameData::InGameData::kSchemaVersion, &registry));
@@ -536,12 +536,12 @@ namespace
 		assert(directBytes != framedBytes);
 		GameData::InGameData::SRootInGameData live;
 		assert(FSerializationArchive::Deserialize(directBytes, live, error, GameData::InGameData::kSchemaVersion, &registry));
-		assert(live.m_character && live.m_character->CurrentHp == 6 && live.m_gold == progress.GetGold());
+		assert(live.m_character && live.m_character->CurrentHp == 6 && live.m_currencies.front().Amount == progress.GetGold());
 		assert(progress.SetCurrentHp(store, hp, error) && &progress.GetCharacter() == character);
 		assert(progress.Serialize(directBytes, error) && directBytes == framedBytes);
 
 		root.m_character->CurrentHp = 5;
-		root.m_gold = 13579;
+		root.m_currencies.front().Amount = 13579;
 		assert(FSerializationArchive::Serialize(root, directBytes, error, GameData::InGameData::kSchemaVersion, &registry));
 		std::unique_ptr<TextRPG::InGameData> restored;
 		assert(TextRPG::InGameData::Deserialize(directBytes, store, restored, error));
@@ -1152,8 +1152,17 @@ int main(int argc, char** argv)
 	mutate(levelAt, 7, "CharacterId or Level definition is missing");
 	mutate(levelAt + 4, 100, "Character level/experience mismatch");
 	mutate(levelAt + 8, 0xFFFFFFFF, "CurrentHp exceeds derived MaxHp");
+	// 새 수치 정책은 과거 큰 영구 보너스도 버리지 않고 최종 표현만 포화한다.
 	for (std::size_t bonusAt = levelAt + 12; bonusAt < levelAt + 24; bonusAt += 4)
-		mutate(bonusAt, 0xFFFFFFFF, "Derived stats overflow");
+	{
+		auto saturated = bytes;
+		put(saturated, bonusAt, UINT32_MAX, 4);
+		std::unique_ptr<TextRPG::InGameData> saturatedProgress;
+		assert(TextRPG::InGameData::Deserialize(saturated, store, saturatedProgress, error));
+		TextRPG::SCharacterStats projected;
+		assert(saturatedProgress->GetStats(store, projected, error));
+		assert((bonusAt == levelAt + 12 ? projected.MaxHp : bonusAt == levelAt + 16 ? projected.Attack : projected.Defense) == UINT32_MAX);
+	}
 	mutate(inventoryCountAt, 4097, "Progress collection count is invalid or truncated");
 	mutate(inventoryCountAt, 0xFFFFFFFF, "Progress collection count is invalid or truncated");
 	mutate(firstItemAt, 0, "Inventory has zero or duplicate InstanceId", 8);

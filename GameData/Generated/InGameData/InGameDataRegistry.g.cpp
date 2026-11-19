@@ -16,6 +16,16 @@ namespace GameData::InGameData
 			{
 				return ::std::make_unique<SBasicStats>();
 			}, _error)) return false;
+		if (!_registry.Register<SCurrencyRewardProgress>(SCurrencyRewardProgress::kTypeName,
+			[]()
+			{
+				return ::std::make_unique<SCurrencyRewardProgress>();
+			}, _error)) return false;
+		if (!_registry.Register<SBattleRewardProgress>(SBattleRewardProgress::kTypeName,
+			[]()
+			{
+				return ::std::make_unique<SBattleRewardProgress>();
+			}, _error)) return false;
 		if (!_registry.Register<SBattleProgress>(SBattleProgress::kTypeName,
 			[]()
 			{
@@ -30,6 +40,11 @@ namespace GameData::InGameData
 			[]()
 			{
 				return ::std::make_unique<SCharacterProgress>();
+			}, _error)) return false;
+		if (!_registry.Register<SCurrencyBalance>(SCurrencyBalance::kTypeName,
+			[]()
+			{
+				return ::std::make_unique<SCurrencyBalance>();
 			}, _error)) return false;
 		if (!_registry.Register<SInventoryItemProgress>(SInventoryItemProgress::kTypeName,
 			[]()

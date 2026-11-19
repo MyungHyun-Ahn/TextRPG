@@ -1,6 +1,6 @@
 #pragma once
 
-namespace GameData { class FGameDataStore; }
+namespace GameData { class FGameDataStore; namespace Common { enum class ECurrencyType : std::uint32_t; } }
 
 namespace TextRPG
 {
@@ -24,6 +24,8 @@ namespace TextRPG
 		[[nodiscard]] const SCharacterProgress& GetCharacter() const noexcept;
 		[[nodiscard]] const GameData::InGameData::SBattleProgress& GetBattle() const noexcept;
 		[[nodiscard]] std::uint32_t GetGold() const noexcept;
+		[[nodiscard]] std::uint32_t GetCurrency(GameData::Common::ECurrencyType type) const noexcept;
+		[[nodiscard]] bool SetCurrency(GameData::Common::ECurrencyType type, std::uint32_t amount, std::string& error);
 		[[nodiscard]] std::uint32_t GetSceneId() const noexcept;
 		[[nodiscard]] const std::vector<SInventoryItemProgress>& GetInventory() const noexcept;
 		[[nodiscard]] const std::vector<SAchievementProgress>& GetAchievements() const noexcept;
@@ -42,6 +44,10 @@ namespace TextRPG
 	private:
 		friend class FCombat;
 		InGameData();
+		[[nodiscard]] static std::uint32_t ExperienceGrant(std::uint32_t before, std::uint32_t planned, std::uint32_t cap) noexcept;
+		[[nodiscard]] static std::uint32_t ExperienceLevel(const GameData::FGameDataStore& store,
+			std::uint32_t experience, std::uint32_t maximum) noexcept;
+		void RestoreCurve(const GameData::FGameDataStore& store, bool legacy);
 		[[nodiscard]] bool Validate(const GameData::FGameDataStore& store, std::string& error) const;
 		// 유일한 변경 가능 원본이다. UI에는 내부 shared_ptr나 변경 가능한 루트를 노출하지 않는다.
 		GameData::InGameData::SRootInGameData m_data;

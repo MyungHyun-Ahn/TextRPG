@@ -78,6 +78,10 @@ namespace TextRPG
 	class FDataScene final : public IScene, public IUiInputTarget
 	{
 	public:
+		void SetSaveRetryAvailable(bool available) noexcept
+		{
+			m_canRetrySave = available;
+		}
 		FDataScene(const GameData::FGameDataStore& store, FGameUiBridge& uiManager,
 			const InGameData* progress = nullptr, bool canContinue = false);
 		~FDataScene() override;
@@ -121,6 +125,7 @@ namespace TextRPG
 		void InvalidateUiInputForShutdown() noexcept;
 		std::uint32_t m_sceneId{};
 		const InGameData* m_progress = nullptr;
+		bool m_canRetrySave = false;
 		bool m_canContinue = false;
 		bool m_isRetired = false;
 		bool m_replacementRequested = false;

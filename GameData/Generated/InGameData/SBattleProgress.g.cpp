@@ -11,38 +11,41 @@ namespace GameData::InGameData
 	SBattleProgress& SBattleProgress::operator=(SBattleProgress&& _other) noexcept = default;
 
 	SBattleProgress::SBattleProgress(
-		::std::uint32_t _field0,
+		::GameData::InGameData::SBattleRewardProgress _field0,
 		::std::uint32_t _field1,
 		::std::uint32_t _field2,
 		::std::uint32_t _field3,
 		::std::uint32_t _field4,
-		::std::uint64_t _field5,
+		::std::uint32_t _field5,
 		::std::uint64_t _field6,
-		bool _field7,
-		::std::uint32_t _field8,
+		::std::uint64_t _field7,
+		bool _field8,
 		::std::uint32_t _field9,
-		bool _field10,
+		::std::uint32_t _field10,
 		bool _field11,
-		::std::uint32_t _field12)
-		: RuleId(::std::move(_field0))
-		, MonsterId(::std::move(_field1))
-		, MonsterHp(::std::move(_field2))
-		, Round(::std::move(_field3))
-		, Outcome(::std::move(_field4))
-		, Seed(::std::move(_field5))
-		, RandCount(::std::move(_field6))
-		, FirstIsPlayer(::std::move(_field7))
-		, FirstDamage(::std::move(_field8))
-		, SecondDamage(::std::move(_field9))
-		, FirstCritical(::std::move(_field10))
-		, SecondCritical(::std::move(_field11))
-		, HitCount(::std::move(_field12))
+		bool _field12,
+		::std::uint32_t _field13)
+		: Reward(::std::move(_field0))
+		, RuleId(::std::move(_field1))
+		, MonsterId(::std::move(_field2))
+		, MonsterHp(::std::move(_field3))
+		, Round(::std::move(_field4))
+		, Outcome(::std::move(_field5))
+		, Seed(::std::move(_field6))
+		, RandCount(::std::move(_field7))
+		, FirstIsPlayer(::std::move(_field8))
+		, FirstDamage(::std::move(_field9))
+		, SecondDamage(::std::move(_field10))
+		, FirstCritical(::std::move(_field11))
+		, SecondCritical(::std::move(_field12))
+		, HitCount(::std::move(_field13))
 	{
 	}
 
 	bool SBattleProgress::operator==(const SBattleProgress& _other) const
 	{
-		return this->RuleId == _other.RuleId &&
+		return this->Reward == _other.Reward &&
+			this->RuleId == _other.RuleId &&
 			this->MonsterId == _other.MonsterId &&
 			this->MonsterHp == _other.MonsterHp &&
 			this->Round == _other.Round &&
@@ -64,6 +67,7 @@ namespace GameData::InGameData
 
 	bool SBattleProgress::SerializeFields(::TextRPG::FBinaryWriter& _writer, ::std::string& _error) const
 	{
+		if (!_writer.Field("Reward", this->Reward, _error)) return false;
 		if (!_writer.Field("RuleId", this->RuleId, _error)) return false;
 		if (!_writer.Field("MonsterId", this->MonsterId, _error)) return false;
 		if (!_writer.Field("MonsterHp", this->MonsterHp, _error)) return false;
@@ -82,6 +86,8 @@ namespace GameData::InGameData
 
 	bool SBattleProgress::DeserializeFields(::TextRPG::FBinaryReader& _reader, ::std::string& _error)
 	{
+		if (_reader.GetSchemaVersion() < 4u) this->Reward = ::GameData::InGameData::SBattleRewardProgress{};
+		if (!_reader.Field("Reward", this->Reward, _error, _reader.GetSchemaVersion() >= 4u)) return false;
 		if (!_reader.Field("RuleId", this->RuleId, _error, true)) return false;
 		if (!_reader.Field("MonsterId", this->MonsterId, _error, true)) return false;
 		if (!_reader.Field("MonsterHp", this->MonsterHp, _error, true)) return false;

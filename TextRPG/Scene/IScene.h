@@ -1,7 +1,7 @@
 #pragma once
 namespace TextRPG
 {
-	enum class ESceneAction { None, StartGame, Continue, Quit, Travel, BasicAttack };
+	enum class ESceneAction { None, StartGame, Continue, Quit, Travel, BasicAttack, RetrySave };
 	struct SSceneAction final
 	{
 		ESceneAction Type = ESceneAction::None;

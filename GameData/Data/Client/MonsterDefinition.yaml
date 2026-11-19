@@ -10,3 +10,7 @@
   "Dexterity": 4
   "Intelligence": 0
   "Luck": 3
+  "RewardExperience": 300
+  "RewardCurrencyType": "Gold"
+  "RewardAmountMin": 10
+  "RewardAmountMax": 20

@@ -82,6 +82,8 @@ namespace TextRPG
 			return m_engineKind;
 		}
 		bool Restore(const SRandomState& state, std::string& error);
+		// 양 끝 포함 범위다. 고정 범위와 거부는 엔진/count를 소비하지 않는다.
+		bool SelectRange(std::uint32_t minimum, std::uint32_t maximum, std::uint32_t& output, std::string& error);
 		bool AddProc(std::uint32_t key, std::uint32_t proc);
 		bool AddProc(std::uint32_t key, std::uint32_t proc, std::string& error);
 		bool SelectKey(SSelectResult& result, std::string& error);

@@ -1835,6 +1835,14 @@ static void TestCombatSession(GameData::FGameDataStore& store, const std::filesy
 	assert(session.GetProgress()->GetBattle().Outcome != 0);
 	const auto finished = session.GetProgress()->GetBattle();
 	const auto finalHp = session.GetProgress()->GetCharacter().CurrentHp;
+	// 종료 체크포인트는 추가 Save 없이 실제 인증 파일에서 재개되어야 한다.
+	std::vector<std::uint8_t> checkpoint;
+	assert(FSaveDataStore(std::filesystem::absolute(work / "combat-saves")).Load(checkpoint, error));
+	std::unique_ptr<InGameData> checkpointProgress;
+	assert(InGameData::Deserialize(checkpoint, store, checkpointProgress, error));
+	assert(checkpointProgress->GetBattle() == finished);
+	assert(checkpointProgress->GetCharacter() == session.GetProgress()->GetCharacter());
+	assert(checkpointProgress->GetGold() == session.GetProgress()->GetGold());
 	assert(!session.BasicAttack(scenes, error));
 	assert(session.GetProgress()->GetBattle() == finished && session.GetProgress()->GetCharacter().CurrentHp == finalHp);
 	scenes.Render(frame);
@@ -1856,6 +1864,36 @@ static void TestCombatSession(GameData::FGameDataStore& store, const std::filesy
 	assert(session.TakeStartResult(scenes, error) == EGameStartResult::Started);
 	assert(session.GetProgress()->GetBattle().Round == 0 && session.GetProgress()->GetBattle().RandCount == 0);
 	std::cout << "PASS IGD combat producer Store UI travel EndFrame round archive Continue result return reentry\n";
+	// 게시 후 실제 파일 쓰기 거부는 Rejected가 아니다. 재시도는 저장만 실행한다.
+	const auto savePath = std::filesystem::absolute(work / "combat-saves/InGameData.sav");
+	const auto oldCiphertext = ReadSaveBytes(savePath);
+	const auto attributes = GetFileAttributesW(savePath.c_str());
+	assert(attributes != INVALID_FILE_ATTRIBUTES && SetFileAttributesW(savePath.c_str(), attributes | FILE_ATTRIBUTE_READONLY));
+	EGameActionResult finalResult = EGameActionResult::Rejected;
+	for (std::uint32_t turn = 0; turn < 100 && session.GetProgress()->GetBattle().Outcome == 0; ++turn)
+	{
+		finalResult = session.ApplyBasicAttack(scenes, error);
+		assert(finalResult != EGameActionResult::Rejected);
+	}
+	assert(finalResult == EGameActionResult::AppliedSaveFailed && session.HasUnsavedChanges() && session.HasSaveFailure());
+	assert(ReadSaveBytes(savePath) == oldCiphertext);
+	std::vector<std::uint8_t> appliedBytes, retriedBytes;
+	assert(session.GetProgress()->Serialize(appliedBytes, error));
+	scenes.SetSaveRetryAvailable(true);
+	input.Key = EInputKey::Digit3;
+	input.Type = EInputEventType::KeyUp;
+	input.BatchId = 915;
+	(void)scenes.HandleInput(input);
+	input.Type = EInputEventType::KeyDown;
+	input.BatchId = 916;
+	assert(scenes.HandleInput(input).Type == ESceneAction::RetrySave);
+	assert(SetFileAttributesW(savePath.c_str(), attributes));
+	assert(session.Save(error) && !session.HasUnsavedChanges() && !session.HasSaveFailure());
+	assert(session.GetProgress()->Serialize(retriedBytes, error) && appliedBytes == retriedBytes);
+	assert(ReadSaveBytes(savePath) != oldCiphertext);
+	scenes.SetSaveRetryAvailable(false);
+	assert(session.CanContinue(scenes, ui, error));
+	std::cout << "PASS IGD AppliedSaveFailed exact old ciphertext dirty retry slot save-only stable receipt RNG and recovery\n";
 }
 
 static void TestProgressSession(GameData::FGameDataStore& store, const std::filesystem::path& work)
@@ -2038,7 +2076,9 @@ static void TestLegacyProgressSession(GameData::FGameDataStore& gameData, const 
 		std::vector<std::uint8_t> current;
 		assert(slot.Load(current, error) && current.size() >= 12);
 		assert(current[0] == 'C' && current[1] == 'G' && current[2] == 'S' && current[3] == 'A');
-		assert(current[8] == 3 && current[9] == 0 && current[10] == 0 && current[11] == 0);
+		assert((static_cast<std::uint32_t>(current[8]) | (static_cast<std::uint32_t>(current[9]) << 8)
+			| (static_cast<std::uint32_t>(current[10]) << 16) | (static_cast<std::uint32_t>(current[11]) << 24))
+			== GameData::InGameData::kSchemaVersion);
 		std::unique_ptr<InGameData> restored;
 		assert(InGameData::Deserialize(current, gameData, restored, error));
 		assert(restored->GetGold() == 54321 && restored->GetCharacter().CurrentHp == 7);

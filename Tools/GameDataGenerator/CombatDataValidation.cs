@@ -4,7 +4,8 @@ internal static class FCombatDataValidation
     {
         ["CharacterCombat"] = ["CharacterId", "Strength", "Dexterity", "Intelligence", "Luck"],
         ["MonsterDefinition"] = ["MonsterId", "NameTextKey", "ArtId", "MaxHp", "Attack", "Defense",
-            "Strength", "Dexterity", "Intelligence", "Luck"],
+            "Strength", "Dexterity", "Intelligence", "Luck",
+            "RewardExperience", "RewardCurrencyType", "RewardAmountMin", "RewardAmountMax"],
         ["CombatRule"] = ["RuleId", "MonsterId", "BattleSceneId", "TownSceneId", "Scale", "StrengthDefense", "DexteritySpeed",
             "BaseSpeed", "LuckCritical", "CriticalCap", "CriticalMultiplier", "MinimumDamage", "StrengthCoefficient",
             "DexterityCoefficient", "IntelligenceCoefficient", "LuckCoefficient", "MaxStat", "MaxRounds", "HealOnReturn",
@@ -13,9 +14,14 @@ internal static class FCombatDataValidation
 
     public static void Validate(IReadOnlyList<FGameDataTable> tables, FDiagnosticBag diagnostics)
     {
+        string[] progressTables = ["CharacterDefinition", "LevelDefinition", "NewGameProfile", "ItemDefinition", "AchievementDefinition"];
+        FGameDataTable[] progress = tables.Where(table => progressTables.Contains(table.Name))
+            .OrderBy(table => table.Name, StringComparer.Ordinal).ToArray();
+        if (progress.Length != 0 && progress.Length != progressTables.Length)
+            diagnostics.Add("GD2214", "Progress requires the complete five-table cohort or its total absence.", progress[0].Locate(1, 2));
+        ValidateCurve(tables, diagnostics);
         FGameDataTable[] cohort = tables.Where(table => Fields.ContainsKey(table.Name)).ToArray();
         if (cohort.Length == 0) return;
-        string[] progressTables = ["CharacterDefinition", "LevelDefinition", "NewGameProfile", "ItemDefinition", "AchievementDefinition"];
         if (cohort.Length != Fields.Count || progressTables.Any(name => !tables.Any(table => table.Name == name)))
         {
             diagnostics.Add("GD2201", "Combat requires the complete character, monster and rule cohort.", cohort[0].Locate(1, 2));
@@ -25,7 +31,9 @@ internal static class FCombatDataValidation
         {
             string[] expected = Fields[table.Name];
             if (table.Fields.Count != expected.Length || expected.Any(name => !table.Fields.Any(field =>
-                field.Name == name && field.Type?.Kind == EGameDataScalarKind.UInt32 && field.Required)))
+                field.Name == name && (name == "RewardCurrencyType" ?
+                    field.Type?.Kind == EGameDataScalarKind.Enum && field.Type.EnumName == "CurrencyType" :
+                    field.Type?.Kind == EGameDataScalarKind.UInt32) && field.Required)))
             {
                 diagnostics.Add("GD2202", "Combat fields must match the required uint32 contract.", table.Locate(13, 2));
                 return;
@@ -47,10 +55,15 @@ internal static class FCombatDataValidation
                 number > (field.Name == "HealOnReturn" ? 1U : CombatWorkbookMaximum))
                 diagnostics.Add("GD2206", "Combat workbook range exceeded.", table.Locate(row.SourceRowNumber, field.ColumnNumber));
         }
+
         FGameDataTable rules = cohort.Single(table => table.Name == "CombatRule");
         FGameDataTable monsters = cohort.Single(table => table.Name == "MonsterDefinition");
         foreach (FGameDataRow monster in monsters.Rows)
         {
+            if (GetNumber(monster, "RewardAmountMin") > GetNumber(monster, "RewardAmountMax"))
+                diagnostics.Add("GD2209", "RewardAmountMin must not exceed RewardAmountMax.",
+                    monsters.Locate(monster.SourceRowNumber,
+                        monsters.Fields.Single(field => field.Name == "RewardAmountMin").ColumnNumber));
             FGameDataRow? art = FindReferencedRow(tables, "TextArt", "ArtId", GetNumber(monster, "ArtId"));
             if (art == null || GetNumber(art, "Width") != 36 || GetNumber(art, "Height") != 36)
                 diagnostics.Add("GD2208", "MonsterDefinition.ArtId must reference 36x36 TextArt.",
@@ -89,6 +102,51 @@ internal static class FCombatDataValidation
                     }
                 }
             }
+        }
+    }
+
+    private static void ValidateCurve(IReadOnlyList<FGameDataTable> tables, FDiagnosticBag diagnostics)
+    {
+        FGameDataTable? levels = tables.FirstOrDefault(table => table.Name == "LevelDefinition");
+        if (levels == null) return;
+        string[] fields = ["Level", "RequiredExperience", "MaxHp", "Attack", "Defense"];
+        if (levels.Fields.Count != fields.Length || fields.Any(name => !levels.Fields.Any(field =>
+            field.Name == name && field.Type?.Kind == EGameDataScalarKind.UInt32 && field.Required)))
+        {
+            diagnostics.Add("GD2212", "LevelDefinition must match the required uint32 curve contract.", levels.Locate(13, 2));
+            return;
+        }
+        if (!levels.IsIncludedOnClient)
+            diagnostics.Add("GD2212", "LevelDefinition must be included on Client.", levels.Locate(2, 2));
+        foreach (FGameDataField field in levels.Fields.Where(field => !field.IsIncludedOnClient))
+            diagnostics.Add("GD2212", "Mandatory level field must be included on Client.", levels.Locate(5, field.ColumnNumber));
+        if (levels.Rows.Count == 0)
+            diagnostics.Add("GD2210", "Level curve requires at least one level.", levels.Locate(14, 2));
+        FGameDataRow[] curve = levels.Rows.OrderBy(row => GetNumber(row, "Level")).ToArray();
+        for (int index = 0; index < curve.Length; ++index)
+        {
+            FGameDataRow row = curve[index];
+            // HP의 의미상 하한은 작성자가 완화할 수 있는 #Min과 별개다.
+            if (GetNumber(row, "MaxHp") == 0)
+                diagnostics.Add("GD2213", "LevelDefinition.MaxHp must be positive.",
+                    levels.Locate(row.SourceRowNumber, levels.Fields.Single(field => field.Name == "MaxHp").ColumnNumber));
+            if (GetNumber(row, "Level") != index + 1 || (index == 0 && GetNumber(row, "RequiredExperience") != 0) ||
+                (index > 0 && (GetNumber(row, "RequiredExperience") <= GetNumber(curve[index - 1], "RequiredExperience") ||
+                    new[] { "MaxHp", "Attack", "Defense" }.Any(field => GetNumber(row, field) < GetNumber(curve[index - 1], field)))))
+                diagnostics.Add("GD2210", "Level curve must be contiguous with zero initial XP, " +
+                    "increasing thresholds and nondecreasing stats.",
+                    levels.Locate(row.SourceRowNumber, 2));
+        }
+        FGameDataTable? profiles = tables.FirstOrDefault(table => table.Name == "NewGameProfile");
+        if (profiles == null || !profiles.Fields.Any(field => field.Name == "InitialLevel")) return;
+        foreach (FGameDataRow profile in profiles.Rows)
+        {
+            uint level = GetNumber(profile, "InitialLevel"), experience = GetNumber(profile, "InitialExperience");
+            FGameDataRow? current = curve.FirstOrDefault(row => GetNumber(row, "Level") == level);
+            if (current == null || experience < GetNumber(current, "RequiredExperience") ||
+                curve.Any(row => GetNumber(row, "Level") > level && experience >= GetNumber(row, "RequiredExperience")))
+                diagnostics.Add("GD2211", "Initial level and cumulative experience must match the curve.",
+                    profiles.Locate(profile.SourceRowNumber, 2));
         }
     }
 

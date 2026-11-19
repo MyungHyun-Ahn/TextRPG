@@ -256,6 +256,10 @@ namespace TextRPG
 	{
 		m_canContinue = available;
 	}
+	void FTextRPGSceneManager::SetSaveRetryAvailable(bool available) noexcept
+	{
+		if (auto* scene = dynamic_cast<FDataScene*>(GetCurrentScene())) scene->SetSaveRetryAvailable(available);
+	}
 	void FTextRPGSceneManager::ShowMessage(std::uint32_t textKey)
 	{
 		m_messageKey = textKey;

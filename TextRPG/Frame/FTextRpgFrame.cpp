@@ -182,7 +182,18 @@ namespace TextRPG
 			}
 			else if (action.Type == ESceneAction::BasicAttack)
 			{
-				if (!session.BasicAttack(sceneManager, dataError)) std::cerr << "Combat operation: " << dataError << '\n';
+				const auto result = session.ApplyBasicAttack(sceneManager, dataError);
+				if (result == EGameActionResult::Rejected) std::cerr << "Combat operation: " << dataError << '\n';
+				if (result == EGameActionResult::AppliedSaveFailed)
+					sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::Reward_SaveFailed));
+				else if (result == EGameActionResult::Applied && !session.HasSaveFailure()) sceneManager.ShowMessage(0);
+				sceneManager.SetSaveRetryAvailable(session.HasSaveFailure());
+			}
+			else if (action.Type == ESceneAction::RetrySave)
+			{
+				const bool saved = session.Save(dataError);
+				sceneManager.ShowMessage(saved ? 0 : static_cast<std::uint32_t>(ETextKey::Reward_SaveFailed));
+				sceneManager.SetSaveRetryAvailable(session.HasSaveFailure());
 			}
 			else if (action.Type == ESceneAction::Continue)
 			{
@@ -229,6 +240,8 @@ namespace TextRPG
 		// 의도적 Render 생략도 정상 안전점이다. 실제 입력/출력 실패에서는 여기에 진입하지 않는다.
 		const bool published = sceneManager.EndFrame(errorMessage);
 		const auto startResult = session.TakeStartResult(sceneManager, dataError);
+		sceneManager.SetSaveRetryAvailable(session.HasSaveFailure());
+		if (session.HasSaveFailure()) sceneManager.ShowMessage(static_cast<std::uint32_t>(ETextKey::Reward_SaveFailed));
 		if (sceneManager.IsQuitting())
 		{
 			// 취소된 후보를 추가 게시/저장하거나 이미 해제된 Scene을 다시 그리지 않는다.

@@ -185,7 +185,11 @@ def combat_expectations(client, assets):
             "hpLabel": localized[22], "roundLabel": localized[rule["RoundTextKey"]],
             "ready": localized[rule["ReadyTextKey"]], "hit": localized[rule["HitTextKey"]],
             "critical": localized[rule["CriticalTextKey"]], "victory": localized[rule["VictoryTextKey"]],
-            "defeat": localized[rule["DefeatTextKey"]], "monsterPixels": pixels}
+            "defeat": localized[rule["DefeatTextKey"]], "monsterPixels": pixels,
+            "levels": {row["Level"]: row for row in tables["LevelDefinition"]},
+            "profile": profile, "monster": monster,
+            "levelLabel": localized[21], "xpLabel": localized[44], "maxLabel": localized[45],
+            "uncreditedLabel": localized[47], "levelChangeLabel": localized[48], "currencyLabel": localized[25]}
 
 
 def combat_frame(value, labels, content):
@@ -206,23 +210,38 @@ def combat_frame(value, labels, content):
     round_value = number(45, 3, content["roundLabel"], 38)
     if not player or not monster or not round_value:
         return None
-    if player[1] != content["playerMaxHp"] or monster[1] != content["monsterMaxHp"]:
+    level_prefix = physical_text(content["playerName"] + "  " + content["levelLabel"] + ": ", 38).rstrip() + " "
+    level_match = re.match(re.escape(level_prefix) + r"(\d+)  ", rows[1][2:40])
+    if not level_match:
+        return None
+    level = int(level_match.group(1))
+    definition = content["levels"].get(level)
+    if (definition is None or player[1] != definition["MaxHp"] + content["profile"]["InitialMaxHpBonus"]
+            or monster[1] != content["monsterMaxHp"]):
         return None
     if not (0 <= player[0] <= player[1] and 0 <= monster[0] <= monster[1]):
         return None
     outcome = "victory" if monster[0] == 0 else ("defeat" if player[0] == 0 else None)
-    if outcome and rows[8][88:130] != physical_text(content[outcome], 42):
+    if outcome and rows[1][88:130] != physical_text(content[outcome], 42):
         return None
     if round_value[0] == 0:
         if rows[1][88:130] != physical_text(content["ready"], 42):
             return None
-    else:
+    elif outcome is None:
         if rows[1][88:130] not in [physical_text(content[name], 42) for name in ("playerName", "monsterName")]:
             return None
         damage = number(88, 2, content["hit"], 42) or number(88, 2, content["critical"], 42)
         if not damage or damage[0] <= 0:
             return None
-    return {"playerHp": player[0], "monsterHp": monster[0], "round": round_value[0], "outcome": outcome}
+    result = {"playerHp": player[0], "playerMaxHp": player[1], "level": level,
+              "monsterHp": monster[0], "round": round_value[0], "outcome": outcome}
+    if outcome:
+        experience = number(88, 2, content["xpLabel"], 42)
+        currency = number(88, 5, content["currencyLabel"], 42)
+        if not experience or not currency:
+            return None
+        result.update(grantedExperience=experience[0], grantedCurrency=currency[0])
+    return result
 
 
 def progress_matches(value, expected, labels):
@@ -504,7 +523,21 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
             key(handles[1], 0x1B)
             assert process.wait(timeout=10) == 0
             return
-        key(handles[1], 0x32 if scenario == "continue" else 0x0D)
+        key(handles[1], 0x32 if scenario in ("continue", "reward-continue") else 0x0D)
+        if scenario == "reward-continue":
+            expected_state = combat_content["resumeState"]
+            resumed = wait_grid("reward-continued-result", lambda value:
+                                combat_frame(value, labels, combat_content) == expected_state)
+            key(handles[1], 0x31)
+            for attempt in range(3):
+                assert read_grid("reward-extra-attack-" + str(attempt)) == resumed
+            key(handles[1], 0x34)
+            town = wait_grid("reward-continued-town", lambda value: scene_matches(value, "Town", labels))
+            gold = combat_content["profile"]["InitialGold"] + expected_state["grantedCurrency"]
+            assert town.split("\n")[1][45:83] == physical_text(combat_content["currencyLabel"] + ": " + str(gold), 38)
+            key(handles[1], 0x1B)
+            assert process.wait(timeout=10) == 0
+            return
         town = wait_grid("town", lambda value:
                          scene_matches(value, "Town", labels, previous_menu=menu))
         assert town != menu and all(f"{n}." in town for n in range(1, 5)), "Town transition/four choices"
@@ -531,14 +564,34 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
                                    (combat_frame(value, labels, combat_content) or {}).get("round") == turn)
                 next_state = combat_frame(battle, labels, combat_content)
                 assert next_state["monsterHp"] < state["monsterHp"] or next_state["outcome"] == "defeat"
-                assert next_state["playerHp"] <= state["playerHp"]
+                growth_hp = max(0, next_state["playerMaxHp"] - state["playerMaxHp"])
+                assert next_state["playerHp"] <= state["playerHp"] + growth_hp
                 history.append(next_state)
                 state = next_state
                 if state["outcome"] is not None:
                     break
             assert state["outcome"] is not None, "combat did not finish within bounded input count"
-            assert state["playerHp"] < initial_player_hp, "no visible enemy retaliation/player HP change"
+            assert state["playerHp"] - (state["playerMaxHp"] - combat_content["playerMaxHp"]) < initial_player_hp, \
+                "no visible enemy retaliation/player HP change"
+            maximum_xp = max(row["RequiredExperience"] for row in combat_content["levels"].values())
+            expected_xp = min(combat_content["monster"]["RewardExperience"],
+                              max(0, maximum_xp - combat_content["profile"]["InitialExperience"]))
+            if state["outcome"] == "victory":
+                assert state["grantedExperience"] == expected_xp
+                assert (combat_content["monster"]["RewardAmountMin"] <= state["grantedCurrency"]
+                        <= combat_content["monster"]["RewardAmountMax"])
+                expected_level = max(row["Level"] for row in combat_content["levels"].values()
+                                     if row["RequiredExperience"] <= combat_content["profile"]["InitialExperience"] + expected_xp)
+                assert state["level"] == expected_level
+            else:
+                assert state["grantedExperience"] == state["grantedCurrency"] == 0
             buttons((False, False, False, True))
+            # 실제 종료 체크포인트의 암호문/전용 키를 별도 재시작 fixture로 보존한다.
+            checkpoint = directory / "reward-checkpoint"
+            checkpoint.mkdir()
+            for file in ("InGameData.sav", "SaveData.key"):
+                shutil.copy2(Path(env["TEXT_RPG_SAVE_ROOT"]) / file, checkpoint / file)
+            (directory / "reward-state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
             key(handles[1], 0x31)
             for attempt in range(5):
                 time.sleep(0.05)
@@ -553,7 +606,9 @@ def console_smoke(game, cwd, env, directory, changed=False, expected_logo=None, 
                               (combat_frame(value, labels, combat_content) or {}).get("round") == 0)
             fresh_state = combat_frame(fresh, labels, combat_content)
             assert fresh_state["monsterHp"] == combat_content["monsterMaxHp"]
-            assert fresh_state["playerHp"] == combat_content["playerMaxHp"]
+            assert fresh_state["level"] == state["level"]
+            assert fresh_state["playerHp"] == combat_content["levels"][state["level"]]["MaxHp"] + \
+                combat_content["profile"]["InitialMaxHpBonus"]
             buttons((True, False, False, False))
             (directory / "combat-history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
         before_quit = None
@@ -606,7 +661,7 @@ def main():
     parser.add_argument("--game", required=True, type=Path)
     parser.add_argument("--packer", required=True, type=Path)
     parser.add_argument("--scratch-root", required=True, type=Path)
-    parser.add_argument("--only", choices=["missing-package", "screen-oracle", "ingamedata-newgame", "ingamedata", "combat"])
+    parser.add_argument("--only", choices=["missing-package", "screen-oracle", "ingamedata-newgame", "ingamedata", "combat", "rewards"])
     parser.add_argument("--progress-fixture", type=Path, help="existing SceneUiRuntime native test executable")
     parser.add_argument("--frame-mode", choices=["basic", "fixed-update", "frame-skip"],
                         help="select the game's immutable startup Frame mode")
@@ -623,7 +678,7 @@ def main():
                        {key: value for key, value in summary.items() if key != "results"})
         return
     results = []
-    progress_scope = args.only in ("ingamedata-newgame", "ingamedata", "combat")
+    progress_scope = args.only in ("ingamedata-newgame", "ingamedata", "combat", "rewards")
     if progress_scope:
         (work / "results.json").write_text(json.dumps({
             "passed": False, "status": "incomplete", "cases": 0, "results": results,
@@ -752,7 +807,7 @@ def run_application(args, work, results):
 
     baseline_options = pack("baseline", capture_options=True)
     good = dat.read_bytes()
-    if args.only == "combat":
+    if args.only in ("combat", "rewards"):
         directory = work / "combat"
         directory.mkdir()
         content = combat_expectations(source, ROOT / "GameData/Asset")
@@ -760,8 +815,20 @@ def run_application(args, work, results):
         report = positive_console("combat", directory, expected_logo=logo_bytes, expected_options=baseline_options,
                                   verify_newgame_save=True, scenario="combat", combat_content=content)
         results.append({"name": "combat-visible-cycle-result-return-reentry", "passed": True, "fileActivityReport": report})
-        if [row.get("name") for row in results] != ["missing-package", "combat-visible-cycle-result-return-reentry"]:
-            raise RuntimeError("combat acceptance cases incomplete")
+        required = ["missing-package", "combat-visible-cycle-result-return-reentry"]
+        if args.only == "rewards":
+            content["resumeState"] = json.loads((directory / "reward-state.json").read_text(encoding="utf-8"))
+            assert content["resumeState"]["outcome"] == "victory", "reward acceptance requires an actual victory"
+            env["TEXT_RPG_SAVE_ROOT"] = str(directory / "reward-checkpoint")
+            resumed_directory = work / "reward-continue"
+            resumed_directory.mkdir()
+            report = positive_console("reward-continue", resumed_directory, expected_logo=logo_bytes,
+                                      expected_options=baseline_options, scenario="reward-continue", combat_content=content)
+            results.append({"name": "reward-checkpoint-separate-process-continue-no-replay", "passed": True,
+                            "fileActivityReport": report})
+            required.append("reward-checkpoint-separate-process-continue-no-replay")
+        if ([row.get("name") for row in results] != required or not all(row.get("passed") is True for row in results)):
+            raise RuntimeError("combat/reward acceptance cases incomplete")
         summary = {"passed": True, "status": "complete", "cases": len(results), "results": results,
                    "exeSha256": identity, "frameMode": frame_mode or "basic"}
         return summary, summary

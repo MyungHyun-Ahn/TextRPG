@@ -89,6 +89,62 @@ def run(command, directory, label):
     return result.stdout
 
 
+def check_type_only_header(text, enum_header=False):
+    if re.search(r'^\s*#\s*include\b', text, re.MULTILINE):
+        raise AssertionError('generated header must be include-free')
+    if re.search(r'(?<!:)\bstd::', text):
+        raise AssertionError('shadowable standard type')
+    if re.search(r'\bk\w+Rows\b|\bFind\w*\s*\(|::std::array<', text):
+        raise AssertionError('generated header must contain types only')
+    if enum_header:
+        # 선언된 Enum 기호와 정확히 같은 기술 parser 블록만 인정한다. 다른 문자열은 계속 금지한다.
+        definitions = {name: re.findall(r'^\s*(\w+)\s*=\s*-?\d+\s*,?\s*$', body, re.MULTILINE)
+                       for name, body in re.findall(r'enum class E(\w+)\s*:\s*::std::\w+\s*\{([^}]+)\};', text)}
+        for name, symbols in definitions.items():
+            signature = f'\tinline bool TryParse{name}(const wchar_t* text, E{name}& output) noexcept\n'
+            start = text.find(signature)
+            if start < 0:
+                raise AssertionError('missing enum parser')
+            end = text.find('\n\t}', start) + len('\n\t}')
+            body = text[start:end]
+            blocks = re.findall(r'\t\t\{\n\t\t\tconst wchar_t\* expected = L"(\w+)";\n'
+                                r'\t\t\tconst wchar_t\* actual = text;\n'
+                                r'\t\t\twhile \(\*actual && \*actual == \*expected\)\n\t\t\t\{\n'
+                                r'\t\t\t\t\+\+actual;\n\t\t\t\t\+\+expected;\n\t\t\t\}\n'
+                                r'\t\t\tif \(\*actual == 0 && \*expected == 0\)\n\t\t\t\{\n'
+                                rf'\t\t\t\toutput = E{re.escape(name)}::(\w+);\n'
+                                r'\t\t\t\treturn true;\n\t\t\t\}\n\t\t\}', body)
+            if blocks != [(symbol, symbol) for symbol in symbols] or body.count('L"') != len(symbols):
+                raise AssertionError('enum parser symbols do not match declarations')
+            # 다른 위치/추가 문자열은 소거하지 않는다.
+            body = re.sub(r'(?m)^(\t\t\tconst wchar_t\* expected = )L"(' +
+                          '|'.join(map(re.escape, symbols)) + r')";$', r'\1nullptr;', body)
+            text = text[:start] + body + text[end:]
+    if 'L"' in text:
+        raise AssertionError('generated header must contain types only')
+
+
+def check_header_guard_controls(text):
+    check_type_only_header(text, True)
+    mutations = [text + '\ninline const wchar_t* label = L"Gameplay display";\n',
+                 text + '\ninline const wchar_t* label = L"Gold";\n',
+                 text + '\n::std::array<int, 1> data{7};\n', text + '\nint kProbeRows;\n',
+                 text + '\nvoid FindProbe();\n', text + '\n#include <string>\n',
+                 text + '\nstd::wstring shadow;\n',
+                 text.replace('const wchar_t* expected = L"', 'const wchar_t* expected = L"Undeclared', 1)]
+    for mutation in mutations:
+        try:
+            check_type_only_header(mutation, True)
+        except AssertionError:
+            continue
+        raise AssertionError('generated-header guard accepted injected gameplay/structural content')
+    try:
+        check_type_only_header('struct SRow { const wchar_t* label = L"Gold"; };')
+    except AssertionError:
+        return len(mutations) + 1
+    raise AssertionError('ordinary table accepted a value literal')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--generator", required=True, type=Path, help="격리 빌드한 GameDataGenerator.dll")
@@ -111,13 +167,9 @@ def main():
     if {p.relative_to(cpp_root).as_posix() for p in headers} != expected:
         raise AssertionError("unexpected generated header set")
     for header in headers:
-        text = header.read_text(encoding="utf-8-sig")
-        if re.search(r"^\s*#\s*include\b", text, re.MULTILINE):
-            raise AssertionError(f"generated header must be include-free: {header}")
-        if re.search(r"(?<!:)\bstd::", text):
-            raise AssertionError(f"shadowable standard type: {header}")
-        if re.search(r"\bk\w+Rows\b|\bFind\w*\s*\(|::std::array<|L\"", text):
-            raise AssertionError(f"generated header must contain types only: {header}")
+        check_type_only_header(header.read_text(encoding="utf-8-sig"),
+                               header.relative_to(cpp_root).as_posix() == "Common/GameDataEnums.g.h")
+    guard_controls = check_header_guard_controls((cpp_root / "Common/GameDataEnums.g.h").read_text(encoding="utf-8-sig"))
     for yaml in (yaml_root / "Client").glob("*.yaml"):
         if not yaml.read_bytes().startswith(b"# TextRPG.GameData 1\n"):
             raise AssertionError(f"missing exact YAML version marker: {yaml}")
@@ -217,7 +269,8 @@ int main()
         raise AssertionError("umbrella must contain only prerequisites and enum-first/ordinal emitted includes")
     if {p.relative_to(cpp_root).as_posix() for p in cpp_root.rglob("*.h")} != expected | {"GameDataAll.h"}:
         raise AssertionError("unexpected umbrella, runtime header, or secondary alias")
-    result = {"passed": True, "headers": len(headers) + 1, "leafHeaders": len(headers), "translationUnits": 4,
+    result = {"passed": True, "guardNegativeControls": guard_controls,
+              "headers": len(headers) + 1, "leafHeaders": len(headers), "translationUnits": 4,
               "compileExitCode": 0, "consumerExitCode": 0, "umbrellaConsumerExitCode": 0, "logDirectory": str(work)}
     (work / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result))

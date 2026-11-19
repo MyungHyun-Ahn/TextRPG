@@ -23,6 +23,7 @@ namespace TextRPG
 		[[nodiscard]] bool TakeProgressResult(std::unique_ptr<InGameData>& active, bool& published, std::wstring& errorMessage);
 		void SetContinueAvailable(bool available) noexcept;
 		void ShowMessage(std::uint32_t textKey);
+		void SetSaveRetryAvailable(bool available) noexcept;
 
 	private:
 		bool ValidateCandidate(const FScene& scene) const override;

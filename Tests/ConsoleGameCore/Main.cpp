@@ -279,6 +279,35 @@ namespace
 		assert(selector.SelectKey(rejecting, uninterrupted, error) && restoredLong->SelectKey(rejecting, resumed, error));
 		assert(resumed.key == uninterrupted.key && resumed.nextRandCount == uninterrupted.nextRandCount);
 		assert(selector.GetEngineKind() == kind);
+		// 공개 포함 범위는 같은 원시 출력 규약을 사용하며 고정 범위는 소비하지 않는다.
+		auto ranged = std::make_unique<FSelector>(kSeed, 0, kind);
+		auto rangeReference = std::make_unique<TEngine>(sequence);
+		std::uint64_t rangeCount = 0;
+		std::uint32_t value = 77;
+		assert(ranged->SelectRange(9, 9, value, error) && value == 9 && ranged->GetState().randCount == 0);
+		assert(ranged->SelectRange(0, 0, value, error) && value == 0 && ranged->GetState().randCount == 0);
+		assert(!ranged->SelectRange(4, 3, value, error) && value == 0 && ranged->GetState().randCount == 0);
+		bool lowEndpoint = false, highEndpoint = false, rangeRejected = false;
+		for (int index = 0; index < 100; ++index)
+		{
+			const auto saved = ranged->GetState();
+			const auto expected = ReferenceRandom(*rangeReference, 3, rangeCount) + 10;
+			assert(ranged->SelectRange(10, 12, value, error) && value == expected);
+			assert(ranged->GetState().randCount == rangeCount);
+			lowEndpoint |= value == 10;
+			highEndpoint |= value == 12;
+			rangeRejected |= rangeCount - saved.randCount > 1;
+			auto replay = std::make_unique<FSelector>(saved.seed, saved.randCount, kind);
+			std::uint32_t repeated = 0;
+			assert(replay->SelectRange(10, 12, repeated, error) && repeated == value);
+			assert(replay->GetState().randCount == rangeCount);
+		}
+		assert(lowEndpoint && highEndpoint && rangeRejected);
+		const auto expectedFull = ReferenceRandom(*rangeReference, std::uint64_t{UINT32_MAX} + 1, rangeCount);
+		assert(ranged->SelectRange(0, UINT32_MAX, value, error) && value == expectedFull);
+		assert(ranged->GetState().randCount == rangeCount);
+		std::cout << "PASS public inclusive range engine=" << static_cast<int>(kind)
+			<< " endpoints fixed zero invalid full-width reference raw rejection replay\n";
 	}
 
 	struct STinyRandom

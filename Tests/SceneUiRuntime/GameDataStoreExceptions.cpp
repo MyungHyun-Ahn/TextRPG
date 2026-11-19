@@ -95,7 +95,8 @@ namespace
 	auto Values(const MonsterDefinition::SMonsterDefinitionData& row)
 	{
 		return std::make_tuple(row.monsterId, row.nameTextKey, row.artId, row.maxHp, row.attack,
-			row.defense, row.strength, row.dexterity, row.intelligence, row.luck);
+			row.defense, row.strength, row.dexterity, row.intelligence, row.luck,
+			row.rewardExperience, row.rewardCurrencyType, row.rewardAmountMin, row.rewardAmountMax);
 	}
 	auto Values(const CombatRule::SCombatRuleData& row)
 	{

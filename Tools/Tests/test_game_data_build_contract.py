@@ -389,7 +389,8 @@ class GameDataBuildContract(unittest.TestCase):
 
     def test_game_data_project_and_filters_register_all_owned_files(self):
         folder = ROOT / 'GameData'
-        excluded = {'GameData.vcxproj', 'GameData.vcxproj.filters'}
+        # 개인 IDE 설정은 소유 소스/물리 필터 등록 대상이 아니다. 파일 자체는 보존한다.
+        excluded = {'GameData.vcxproj', 'GameData.vcxproj.filters', 'GameData.vcxproj.user'}
         expected = {str(p.relative_to(folder)) for p in folder.rglob('*')
                     if p.is_file() and p.name not in excluded and not p.name.startswith('~$')
                     and not any(part in {'Out', 'bin', 'obj', '__pycache__'} for part in p.relative_to(folder).parts)}

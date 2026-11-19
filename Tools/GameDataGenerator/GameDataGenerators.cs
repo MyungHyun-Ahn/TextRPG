@@ -161,6 +161,36 @@ internal static class FGameDataGenerators
                 builder.AppendLine($"\t\t{value.Name} = {value.NumericValue!.Value}{comma}");
             }
             builder.AppendLine("\t};");
+            builder.AppendLine($"\tinline bool IsValid{definition.Name}(E{definition.Name} value) noexcept");
+            builder.AppendLine("\t{");
+            builder.AppendLine("\t\treturn " + string.Join(" ||\n\t\t\t",
+                definition.Values.Select(value => $"value == E{definition.Name}::{value.Name}")) + ";");
+            builder.AppendLine("\t}");
+            builder.AppendLine($"\tinline bool TryParse{definition.Name}(const wchar_t* text, E{definition.Name}& output) noexcept");
+            builder.AppendLine("\t{");
+            builder.AppendLine("\t\tif (!text)");
+            builder.AppendLine("\t\t{");
+            builder.AppendLine("\t\t\treturn false;");
+            builder.AppendLine("\t\t}");
+            foreach (SEnumValue value in definition.Values)
+            {
+                builder.AppendLine("\t\t{");
+                builder.AppendLine($"\t\t\tconst wchar_t* expected = L\"{value.Name}\";");
+                builder.AppendLine("\t\t\tconst wchar_t* actual = text;");
+                builder.AppendLine("\t\t\twhile (*actual && *actual == *expected)");
+                builder.AppendLine("\t\t\t{");
+                builder.AppendLine("\t\t\t\t++actual;");
+                builder.AppendLine("\t\t\t\t++expected;");
+                builder.AppendLine("\t\t\t}");
+                builder.AppendLine("\t\t\tif (*actual == 0 && *expected == 0)");
+                builder.AppendLine("\t\t\t{");
+                builder.AppendLine($"\t\t\t\toutput = E{definition.Name}::{value.Name};");
+                builder.AppendLine("\t\t\t\treturn true;");
+                builder.AppendLine("\t\t\t}");
+                builder.AppendLine("\t\t}");
+            }
+            builder.AppendLine("\t\treturn false;");
+            builder.AppendLine("\t}");
             if (definitionIndex + 1 != definitions.Count)
             {
                 builder.AppendLine();

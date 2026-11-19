@@ -1,4 +1,7 @@
 #include "pch.h"
+#include "Common/GameDataEnums.g.h"
+#include "LevelDefinition/LevelDefinitionData.g.h"
+#include "Serialization/FSerializationArchive.h"
 #include "CharacterCombat/CharacterCombatData.g.h"
 #include "MonsterDefinition/MonsterDefinitionData.g.h"
 #include "CombatRule/CombatRuleData.g.h"
@@ -35,15 +38,32 @@ namespace TextRPG
 			contribution = Add(contribution, static_cast<std::uint64_t>(basic.Dexterity) * rule.dexterityCoefficient);
 			contribution = Add(contribution, static_cast<std::uint64_t>(basic.Intelligence) * rule.intelligenceCoefficient);
 			contribution = Add(contribution, static_cast<std::uint64_t>(basic.Luck) * rule.luckCoefficient);
-			return {Narrow(Add(attack, contribution / rule.scale)),
-				Narrow(Add(defense, static_cast<std::uint64_t>(basic.Strength) * rule.strengthDefense / rule.scale)),
-				Narrow(Add(rule.baseSpeed, static_cast<std::uint64_t>(basic.Dexterity) * rule.dexteritySpeed / rule.scale)),
+			return {static_cast<std::uint32_t>((std::min)(std::uint64_t{UINT32_MAX}, Add(attack, contribution / rule.scale))),
+				static_cast<std::uint32_t>((std::min)(std::uint64_t{UINT32_MAX},
+					Add(defense, static_cast<std::uint64_t>(basic.Strength) * rule.strengthDefense / rule.scale))),
+				static_cast<std::uint32_t>((std::min)(std::uint64_t{UINT32_MAX},
+					Add(rule.baseSpeed, static_cast<std::uint64_t>(basic.Dexterity) * rule.dexteritySpeed / rule.scale))),
 				static_cast<std::uint32_t>((std::min)(static_cast<std::uint64_t>(rule.criticalCap),
 					static_cast<std::uint64_t>(basic.Luck) * rule.luckCritical))};
 		}
 		SCombatStats MonsterStats(const GameData::MonsterDefinition::SMonsterDefinitionData& monster, const SRule& rule)
 		{
 			return Derive({monster.strength, monster.dexterity, monster.intelligence, monster.luck}, monster.attack, monster.defense, rule);
+		}
+		bool ValidateCurrencyRolls(const GameData::InGameData::SBattleRewardProgress& reward, std::string& error)
+		{
+			// 정산 당시 순서와 범위만 읽는다. 현재 잔액이나 활성 난수 상태는 이력의 원본이 아니다.
+			FSelector selector(reward.CurrencySeed, 0);
+			for (const auto& entry : reward.Currencies)
+			{
+				std::uint32_t rolled = 0;
+				if (!selector.SelectRange(entry.AmountMin, entry.AmountMax, rolled, error)) return false;
+				if (rolled != entry.RolledAmount)
+					throw std::runtime_error("Reward currency roll does not match snapshot RNG");
+			}
+			if (selector.GetState().randCount != reward.CurrencyRandCount)
+				throw std::runtime_error("Reward currency count does not match snapshot RNG");
+			return true;
 		}
 		bool Roll(FSelector& selector, std::uint32_t yes, std::uint32_t no, bool& result, std::string& error)
 		{
@@ -120,6 +140,7 @@ namespace TextRPG
 			SCombatStats stats;
 			if (!GetPlayerStats(store, progress, *rule, stats, error)) return false;
 			(void)MonsterStats(*monster, *rule);
+
 			const auto hp = progress.GetCharacter().CurrentHp;
 			if (battle.Outcome > 2 || battle.MonsterHp > monster->maxHp || battle.Round > rule->maxRounds || battle.HitCount > 2 ||
 				(battle.Outcome == 0 && (hp == 0 || battle.MonsterHp == 0 || battle.Round == rule->maxRounds ||
@@ -134,6 +155,56 @@ namespace TextRPG
 				(battle.HitCount == 1 && (battle.Outcome == 0 || battle.SecondDamage != 0 || battle.SecondCritical)) ||
 				(battle.HitCount == 2 && battle.SecondDamage == 0))
 				throw std::runtime_error("Combat state bounds or outcome are invalid");
+			const auto& reward = battle.Reward;
+			if (reward.State == 3)
+			{
+				auto empty = GameData::InGameData::SBattleRewardProgress{};
+				empty.State = 3;
+				if (!(reward == empty)) throw std::runtime_error("Legacy reward must be empty");
+			}
+			else
+			{
+				if ((reward.State != 1 && reward.State != 2) || (reward.State == 1) != (battle.Outcome == 0) ||
+					reward.PlannedExperience > 1000000 || reward.GrantedExperience > reward.PlannedExperience || reward.Currencies.empty())
+					throw std::runtime_error("Reward state is invalid");
+				if (reward.State == 1 && (reward.GrantedExperience != 0 || reward.LevelBefore != 0 || reward.LevelAfter != 0 ||
+					reward.CurrencyRandCount != 0)) throw std::runtime_error("Prepared reward has receipt values");
+				if (reward.State == 2)
+				{
+					const auto* cap = store.FindLevelDefinition(reward.CurveMaxLevel);
+					if (!cap || reward.LevelBefore == 0 || reward.LevelAfter < reward.LevelBefore ||
+						reward.ExperienceAfter != progress.GetCharacter().Experience ||
+						reward.GrantedExperience > reward.ExperienceAfter ||
+						reward.ExperienceBefore != reward.ExperienceAfter - reward.GrantedExperience ||
+						InGameData::ExperienceLevel(store, reward.ExperienceBefore, cap->level) != reward.LevelBefore ||
+						InGameData::ExperienceLevel(store, reward.ExperienceAfter, cap->level) != reward.LevelAfter ||
+						reward.GrantedExperience != (battle.Outcome == 1 ?
+							InGameData::ExperienceGrant(reward.ExperienceBefore, reward.PlannedExperience, cap->requiredExperience) : 0U))
+					{
+						throw std::runtime_error("Reward experience receipt is invalid");
+					}
+				}
+				else if (reward.ExperienceBefore != 0 || reward.ExperienceAfter != 0 || reward.CurveMaxLevel != 0)
+				{
+					throw std::runtime_error("Prepared reward has receipt values");
+				}
+				std::set<std::uint32_t> types;
+				for (const auto& entry : reward.Currencies)
+				{
+					if (!GameData::Common::IsValidCurrencyType(
+						static_cast<GameData::Common::ECurrencyType>(entry.CurrencyType)) || !types.insert(entry.CurrencyType).second ||
+						entry.AmountMin > entry.AmountMax || entry.AmountMax > 1000000 || entry.GrantedAmount > entry.RolledAmount)
+						throw std::runtime_error("Reward currency receipt is invalid");
+					if ((reward.State == 1 || battle.Outcome == 2) && (entry.RolledAmount != 0 || entry.GrantedAmount != 0))
+						throw std::runtime_error("Unwon reward must not pay");
+					if (reward.State == 2 && battle.Outcome == 1 &&
+						(entry.RolledAmount < entry.AmountMin || entry.RolledAmount > entry.AmountMax))
+						throw std::runtime_error("Reward roll is outside snapshot range");
+				}
+				if (reward.State == 2 && battle.Outcome == 1 && !ValidateCurrencyRolls(reward, error)) return false;
+				if (battle.Outcome == 2 && (reward.GrantedExperience != 0 || reward.CurrencyRandCount != 0 ||
+					reward.LevelBefore != reward.LevelAfter)) throw std::runtime_error("Defeat reward must be zero");
+			}
 			error.clear();
 			return true;
 		}
@@ -180,6 +251,11 @@ namespace TextRPG
 				battle.MonsterId = monster->monsterId;
 				battle.MonsterHp = monster->maxHp;
 				battle.Seed = GenerateSeed();
+				battle.Reward.State = 1;
+				battle.Reward.PlannedExperience = monster->rewardExperience;
+				battle.Reward.CurrencySeed = GenerateSeed();
+				battle.Reward.Currencies.push_back({static_cast<std::uint32_t>(monster->rewardCurrencyType),
+					monster->rewardAmountMin, monster->rewardAmountMax, 0, 0});
 				candidate.m_data.m_sceneId = targetSceneId;
 			}
 			return candidate.Validate(store, error);
@@ -224,9 +300,56 @@ namespace TextRPG
 			++battle.Round;
 			battle.Outcome = battle.MonsterHp == 0 ? 1U : (playerHp == 0 ? 2U : 0U);
 			battle.RandCount = selector.GetState().randCount;
-			// 여기까지 값 후보만 변경한다. 공유 캐릭터의 HP는 모든 실패 가능 처리가 끝난 뒤 게시한다.
-			progress.m_data.m_battle = battle;
-			progress.m_data.m_character->CurrentHp = playerHp;
+			// 지역 값과 깊은 캐릭터 후보만 변경한다. 할당/검증 후 비할당 이동/교환으로 한 번 게시한다.
+			InGameData candidate;
+			candidate.m_data = progress.m_data;
+			candidate.m_data.m_character = std::make_shared<SCharacterProgress>(progress.GetCharacter());
+			candidate.m_data.m_battle = std::move(battle);
+			auto& character = *candidate.m_data.m_character;
+			character.CurrentHp = playerHp;
+			auto& reward = candidate.m_data.m_battle.Reward;
+			if (reward.State == 1 && candidate.m_data.m_battle.Outcome != 0)
+			{
+				reward.State = 2;
+				reward.LevelBefore = reward.LevelAfter = character.Level;
+				reward.ExperienceBefore = reward.ExperienceAfter = character.Experience;
+				reward.CurveMaxLevel = store.GetLevelDefinitions().back().level;
+				if (candidate.m_data.m_battle.Outcome == 1)
+				{
+					SCharacterStats oldStats;
+					if (!progress.GetStats(store, oldStats, error)) return false;
+					const auto& levels = store.GetLevelDefinitions();
+					const auto maximumXp = levels.back().requiredExperience;
+					reward.GrantedExperience = InGameData::ExperienceGrant(character.Experience, reward.PlannedExperience, maximumXp);
+					character.Experience += reward.GrantedExperience;
+					reward.ExperienceAfter = character.Experience;
+					character.Level = InGameData::ExperienceLevel(store, character.Experience, levels.back().level);
+					reward.LevelAfter = character.Level;
+					SCharacterStats newStats;
+					if (!candidate.GetStats(store, newStats, error)) return false;
+					const auto increase = newStats.MaxHp > oldStats.MaxHp ? newStats.MaxHp - oldStats.MaxHp : 0;
+					character.CurrentHp = static_cast<std::uint32_t>((std::min)(std::uint64_t{newStats.MaxHp},
+						static_cast<std::uint64_t>(playerHp) + increase));
+					FSelector rewards(reward.CurrencySeed, reward.CurrencyRandCount);
+					for (auto& entry : reward.Currencies)
+					{
+						if (!rewards.SelectRange(entry.AmountMin, entry.AmountMax, entry.RolledAmount, error)) return false;
+						const auto type = static_cast<GameData::Common::ECurrencyType>(entry.CurrencyType);
+						const auto balance = candidate.GetCurrency(type);
+						entry.GrantedAmount = static_cast<std::uint32_t>((std::min)(std::uint64_t{entry.RolledAmount},
+							std::uint64_t{UINT32_MAX} - balance));
+						if (!candidate.SetCurrency(type, balance + entry.GrantedAmount, error)) return false;
+					}
+					reward.CurrencyRandCount = rewards.GetState().randCount;
+				}
+			}
+			if (!candidate.Validate(store, error)) return false;
+			// 캐릭터 주소는 UI에 계속 유효하다. 새 루트를 게시하거나 콜백을 호출하지 않는다.
+			static_assert(std::is_nothrow_copy_assignable_v<SCharacterProgress>);
+			static_assert(std::is_nothrow_move_assignable_v<SBattleProgress>);
+			*progress.m_data.m_character = character;
+			progress.m_data.m_battle = std::move(candidate.m_data.m_battle);
+			progress.m_data.m_currencies.swap(candidate.m_data.m_currencies);
 			error.clear();
 			return true;
 		}

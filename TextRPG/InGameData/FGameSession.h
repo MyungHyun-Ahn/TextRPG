@@ -17,6 +17,13 @@ namespace TextRPG
 		StartedSaveFailed,
 	};
 
+	enum class EGameActionResult
+	{
+		Rejected,
+		Applied,
+		AppliedSaveFailed,
+	};
+
 	// 앱 수명에서 SceneManager보다 먼저 생성/나중 파괴한다. Scene/UI는 이 루트를 소유하지 않는다.
 	class FGameSession final
 	{
@@ -33,12 +40,24 @@ namespace TextRPG
 		[[nodiscard]] bool Save(std::string& error) const;
 		[[nodiscard]] bool Travel(std::uint32_t sceneId, FTextRPGSceneManager& scenes, FGameUiBridge& ui, std::string& error);
 		[[nodiscard]] bool BasicAttack(FTextRPGSceneManager& scenes, std::string& error);
+		[[nodiscard]] EGameActionResult ApplyBasicAttack(FTextRPGSceneManager& scenes, std::string& error);
+		[[nodiscard]] bool HasUnsavedChanges() const noexcept
+		{
+			return m_hasUnsavedChanges;
+		}
+		[[nodiscard]] bool HasSaveFailure() const noexcept
+		{
+			return m_hasSaveFailure;
+		}
 
 	private:
 		const GameData::FGameDataStore& m_store;
 		std::unique_ptr<InGameData> m_progress;
 		bool m_hasPendingStart = false;
 		bool m_pendingAutosave = false;
+		bool m_pendingLoaded = false;
+		mutable bool m_hasUnsavedChanges = false;
+		mutable bool m_hasSaveFailure = false;
 		[[nodiscard]] bool ReadCandidate(std::unique_ptr<InGameData>& candidate, std::string& error) const;
 	};
 }

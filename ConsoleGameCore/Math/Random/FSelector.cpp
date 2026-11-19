@@ -188,6 +188,25 @@ namespace TextRPG
 		}
 	}
 
+	bool FSelector::SelectRange(std::uint32_t minimum, std::uint32_t maximum, std::uint32_t& output, std::string& error)
+	{
+		if (minimum > maximum) { error = "Random: inverted range"; return false; }
+		if (minimum == maximum) { output = minimum; error.clear(); return true; }
+		auto candidate = m_engine;
+		auto count = m_randCount;
+		std::uint64_t value = 0;
+		const auto width = static_cast<std::uint64_t>(maximum) - minimum + 1;
+		if (!std::visit([&](auto& engine)
+		{
+			return RandomDetail::DrawBelow(engine, width, count, value, error);
+		}, candidate)) return false;
+		m_engine = candidate;
+		m_randCount = count;
+		output = static_cast<std::uint32_t>(minimum + value);
+		error.clear();
+		return true;
+	}
+
 	bool FSelector::AddProc(std::uint32_t key, std::uint32_t proc)
 	{
 		std::string error;

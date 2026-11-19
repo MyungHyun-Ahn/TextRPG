@@ -139,6 +139,7 @@ namespace TextRPG
 			}
 			m_hasPendingStart = true;
 			m_pendingAutosave = true;
+			m_pendingLoaded = false;
 			error.clear();
 			return EGameStartResult::Queued;
 		}
@@ -170,6 +171,7 @@ namespace TextRPG
 			}
 			m_hasPendingStart = true;
 			m_pendingAutosave = false;
+			m_pendingLoaded = true;
 			error.clear();
 			return true;
 		}
@@ -192,6 +194,8 @@ namespace TextRPG
 			CopySceneError(sceneError, error);
 			return EGameStartResult::Failed;
 		}
+		m_hasUnsavedChanges = !m_pendingLoaded;
+		if (m_pendingLoaded) m_hasSaveFailure = false;
 		// 오직 실제 게시를 확인한 뒤 자동 저장한다. Continue는 기존 슬롯을 다시 쓰지 않는다.
 		if (m_pendingAutosave && !Save(error)) return EGameStartResult::StartedSaveFailed;
 		error.clear();
@@ -221,6 +225,7 @@ namespace TextRPG
 			}
 			m_hasPendingStart = true;
 			m_pendingAutosave = false;
+			m_pendingLoaded = false;
 			error.clear();
 			return true;
 		}
@@ -238,7 +243,20 @@ namespace TextRPG
 			error = "Attack conflicts with absent progress or a pending operation";
 			return false;
 		}
-		return FCombat::BasicAttack(m_store, *m_progress, error);
+		return ApplyBasicAttack(scenes, error) != EGameActionResult::Rejected;
+	}
+
+	EGameActionResult FGameSession::ApplyBasicAttack(FTextRPGSceneManager& scenes, std::string& error)
+	{
+		if (!m_progress || m_hasPendingStart || scenes.HasPendingTransition() || scenes.IsQuitting())
+		{
+			error = "Attack conflicts with absent progress or a pending operation";
+			return EGameActionResult::Rejected;
+		}
+		if (!FCombat::BasicAttack(m_store, *m_progress, error)) return EGameActionResult::Rejected;
+		m_hasUnsavedChanges = true;
+		if (m_progress->GetBattle().Outcome != 0 && !Save(error)) return EGameActionResult::AppliedSaveFailed;
+		return EGameActionResult::Applied;
 	}
 
 	bool FGameSession::Save(std::string& error) const
@@ -248,6 +266,8 @@ namespace TextRPG
 			error.clear();
 			return true;
 		}
+		m_hasUnsavedChanges = true;
+		m_hasSaveFailure = true;
 		try
 		{
 			std::filesystem::path directory;
@@ -273,7 +293,10 @@ namespace TextRPG
 				}
 			}
 			SPlainBuffer plain;
-			return m_progress->Serialize(plain.Bytes, error) && store.Save(plain.Bytes, error);
+			if (!m_progress->Serialize(plain.Bytes, error) || !store.Save(plain.Bytes, error)) return false;
+			m_hasUnsavedChanges = false;
+			m_hasSaveFailure = false;
+			return true;
 		}
 		catch (const std::exception& exception)
 		{

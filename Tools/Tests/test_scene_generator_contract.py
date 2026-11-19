@@ -17,6 +17,7 @@ import uuid
 
 from openpyxl import load_workbook
 from test_scene_ui_data import ROOT, ASSETS, table_records
+from test_generated_header_consumer import check_type_only_header, check_header_guard_controls
 
 
 def column(sheet, field):
@@ -204,8 +205,10 @@ def main():
     assert '"AssetPath"' in (outputs[1] / 'Client/TextArt.yaml').read_text(encoding='utf-8')
     for header in outputs[0].rglob('*.g.h'):
         text = header.read_text(encoding='utf-8-sig')
-        assert not re.search(r'\bk\w+Rows\b|\bFind\w*\s*\(|::std::array<|L"', text), f'not types-only: {header}'
-        assert not re.search(r'^\s*#\s*include\b', text, re.MULTILINE), f'not include-free: {header}'
+        check_type_only_header(text, header.relative_to(outputs[0]).as_posix() == 'Common/GameDataEnums.g.h')
+    guard_controls = check_header_guard_controls((outputs[0] / 'Common/GameDataEnums.g.h').read_text(encoding='utf-8-sig'))
+    results.append({'case': 'header_guard_controls', 'negativeControls': guard_controls, 'passed': True})
+    persist()
     for yaml in (outputs[1] / 'Client').glob('*.yaml'):
         assert yaml.read_bytes().startswith(b'# TextRPG.GameData 1\n'), f'missing exact version marker: {yaml}'
     option_yaml = (outputs[1] / 'Client/SceneOption.yaml').read_text(encoding='utf-8')

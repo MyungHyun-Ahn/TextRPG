@@ -171,3 +171,35 @@
   "TextKey": 43
   "KoKR": "라운드"
   "EnUS": "Round"
+"Localization44":
+  "TextKey": 44
+  "KoKR": "경험치"
+  "EnUS": "XP"
+"Localization45":
+  "TextKey": 45
+  "KoKR": "최대"
+  "EnUS": "MAX"
+"Localization46":
+  "TextKey": 46
+  "KoKR": "획득"
+  "EnUS": "Granted"
+"Localization47":
+  "TextKey": 47
+  "KoKR": "미적립"
+  "EnUS": "Uncredited"
+"Localization48":
+  "TextKey": 48
+  "KoKR": "레벨 변화"
+  "EnUS": "Level change"
+"Localization49":
+  "TextKey": 49
+  "KoKR": "반영 완료 / 저장 실패"
+  "EnUS": "Applied / save failed"
+"Localization50":
+  "TextKey": 50
+  "KoKR": "저장 재시도"
+  "EnUS": "Retry Save"
+"Localization51":
+  "TextKey": 51
+  "KoKR": "이전 전투: 보상 제외"
+  "EnUS": "Legacy battle: no reward"
